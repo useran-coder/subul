@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v48">
+<meta name="su-ver" content="v49">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -189,6 +189,8 @@ textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-
 .card-more{border-color:transparent!important;background:transparent}.card-more:hover{background:#eaf1fc!important;color:#2f6ac6!important;border-color:transparent!important}
 #viewsR{margin-left:4px}
 .pc-fix{cursor:pointer}.pc-fix:hover{background:#f1f5f9;border-radius:4px}
+.pg-tbl tr.pg-row.open>td{position:sticky;top:var(--h1,30px);z-index:4;background:#dbe7fb;box-shadow:0 1px 0 #b9cdf0}.pg-tbl .pg-dt th{top:calc(var(--h1,30px) + var(--h2,22px));z-index:3}
+.pg-tbl .pg-dt th{position:sticky!important}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -1670,6 +1672,10 @@ function renderCustPage() {
   h += '</tbody></table></div>';
   $('#view').innerHTML = h;
   pgBind(renderCustPage);
+  (function () {   /* 선택한 고객사 줄 · 그 품목 표 제목줄 고정 (스크롤해도 보임) */
+    var tb = $('#view .pg-tbl'), th = tb && tb.tHead, orow = $('#view tr.pg-row.open'); if (!tb || !th) return;
+    tb.style.setProperty('--h1', th.offsetHeight + 'px'); tb.style.setProperty('--h2', (orow ? orow.offsetHeight : 0) + 'px');
+  })();
   $('#view').onclick = function (ev) {
     var o = ev.target.closest('[data-open]'); if (o) { openItem(o.dataset.open); return; }
     var th = ev.target.closest('th[data-dk]'); if (th) { var k = th.dataset.dk, d0 = th.classList.contains('num') ? -1 : 1; if (P.dk !== k) { P.dk = k; P.dd = d0; } else if (P.dd === d0) P.dd = -d0; else { P.dk = ''; P.dd = 0; } renderCustPage(); return; }
