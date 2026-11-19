@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v35">
+<meta name="su-ver" content="v36">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -176,6 +176,7 @@ textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-
 .pc-miss{color:#dc2626;font-size:12px;font-weight:800;border-bottom:1px dashed #dc2626;cursor:help}
 .al-go{cursor:pointer}.al-go:hover{text-decoration:underline}.neg-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 10px}.neg-head h2{margin:0;font-size:19px;color:var(--navy)}.neg-head h2 b{color:#dc2626}.neg-head input[type=date]{height:32px;border:1px solid #cbd5e1;border-radius:7px;padding:0 8px}.neg-back{height:32px;border:1px solid #cbd5e1;background:#fff;border-radius:7px;padding:0 12px;font-weight:700;color:#475569}.neg-why{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}.neg-why button{border:1px solid #cbd5e1;background:#fff;border-radius:7px;padding:5px 11px;font-weight:700;color:#475569;font-size:13px}.neg-why button.on{background:#dc2626;border-color:#dc2626;color:#fff}.neg-why button:disabled{opacity:.4}.neg-why small{opacity:.75}.neg-hint{font-size:12.5px;color:#7f1d1d;background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:4px 10px}.neg-tbl tr.neg-row{cursor:pointer}.neg-tbl tr.neg-row:hover td{background:#fef2f2}.neg-tbl tr.neg-row.open td{background:#fee2e2;font-weight:600}.nw{display:inline-block;padding:0 7px;border-radius:999px;font-size:11.5px;font-weight:800;white-space:nowrap;line-height:19px}.nw-noin{background:#fee2e2;color:#b91c1c}.nw-short{background:#ffedd5;color:#c2410c}.nw-base{background:#ede9fe;color:#6d28d9}.nw-link{background:#e0f2fe;color:#0369a1}.neg-detail>td{background:#fff7f7!important;padding:10px 14px!important}.nd-f{font-size:14px;margin-bottom:6px}.nd-why{font-size:13px;margin-bottom:6px}.nd-act{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.nd-act button{border:1px solid #cbd5e1;background:#fff;border-radius:7px;padding:5px 11px;font-weight:700;color:#334155;font-size:12.5px}.nd-act button:hover{border-color:#2f6ac6;color:#2f6ac6}.nd-t{max-width:860px}.nd-t tr.first-neg td{background:#fee2e2;font-weight:700}
 .grid.month tr.buyrow td{background:#f0fdf4}.grid.month tr.buyrow td.c-proc{color:#15803d}.buy-st{margin-top:12px;padding-top:10px;border-top:1px dashed #cbd5e1;font-size:13px}.buy-st button{margin-left:6px}
+.grid tr.go.sel td{background:#dbeafe!important;font-weight:800}.grid tr.go.sel td:first-child{box-shadow:inset 4px 0 0 #2f6ac6}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -1508,8 +1509,10 @@ function renderDash() {
     '</div>';
   h += '<div class="card chart-card"><h3>' + (D.monthly ? '월별' : '일별') + ' 완성 생산 · 출고</h3>' + dashChart(D) + '</div>';
   /* 구분별 */
-  var cr = SU.CATS.filter(function (c) { return D.byCat[c.id] && D.byCat[c.id].n; }).map(function (c) { var X = D.byCat[c.id]; return '<tr class="go" data-cat="' + c.id + '"><td><span class="cb cat-' + c.id + '">' + c.name + '</span></td><td class="num">' + X.n.toLocaleString() + '</td><td class="num">' + fmt(X.ordQ) + '</td><td class="num">' + fmt(X.fin) + '</td><td class="num">' + pct(X.b, X.p) + '</td><td class="num">' + (X.ns ? '<span class="ns-go" data-ns="' + c.id + '" title="수주 ' + fmt(X.nsQ || 0, false) + ' · 누르면 출고 전 제품만">' + X.ns.toLocaleString() + '<small>품목</small></span>' : '-') + '</td><td class="num">' + fmt(X.out) + '</td><td class="num">' + fmt(X.stF) + '</td><td class="num">' + fmt(X.stW) + '</td><td class="num">' + fmt(X.rem) + '</td></tr>'; }).join('');
-  h += '<div class="dash-grid"><div class="card"><h3>구분별 <small class="muted">누르면 그 구분만</small></h3><table class="grid small"><thead><tr><th>구분</th><th class="num">품목</th><th class="num">수주</th><th class="num">완성 생산</th><th class="num">불량률</th><th class="num" title="출고가 한 번도 없는 제품 수 · 누르면 그 구분 출고 전 제품만">출고 전</th><th class="num">출고</th><th class="num">완제품 재고</th><th class="num">재공</th><th class="num">수주 잔량</th></tr></thead><tbody>' + (cr || '<tr><td colspan="10" class="muted">자료 없음</td></tr>') + '</tbody></table></div>';
+  /* 구분별 표는 항상 모든 구분 (고른 구분은 강조만) */
+  var DC = u.cat === 'all' ? D : (function () { var k = u.cat; u.cat = 'all'; try { return dashData(); } finally { u.cat = k; } })();
+  var cr = SU.CATS.filter(function (c) { return DC.byCat[c.id] && DC.byCat[c.id].n; }).map(function (c) { var X = DC.byCat[c.id]; return '<tr class="go' + (u.cat === c.id ? ' sel' : '') + '" data-cat="' + c.id + '" title="' + (u.cat === c.id ? '한 번 더 누르면 전체' : '누르면 이 구분만 반영') + '"><td><span class="cb cat-' + c.id + '">' + c.name + '</span></td><td class="num">' + X.n.toLocaleString() + '</td><td class="num">' + fmt(X.ordQ) + '</td><td class="num">' + fmt(X.fin) + '</td><td class="num">' + pct(X.b, X.p) + '</td><td class="num">' + (X.ns ? '<span class="ns-go" data-ns="' + c.id + '" title="수주 ' + fmt(X.nsQ || 0, false) + ' · 누르면 출고 전 제품만">' + X.ns.toLocaleString() + '<small>품목</small></span>' : '-') + '</td><td class="num">' + fmt(X.out) + '</td><td class="num">' + fmt(X.stF) + '</td><td class="num">' + fmt(X.stW) + '</td><td class="num">' + fmt(X.rem) + '</td></tr>'; }).join('');
+  h += '<div class="dash-grid"><div class="card"><h3>구분별 <small class="muted">누르면 그 구분만 반영 · 한 번 더 누르면 전체</small></h3><table class="grid small"><thead><tr><th>구분</th><th class="num">품목</th><th class="num">수주</th><th class="num">완성 생산</th><th class="num">불량률</th><th class="num" title="출고가 한 번도 없는 제품 수 · 누르면 그 구분 출고 전 제품만">출고 전</th><th class="num">출고</th><th class="num">완제품 재고</th><th class="num">재공</th><th class="num">수주 잔량</th></tr></thead><tbody>' + (cr || '<tr><td colspan="10" class="muted">자료 없음</td></tr>') + '</tbody></table></div>';
   /* 공정별 */
   var pr = Object.keys(D.byProc).map(function (k) { return [k, D.byProc[k]]; }).filter(function (x) { return x[1].p || x[1].st; }).sort(function (a, b) { return b[1].p - a[1].p; });
   var maxP = pr.length ? pr[0][1].p : 0;
@@ -1541,7 +1544,7 @@ function renderDash() {
     var ni = ev.target.closest('[data-negitem]'); if (ni) { var nit = store.items.get(ni.dataset.negitem.split('|')[0]); S.neg = { d: R.sd, r: '', open: ni.dataset.negitem, q: nit ? (nit.p || nit.n || '') : '', page: 1 }; S.ui.view = 'neg'; render(); scrollTo(0, 0); return; }
     var ng = ev.target.closest('[data-negpage]') || ev.target.closest('[data-go="neg"]'); if (ng) { S.neg = { d: R.sd, r: '', open: '', q: '', page: 1 }; S.ui.view = 'neg'; render(); scrollTo(0, 0); return; }
     var ns = ev.target.closest('[data-ns]'); if (ns) { S.ui.cat = ns.dataset.ns; S.ui.ns = true; S.ui.scope = 'all'; S.ui.view = 'month'; S.ui.page = 1; lsSet('subul.view', 'month'); render(); scrollTo(0, 0); return; }
-    var c = ev.target.closest('[data-cat]'); if (c) { S.ui.cat = c.dataset.cat; render(); return; }
+    var c = ev.target.closest('[data-cat]'); if (c) { S.ui.cat = S.ui.cat === c.dataset.cat ? 'all' : c.dataset.cat; render(); return; }
     var p = ev.target.closest('[data-proc]'); if (p) { S.ui.proc = p.dataset.proc; S.ui.view = 'day'; S.ui.scope = 'active'; render(); return; }
     var g = ev.target.closest('[data-go]'); if (g) { S.ui.scope = g.dataset.go; S.ui.view = 'day'; S.ui.proc = ''; render(); }
   };
