@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v16">
+<meta name="su-ver" content="v17">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -160,6 +160,7 @@ textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-
 .cbx-it:hover,.cbx-it.hi{background:#2f6ac6;color:#fff}.cbx-it:hover small,.cbx-it.hi small{color:#dbeafe}
 .cbx-none{padding:6px 10px;color:#94a3b8;font-size:12px}
 .mbar .spacer{flex:1}.mbar .msel{font-size:12.5px;color:#475569;font-weight:700}.mbar .msel select{height:28px;border:1px solid #cbd5e1;border-radius:7px;margin-left:4px}.grid td.c-pc{font-variant-numeric:tabular-nums;color:#334155;white-space:nowrap}
+#qL{max-width:460px}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -1142,7 +1143,7 @@ function renderShell() {
       '</div>' +
       '<span class="spacer"></span>' +
       '<div class="datebox" id="dateBox"><button id="dPrev" title="전날">◀</button><input type="date" id="dDate"><button id="dNext" title="다음 날">▶</button><button id="dToday" class="small">오늘</button></div>' +
-      '<input id="q" class="search" placeholder="🔍 품번·품명·고객사·수주번호·규격 (띄어쓰기로 여러 단어)">' +
+      '<span class="cbx" id="qBox"><input type="search" id="q" class="search" placeholder="🔍 품번·제품번호·품명·고객사·수주번호·규격" autocomplete="off"><span class="cbx-list" id="qL"></span></span>' +
       '<span class="cbx"><input type="search" id="custF" class="selF" placeholder="고객사" autocomplete="off" title="고객사 이름 일부만 써도 검색 · 목록에서 선택 가능"><span class="cbx-list" id="custL"></span></span>' +
       '<span class="cbx"><input type="search" id="nameF" class="selF" placeholder="품명" autocomplete="off" title="품명 일부만 써도 검색 · 고객사를 넣으면 그 고객사 품명만 목록에 나옴"><span class="cbx-list" id="nameL"></span></span>' +
       '<select id="procF" title="이 공정 줄만 보기 (작업일보 공정별 입력)"><option value="">모든 공정</option></select>' +
@@ -1157,16 +1158,17 @@ function renderShell() {
     function go() { clearTimeout(t); var v = el.value.trim(); if (v === S.ui[key]) return; S.ui[key] = v; S.ui.page = 1; render(); }
     function items() { return $$('.cbx-it', lst); }
     function draw() {
-      var q = el.value.trim(), all = el._opts || [], rows = q ? all.filter(function (o) { return hasTxt(o[0], q); }) : all;
-      var h = '<div class="cbx-it all' + (hi === 0 ? ' hi' : '') + '" data-v="">' + (key === 'cust' ? '모든 고객사' : '모든 품명') + '</div>';
+      var q = el.value.trim(), all = el._optsFn ? (el._cache || (el._cache = el._optsFn())) : (el._opts || []), rows = q ? all.filter(function (o) { return hasTxt(o[0], q); }) : (el._optsFn ? [] : all);
+      var h = '<div class="cbx-it all' + (hi === 0 ? ' hi' : '') + '" data-v="">' + (key === 'cust' ? '모든 고객사' : key === 'pname' ? '모든 품명' : '검색 지우기') + '</div>';
+      if (el._optsFn && !q) h += '<div class="cbx-none">글자를 쓰면 품번·제품번호·품명·고객사·수주번호·규격 목록이 나옴</div>';
       h += rows.slice(0, 300).map(function (o, i) { return '<div class="cbx-it' + (o[0] === S.ui[key] ? ' cur' : '') + (hi === i + 1 ? ' hi' : '') + '" data-v="' + esc(o[0]) + '"><span>' + esc(o[0]) + '</span><small>' + o[1] + '</small></div>'; }).join('');
-      if (!rows.length) h += '<div class="cbx-none">맞는 이름 없음</div>'; else if (rows.length > 300) h += '<div class="cbx-none">외 ' + (rows.length - 300) + '개 · 글자를 더 입력</div>';
+      if (!rows.length && q) h += '<div class="cbx-none">맞는 이름 없음 · Enter 로 그대로 검색</div>'; else if (rows.length > 300) h += '<div class="cbx-none">외 ' + (rows.length - 300) + '개 · 글자를 더 입력</div>';
       lst.innerHTML = h; lst.classList.add('open');
       var x = items()[hi]; if (x) x.scrollIntoView({ block: 'nearest' });
     }
     function close() { lst.classList.remove('open'); hi = -1; }
     function pick(v) { el.value = v; close(); go(); }
-    el.onfocus = function () { hi = -1; draw(); };
+    el.onfocus = function () { hi = -1; el._cache = null; draw(); };
     el.onclick = function () { if (!lst.classList.contains('open')) draw(); };
     el.oninput = function () { hi = -1; draw(); clearTimeout(t); t = setTimeout(go, 400); };
     el.onblur = function () { setTimeout(close, 150); go(); };
@@ -1178,14 +1180,21 @@ function renderShell() {
     };
     lst.onmousedown = function (ev) { ev.preventDefault(); var x = ev.target.closest('.cbx-it'); if (x) pick(x.dataset.v); };
   }
-  selF($('#custF'), 'cust', $('#custL')); selF($('#nameF'), 'pname', $('#nameL'));
+  selF($('#custF'), 'cust', $('#custL')); selF($('#nameF'), 'pname', $('#nameL')); selF($('#q'), 'q', $('#qL'));
   $('#dDate').onchange = function () { if (this.value) { S.ui.date = this.value; S.ui.page = 1; render(); } };
   function monthly() { return S.ui.view === 'month' || (S.ui.view === 'dash' && S.ui.per === 'month'); }
   function stepD() { return S.ui.view === 'dash' && S.ui.per === 'week' ? 7 : 1; }
   $('#dPrev').onclick = function () { S.ui.date = monthly() ? SU.addDays(SU.monthStart(S.ui.date), -1) : SU.addDays(S.ui.date, -stepD()); S.ui.page = 1; render(); };
   $('#dNext').onclick = function () { S.ui.date = monthly() ? SU.addDays(SU.monthEnd(S.ui.date), 1) : SU.addDays(S.ui.date, stepD()); S.ui.page = 1; render(); };
   $('#dToday').onclick = function () { S.ui.date = SU.today(); S.ui.page = 1; render(); };
-  var qt = null; $('#q').oninput = function () { var v = this.value; clearTimeout(qt); qt = setTimeout(function () { S.ui.q = v.trim(); S.ui.page = 1; render(); }, 250); };
+  /* 검색창 목록 : 지금 구분 탭 품목의 품번·제품번호·품명·고객사·수주번호·규격 중 쓴 글자가 들어간 것 */
+  $('#q')._optsFn = function () {
+    store.deriveErp(); var u = S.ui, m = {};
+    function add(v, t) { v = String(v || '').trim(); if (!v) return; var x = m[v]; if (!x) m[v] = x = { t: t, n: 0 }; x.n++; }
+    store.items.forEach(function (it) { if (u.cat !== 'all' && it.cat !== u.cat) return; add(it.p, '품번'); add(prodCode(it), '제품번호'); add(pnameOf(it), '품명'); add(it.cust, '고객사'); add(it.ord, '수주번호'); add(it.s, '규격'); });
+    var order = { '품번': 0, '제품번호': 1, '품명': 2, '고객사': 3, '수주번호': 4, '규격': 5 };
+    return Object.keys(m).sort(function (a, b) { return order[m[a].t] - order[m[b].t] || a.localeCompare(b, 'ko', { numeric: true }); }).map(function (k) { return [k, m[k].t + ' ' + m[k].n]; });
+  };
   $('#scope').onchange = function () { S.ui.scope = this.value; S.ui.page = 1; render(); };
 }
 function renderTabs(list) {
@@ -1205,7 +1214,7 @@ function render() {
   $('#dDate').value = u.date;
   var lv = u.view === 'day' || u.view === 'month';
   $('#dateBox').style.display = (lv || u.view === 'dash') ? '' : 'none';
-  $('#q').style.display = (lv || u.view === 'dash') ? '' : 'none';
+  $('#qBox').style.display = (lv || u.view === 'dash') ? '' : 'none';
   $('#scope').style.display = $('#procF').style.display = $('#custF').style.display = $('#nameF').style.display = lv ? '' : 'none';
   if (lv) fillSelF();
   $('#scope').value = u.scope;
