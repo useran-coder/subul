@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v28">
+<meta name="su-ver" content="v29">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -173,6 +173,7 @@ textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-
 .modal:has(.modal-box.wide){padding:16px;align-items:center}.modal-box.wide{max-width:min(1700px,97vw);width:97vw;max-height:calc(100vh - 32px);overflow-y:auto;overflow-x:hidden;padding-top:0}.modal-box.wide .modal-head{position:sticky;top:0;z-index:20;background:#fff;padding:14px 0 8px;margin-bottom:4px;border-bottom:1px solid #eef1f5}.modal-box.wide .two{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)}.modal-box.wide .tw{overflow:auto;max-height:460px;border:1px solid #e2e8f0;border-radius:8px}.modal-box.wide .tw .grid{width:100%}.modal-box.wide .tw .grid th{position:sticky;top:0}.modal-box.wide .tw td.c-pc{white-space:normal;max-width:220px;font-size:12px}
 .ns-tag{display:inline-block;margin-left:4px;padding:0 6px;border-radius:999px;background:#fef3c7;color:#b45309;border:1px solid #fcd34d;font-size:11px;font-weight:800;line-height:17px;white-space:nowrap;vertical-align:middle}.ns-btn{height:32px;border:1px solid #fcd34d;background:#fffbeb;color:#b45309;border-radius:7px;padding:0 10px;font-weight:800}.ns-btn small{font-weight:700;opacity:.8;margin-left:2px}.ns-btn.on{background:#d97706;border-color:#d97706;color:#fff}.grid td.c-cat{white-space:nowrap}
 .ns-go{display:inline-block;padding:0 7px;border-radius:999px;background:#fef3c7;color:#b45309;border:1px solid #fcd34d;font-weight:800;cursor:pointer}.ns-go small{font-weight:600;margin-left:2px;font-size:10.5px}.ns-go:hover{background:#d97706;color:#fff;border-color:#d97706}
+.grid.month tr.outrow.plain td{background:#fff}.grid.month tr.outrow.plain td.c-proc{color:#334155}.grid.month tr.outrow.plain:hover td{background:#f8fafc}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -1775,7 +1776,7 @@ function renderMonth() {
     it.procs.forEach(function (pr, pi) {
       var out = SU.isOut(pr.n);
       if (!rowOn(pr)) return;
-      h += '<tr class="' + (pi === 0 ? 'first' : '') + (out ? ' outrow' : '') + '"><td class="c-cat"><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span>' + nst + '</td><td class="c-p link" data-open="' + it.id + '">' + esc(it.p) + '</td><td class="c-pc" title="' + esc(prodTitle(it)) + '">' + prodCell(it) + '</td><td class="c-n">' + esc([it.it || it.n, it.s].filter(Boolean).join(' · ')) + (it.cust ? ' <small class="muted">' + esc(it.cust) + '</small>' : '') + '</td><td class="c-proc"><span class="pname" data-pm="' + it.id + '" data-pi="' + pi + '" title="눌러서 공정 순서 바꾸기·삭제">' + esc(pr.n) + '</span>' + (pi === lastPi ? '<button type="button" class="padd" data-add="' + it.id + '" title="이 품목에 공정 추가">＋</button>' : '') + '</td>';
+      h += '<tr class="' + (pi === 0 ? 'first' : '') + (out ? ' outrow' + (it.cat === 'oem' ? ' plain' : '') : '') + '"><td class="c-cat"><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span>' + nst + '</td><td class="c-p link" data-open="' + it.id + '">' + esc(it.p) + '</td><td class="c-pc" title="' + esc(prodTitle(it)) + '">' + prodCell(it) + '</td><td class="c-n">' + esc([it.it || it.n, it.s].filter(Boolean).join(' · ')) + (it.cust ? ' <small class="muted">' + esc(it.cust) + '</small>' : '') + '</td><td class="c-proc"><span class="pname" data-pm="' + it.id + '" data-pi="' + pi + '" title="눌러서 공정 순서 바꾸기·삭제">' + esc(pr.n) + '</span>' + (pi === lastPi ? '<button type="button" class="padd" data-add="' + it.id + '" title="이 품목에 공정 추가">＋</button>' : '') + '</td>';
       var b0 = out ? null : store.stock(it, pi, before);
       if (b0 == null) h += '<td class="num muted"></td>';
       else { var ak = store.adj.get(it.id + '|' + pr.id + '|' + before), ar = ak ? store.recs.get('a:' + it.id + '|' + pr.id + '|' + before) : null;
