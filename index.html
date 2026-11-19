@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v41">
+<meta name="su-ver" content="v42">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -182,6 +182,7 @@ textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-
 .toast{white-space:pre-line}
 .neg-tag{font-size:10px;font-weight:700;color:#b91c1c;background:#fee2e2;border-radius:999px;padding:0 5px;white-space:nowrap}.negmk{display:block;font-size:9.5px;font-weight:800;color:#b91c1c;line-height:11px;cursor:help}
 .fx-box{max-width:820px}.fx-box .fx-in{width:110px;height:28px;border:1px solid #cbd5e1;border-radius:6px;padding:0 8px;font-weight:800;text-transform:uppercase}.fx-box .fx-in.err{border-color:#dc2626;background:#fef2f2}.fx-note{margin:8px 0 0;padding-left:18px;color:#64748b;font-size:12px;line-height:1.6}
+.pname.drag{cursor:grab}.pname.drag::before{content:'⋮⋮';color:#94a3b8;font-size:10px;margin-right:3px;letter-spacing:-2px}tr.dragging{opacity:.45}tr.drop-before>td{box-shadow:inset 0 3px 0 #2563eb}tr.drop-after>td{box-shadow:inset 0 -3px 0 #2563eb}tr.addrow>td{background:#eff6ff}tr.addrow input.pnew{width:120px;height:26px;border:1px solid #2f6ac6;border-radius:6px;padding:0 6px;font-weight:700}tr.addrow input.pnew.err{border-color:#dc2626}.addrow-hint{text-align:left!important}.grid.procs .dh{display:inline-block;cursor:grab;color:#94a3b8;padding:0 6px;font-weight:900;letter-spacing:-2px;user-select:none}.grid.procs .dh.off{cursor:default;opacity:.3}.grid.procs input.pnew{border-color:#2f6ac6;background:#eff6ff}.nowrap{white-space:nowrap}.chip.drag{cursor:grab}.chip .cg{font-style:normal;color:#94a3b8;margin-right:3px;letter-spacing:-2px;font-size:10px}.chip.drop-before{box-shadow:-3px 0 0 #2563eb}.chip.drop-after{box-shadow:3px 0 0 #2563eb}.addp-w input.addp{height:28px;width:150px;border:1px dashed #94a3b8;border-radius:999px;padding:0 10px;font-weight:700;background:#fff}.addp-w input.addp:focus{border-style:solid;border-color:#2f6ac6;outline:none}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -1866,7 +1867,7 @@ function renderDay() {
         h += '<td rowspan="' + n + '" class="c-cat"><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || it.cat) + '</span>' + (it.src === 'erp' ? '<span class="erp-tag" title="ERP 수주·출고로 자동 생긴 품목">ERP</span>' : '') + nsTag(it) + (it.chk && it.chk.length ? '<span class="warn-dot" title="' + esc(it.chk.join('\n')) + '">!</span>' : '') + '</td>';
         cols.forEach(function (c) { var cv = colVal(it, c.k); h += '<td rowspan="' + n + '" class="c-' + c.k + (c.k === 'p' || c.k === 'n' ? ' link' : '') + '" data-open="' + it.id + '" title="' + esc(c.k === 'pc' ? prodTitle(it) : cv) + '">' + (c.k === 'pc' ? prodCell(it) : esc(cv)) + '</td>'; });
       }
-      h += '<td class="c-proc" title="' + esc(out ? '' : '재고를 빼 가는 곳: ' + (store.usedBy(it, pi).join(', ') || '없음')) + '"><span class="pname" data-pm="' + it.id + '" data-pi="' + pi + '" title="눌러서 공정 순서 바꾸기·삭제">' + esc(pr.n) + '</span>' + (pr.out && pr.out.length ? ' <span class="lk">🔗</span>' : '') + (si === n - 1 ? '<button type="button" class="padd" data-add="' + it.id + '" title="이 품목에 공정 추가">＋</button>' : '') + '</td>';
+      h += '<td class="c-proc" title="' + esc(out ? '' : '재고를 빼 가는 곳: ' + (store.usedBy(it, pi).join(', ') || '없음')) + '"><span class="pname' + (out ? '' : ' drag') + '" data-pm="' + it.id + '" data-pi="' + pi + '"' + (out ? '' : ' draggable="true"') + ' title="' + (out ? '눌러서 공정 메뉴' : '끌어서 순서 바꾸기 · 눌러서 메뉴 (앞뒤 이동·삭제)') + '">' + esc(pr.n) + '</span>' + (pr.out && pr.out.length ? ' <span class="lk">🔗</span>' : '') + (si === n - 1 ? '<button type="button" class="padd" data-add="' + it.id + '" title="이 품목에 공정 추가">＋</button>' : '') + '</td>';
       if (out) {
         h += '<td class="num muted" data-c="oq"></td><td class="num in"><input class="qi" data-k="' + k + '" data-f="g" inputmode="decimal" value="' + fmtIn(e.g) + '" placeholder="출고"></td><td class="num" data-c="erp"></td><td class="num"></td><td></td>' +
           '<td class="num st" data-c="rem"></td><td class="num" data-c="ms"></td><td class="num muted" data-c="cum"></td>';
@@ -2053,8 +2054,9 @@ function bindDayInputs() {
     if (nx) { nx.focus(); nx.select(); }
   };
   view.onfocusin = function (ev) { if (ev.target.classList && ev.target.classList.contains('qi')) ev.target.select(); };
+  bindProcDrag(view);
   view.onclick = function (ev) {
-    var pa = ev.target.closest('.padd'); if (pa) { ev.stopPropagation(); procAddMenu(pa); return; }
+    var pa = ev.target.closest('.padd'); if (pa) { ev.stopPropagation(); procAddRow(pa); return; }
     var pn = ev.target.closest('.pname'); if (pn) { ev.stopPropagation(); procEditMenu(pn); return; }
     var o = ev.target.closest('[data-open]'); if (o && !ev.target.closest('#qk')) openItem(o.dataset.open);
   };
@@ -2086,7 +2088,7 @@ function renderMonth() {
     it.procs.forEach(function (pr, pi) {
       var out = SU.isOut(pr.n), buy = it.cat === 'oem' && SU.isBuy(pr.n);
       if (!rowOn(pr)) return;
-      h += '<tr class="' + (pi === 0 ? 'first' : '') + (out ? ' outrow' : buy ? ' buyrow' : '') + '"><td class="c-cat"><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span>' + nst + '</td><td class="c-p link" data-open="' + it.id + '">' + esc(it.p) + '</td><td class="c-pc" title="' + esc(prodTitle(it)) + '">' + prodCell(it) + '</td><td class="c-n">' + esc([it.it || it.n, it.s].filter(Boolean).join(' · ')) + (it.cust ? ' <small class="muted">' + esc(it.cust) + '</small>' : '') + '</td><td class="c-proc"><span class="pname" data-pm="' + it.id + '" data-pi="' + pi + '" title="눌러서 공정 순서 바꾸기·삭제">' + esc(pr.n) + '</span>' + (pi === lastPi ? '<button type="button" class="padd" data-add="' + it.id + '" title="이 품목에 공정 추가">＋</button>' : '') + '</td>';
+      h += '<tr class="' + (pi === 0 ? 'first' : '') + (out ? ' outrow' : buy ? ' buyrow' : '') + '" data-i="' + it.id + '" data-p="' + pi + '"><td class="c-cat"><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span>' + nst + '</td><td class="c-p link" data-open="' + it.id + '">' + esc(it.p) + '</td><td class="c-pc" title="' + esc(prodTitle(it)) + '">' + prodCell(it) + '</td><td class="c-n">' + esc([it.it || it.n, it.s].filter(Boolean).join(' · ')) + (it.cust ? ' <small class="muted">' + esc(it.cust) + '</small>' : '') + '</td><td class="c-proc"><span class="pname' + (out ? '' : ' drag') + '" data-pm="' + it.id + '" data-pi="' + pi + '"' + (out ? '' : ' draggable="true"') + ' title="' + (out ? '눌러서 공정 메뉴' : '끌어서 순서 바꾸기 · 눌러서 메뉴 (앞뒤 이동·삭제)') + '">' + esc(pr.n) + '</span>' + (pi === lastPi ? '<button type="button" class="padd" data-add="' + it.id + '" title="이 품목에 공정 추가">＋</button>' : '') + '</td>';
       var b0 = out ? null : store.stock(it, pi, before);
       if (b0 == null) h += '<td class="num muted"></td>';
       else { var ak = store.adj.get(it.id + '|' + pr.id + '|' + before), ar = ak ? store.recs.get('a:' + it.id + '|' + pr.id + '|' + before) : null;
@@ -2115,7 +2117,8 @@ function renderMonth() {
   $('#view').innerHTML = h;
   $$('.mbar [data-pf]').forEach(function (b) { b.onclick = function () { S.ui.proc = b.dataset.pf; S.ui.page = 1; render(); }; });
   if ($('#baseZero')) $('#baseZero').onclick = baseZeroAll;
-  $$('#view .padd').forEach(function (b) { b.onclick = function (ev) { ev.stopPropagation(); procAddMenu(b); }; });
+  $$('#view .padd').forEach(function (b) { b.onclick = function (ev) { ev.stopPropagation(); procAddRow(b); }; });
+  bindProcDrag($('#view'));
   $$('#view .pname').forEach(function (b) { b.onclick = function (ev) { ev.stopPropagation(); procEditMenu(b); }; });
   $$('th.day .dgo').forEach(function (a) { a.onclick = function (ev) { ev.stopPropagation(); S.ui.date = a.closest('th').dataset.d; S.ui.view = 'day'; render(); }; });
   bindSort(renderMonth);
@@ -2185,18 +2188,48 @@ function setBuyCell(inp) {
   wrap = $('#view .tbl-wrap'); if (wrap) wrap.scrollLeft = sx; scrollTo(scrollX, sy);
 }
 
-/* 품목에 공정 추가 (월 현황 ＋) : 목록에서 고르거나 직접 입력 → 출고 앞에 넣고 저장 */
-function procAddMenu(btn) {
-  var old = $('#paddMenu'); if (old) { old.remove(); if (old.dataset.i === btn.dataset.add) return; }
+/* 품목에 공정 추가 (월 현황·일일 입력 ＋) : 팝업 대신 표에 새 행 → 공정 이름 입력(목록에서 고르거나 직접) → Enter 로 저장 */
+function procAddRow(btn) {
   var it = store.items.get(btn.dataset.add); if (!it) return;
+  var old = document.querySelector('#view tr.addrow'); if (old) { var same = old.dataset.i === it.id; render(); if (same) return; btn = document.querySelector('#view .padd[data-add="' + it.id + '"]'); if (!btn) return; }
+  var tr = btn.closest('tr'), cells = Array.from(tr.cells), ci = cells.findIndex(function (c) { return c.classList.contains('c-proc'); });
+  var rows = $$('#view tr[data-i="' + it.id + '"]'), lead = ci;   // 앞쪽 빈 칸 (일일 입력 둘째 줄부터는 0)
+  rows.forEach(function (r) { Array.from(r.cells).forEach(function (c) { if (c.rowSpan > 1) c.rowSpan++; }); });   // 일일 입력 : 품목 칸(rowspan) 늘림
   var have = {}; it.procs.forEach(function (p) { have[p.n] = 1; });
-  var names = store.procList().filter(function (n) { return !have[n]; });
-  var m = document.createElement('div'); m.id = 'paddMenu'; m.className = 'cbx-list open padd-menu'; m.dataset.i = it.id;
-  m.innerHTML = '<div class="cbx-none">«' + esc(it.p || it.n) + (prodCode(it) ? ' ' + esc(prodCode(it)) : '') + '» 에 추가할 공정</div>' + names.map(function (n) { return '<div class="cbx-it" data-n="' + esc(n) + '"><span>' + esc(n) + '</span></div>'; }).join('') + '<div class="cbx-it" data-n="__new"><span>직접 입력…</span></div>';
-  document.body.appendChild(m);
-  var r = btn.getBoundingClientRect(); m.style.position = 'fixed'; m.style.left = Math.min(r.left, innerWidth - 220) + 'px'; m.style.top = Math.min(r.bottom + 2, innerHeight - m.offsetHeight - 8) + 'px';
-  m.onmousedown = function (ev) { ev.preventDefault(); var x = ev.target.closest('.cbx-it'); if (!x) return; var n = x.dataset.n; m.remove(); if (n === '__new') { n = prompt('새 공정 이름'); if (!n) return; } addProc(it, n); };
-  setTimeout(function () { document.addEventListener('mousedown', function off(ev) { if (!m.contains(ev.target)) { m.remove(); document.removeEventListener('mousedown', off); } }); }, 0);
+  var nr = document.createElement('tr'); nr.className = 'addrow'; nr.dataset.i = it.id;
+  nr.innerHTML = new Array(lead + 1).join('<td></td>') + '<td class="c-proc"><input class="pnew" list="pnewL" placeholder="새 공정 이름" autocomplete="off"><datalist id="pnewL">' + store.procList().filter(function (n) { return !have[n]; }).map(function (n) { return '<option value="' + esc(n) + '">'; }).join('') + '</datalist></td>' +
+    '<td colspan="' + Math.max(1, cells.length - ci - 1) + '" class="addrow-hint"><button type="button" class="small primary" data-ok>추가</button> <button type="button" class="small" data-no>취소</button> <span class="muted small">목록에서 고르거나 직접 입력 · Enter 저장 · Esc 취소 · 넣은 뒤 끌어서 위치 바꿈</span></td>';
+  var outTr = SU.isOut((it.procs[Number(tr.dataset.p)] || {}).n) && rows[0] !== tr ? tr : null;
+  tr.parentNode.insertBefore(nr, outTr || tr.nextSibling);
+  var inp = $('.pnew', nr); inp.focus();
+  function ok() { var v = inp.value.trim(); if (!v) { inp.classList.add('err'); inp.focus(); return; } addProc(it, v); }
+  inp.onkeydown = function (ev) { ev.stopPropagation(); if (ev.key === 'Enter') { ev.preventDefault(); ok(); } else if (ev.key === 'Escape') render(); };
+  nr.onclick = function (ev) { ev.stopPropagation(); if (ev.target.dataset.ok != null) ok(); else if (ev.target.dataset.no != null) render(); };
+}
+/* 공정 행 끌어서 순서 바꾸기 (월 현황·일일 입력) : 같은 품목 안에서만 · 출고는 맨 끝 고정 */
+function bindProcDrag(root) {
+  var src = null, tgt = null;
+  function clr() { $$('.drop-before,.drop-after', root).forEach(function (x) { x.classList.remove('drop-before', 'drop-after'); }); }
+  root.ondragstart = function (ev) {
+    var h = ev.target.closest && ev.target.closest('.pname[draggable="true"]'); if (!h) return;
+    var tr = h.closest('tr'); src = { i: h.dataset.pm, p: Number(h.dataset.pi) }; tgt = null;
+    ev.dataTransfer.effectAllowed = 'move'; try { ev.dataTransfer.setData('text/plain', h.textContent); } catch (e) {}
+    setTimeout(function () { tr.classList.add('dragging'); }, 0);
+  };
+  root.ondragover = function (ev) {
+    if (!src) return; var tr = ev.target.closest && ev.target.closest('tr[data-i]'); clr(); tgt = null;
+    if (!tr || tr.dataset.i !== src.i || tr.dataset.p == null) return;
+    var it = store.items.get(src.i), p = Number(tr.dataset.p), pr = it && it.procs[p]; if (!pr) return;
+    var r = tr.getBoundingClientRect(), after = ev.clientY > r.top + r.height / 2; if (SU.isOut(pr.n)) after = false;
+    ev.preventDefault(); ev.dataTransfer.dropEffect = 'move';
+    tr.classList.add(after ? 'drop-after' : 'drop-before'); tgt = { p: p, after: after };
+  };
+  root.ondrop = function (ev) {
+    if (!src || !tgt) return; ev.preventDefault();
+    var it = store.items.get(src.i), to = tgt.p + (tgt.after ? 1 : 0); if (to > src.p) to--;
+    var s0 = src; src = null; clr(); if (it && to !== s0.p) moveProcTo(it, s0.p, to); else render();
+  };
+  root.ondragend = function () { src = null; clr(); $$('tr.dragging', root).forEach(function (x) { x.classList.remove('dragging'); }); };
 }
 /* 공정 이름 누르면 : 위로 · 아래로 · 삭제 */
 function procEditMenu(btn) {
@@ -2218,9 +2251,13 @@ function procEditMenu(btn) {
   };
   setTimeout(function () { document.addEventListener('mousedown', function off(ev) { if (!m.contains(ev.target)) { m.remove(); document.removeEventListener('mousedown', off); } }); }, 0);
 }
-function moveProc(it, pi, dir) {
-  var v = SU.cleanForSave(it), j = pi + dir; if (!v.procs[j] || SU.isOut(v.procs[j].n) || SU.isOut(v.procs[pi].n)) return;
-  var t = v.procs[pi]; v.procs[pi] = v.procs[j]; v.procs[j] = t;
+function moveProc(it, pi, dir) { moveProcTo(it, pi, pi + dir); }
+function moveProcTo(it, from, to) {
+  var v = SU.cleanForSave(it); if (!v.procs[from] || SU.isOut(v.procs[from].n)) return;
+  var fo = -1; v.procs.forEach(function (p, i) { if (fo < 0 && SU.isOut(p.n)) fo = i; });
+  var a = v.procs.splice(from, 1)[0]; if (fo > from) fo--;
+  if (to < 0) to = 0; if (fo >= 0 && to > fo) to = fo; if (to > v.procs.length) to = v.procs.length;
+  v.procs.splice(to, 0, a); if (to === from) { render(); return; }
   if (it._v) v.cat_at = SU.today();
   setRec('i:' + it.id, v); schedulePush();
   toast('공정 순서: ' + (it.p || it.n) + ' → ' + v.procs.map(function (p) { return p.n; }).join('→') + ' (Ctrl+Z 취소)');
@@ -2297,19 +2334,29 @@ function setBase(inp, keepView) {
 
 /* ───────── 수주 입력 ───────── */
 function procChips(list, id) {
-  return '<div class="chips" id="' + id + '">' + list.map(function (n, i) { return '<span class="chip" data-i="' + i + '">' + esc(n) + '<button type="button" data-x="' + i + '" title="빼기">×</button></span>'; }).join('') +
-    '<select class="addp"><option value="">＋ 공정 추가</option>' + store.procList().map(function (n) { return '<option>' + esc(n) + '</option>'; }).join('') + '<option value="__new">직접 입력…</option></select></div>';
+  return '<div class="chips" id="' + id + '">' + list.map(function (n, i) { var o = SU.isOut(n); return '<span class="chip' + (o ? '' : ' drag') + '" data-i="' + i + '"' + (o ? ' title="출고는 맨 끝 고정"' : ' draggable="true" title="끌어서 순서 바꾸기"') + '>' + (o ? '' : '<i class="cg">⋮⋮</i>') + esc(n) + '<button type="button" data-x="' + i + '" title="빼기">×</button></span>'; }).join('') +
+    '<span class="addp-w"><input class="addp" list="' + id + 'L" placeholder="＋ 공정 추가" autocomplete="off" title="목록에서 고르거나 직접 입력 후 Enter"><datalist id="' + id + 'L">' + store.procList().filter(function (n) { return list.indexOf(n) < 0; }).map(function (n) { return '<option value="' + esc(n) + '">'; }).join('') + '</datalist></span></div>';
 }
 function bindChips(box, get, set) {
   box.onclick = function (ev) { var x = ev.target.dataset.x; if (x != null) { var l = get(); l.splice(Number(x), 1); set(l); } };
-  box.onchange = function (ev) {
-    var s = ev.target; if (!s.classList.contains('addp')) return;
-    var v = s.value; if (!v) return;
-    if (v === '__new') { v = prompt('새 공정 이름'); if (!v) { s.value = ''; return; } }
-    v = SU.normProc(v); var l = get(), oi = l.indexOf(SU.OUT);
+  function add(inp) {
+    var v = SU.normProc(inp.value.trim()); if (!v) return; var l = get();
+    if (l.indexOf(v) >= 0) { toast('이미 있는 공정: ' + v, 'warn'); inp.value = ''; return; }
+    var oi = l.indexOf(SU.OUT);
     if (v === SU.OUT) { if (oi < 0) l.push(v); } else if (oi >= 0) l.splice(oi, 0, v); else l.push(v);
-    set(l);
+    set(l); var ni = document.querySelector('#' + box.id + ' .addp'); if (ni) ni.focus();
+  }
+  box.onkeydown = function (ev) { if (ev.target.classList.contains('addp') && ev.key === 'Enter') { ev.preventDefault(); add(ev.target); } };
+  box.oninput = function (ev) {   /* 목록에서 고르면 바로 추가 */
+    var t = ev.target; if (!t.classList.contains('addp')) return;
+    if (ev.inputType === 'insertReplacementText' || !ev.inputType) { if (store.procList().indexOf(t.value) >= 0) add(t); }
   };
+  var ds = null, dt = null;
+  function clr() { $$('.drop-before,.drop-after', box).forEach(function (x) { x.classList.remove('drop-before', 'drop-after'); }); }
+  box.ondragstart = function (ev) { var c = ev.target.closest && ev.target.closest('.chip[draggable="true"]'); if (!c) return; ds = Number(c.dataset.i); ev.dataTransfer.effectAllowed = 'move'; try { ev.dataTransfer.setData('text/plain', 'c'); } catch (e) {} };
+  box.ondragover = function (ev) { if (ds == null) return; var c = ev.target.closest && ev.target.closest('.chip'); clr(); dt = null; if (!c) return; var i = Number(c.dataset.i), l = get(), r = c.getBoundingClientRect(), after = ev.clientX > r.left + r.width / 2; if (SU.isOut(l[i])) after = false; ev.preventDefault(); c.classList.add(after ? 'drop-after' : 'drop-before'); dt = { i: i, after: after }; };
+  box.ondrop = function (ev) { if (ds == null || !dt) return; ev.preventDefault(); var l = get(), to = dt.i + (dt.after ? 1 : 0); if (to > ds) to--; var a = l.splice(ds, 1)[0]; var fo = l.indexOf(SU.OUT); if (fo >= 0 && to > fo) to = fo; l.splice(to, 0, a); ds = null; set(l); };
+  box.ondragend = function () { ds = null; clr(); };
 }
 var ORD = { procs: null, cat: 'laser' };
 function renderOrder() {
@@ -2418,8 +2465,8 @@ function openItem(id) {
   function procRows() {
     return it.procs.map(function (pr, pi) {
       var out = SU.isOut(pr.n);
-      return '<tr data-pi="' + pi + '"><td><button type="button" data-up="' + pi + '" title="위로">▲</button><button type="button" data-dn="' + pi + '" title="아래로">▼</button></td>' +
-        '<td><input data-f="n" value="' + esc(pr.n) + '" list="procAll"></td>' +
+      return '<tr data-pi="' + pi + '"' + (out ? '' : ' class="dg"') + '><td class="nowrap">' + (out ? '<span class="dh off" title="출고는 맨 끝 고정">⋮⋮</span>' : '<span class="dh" draggable="true" title="끌어서 순서 바꾸기">⋮⋮</span>') + '<button type="button" data-up="' + pi + '" title="위로">▲</button><button type="button" data-dn="' + pi + '" title="아래로">▼</button></td>' +
+        '<td><input data-f="n" value="' + esc(pr.n) + '" list="procAll"' + (pr.n ? '' : ' class="pnew" placeholder="새 공정 이름 (목록에서 고르거나 입력)"') + '></td>' +
         '<td>' + (out ? '' : '<input data-f="o0" class="num" inputmode="decimal" value="' + fmtIn(SU.num(pr.o0)) + '">') + '</td>' +
         '<td>' + (out ? '' : '<label class="ck"><input type="checkbox" data-f="nx"' + (pr.nx === false ? '' : ' checked') + '> 다음 공정이 씀</label>') + '</td>' +
         '<td class="links">' + (out ? '' : (pr.out || []).map(function (o, oi) { var t = store.items.get(o.i), tp = t && t.procs.filter(function (q) { return q.id === o.p; })[0]; return '<span class="chip">' + (o.q < 0 ? '＋ ' : '－ ') + esc(t ? (t.p || t.n) + ' ' + (t.s || '') : '(없는 품목)') + ' ' + esc(tp ? tp.n : '?') + ' ×' + Math.abs(o.q) + '<button type="button" data-rmo="' + pi + ':' + oi + '">×</button></span>'; }).join('') + '<button type="button" class="small" data-addo="' + pi + '">＋ 연결</button>') + '</td>' +
@@ -2482,6 +2529,14 @@ function openItem(id) {
   }
   function hasEnt(pid) { var p = id + '|' + pid + '|', f = false; store.ent.forEach(function (v, k) { if (!f && k.indexOf(p) === 0) f = true; }); return f; }
   draw(); document.body.appendChild(m);
+  /* 공정 행 끌어서 순서 바꾸기 (출고는 맨 끝 고정) */
+  var dsrc = null, dtgt = null;
+  function dclr() { $$('.drop-before,.drop-after', m).forEach(function (x) { x.classList.remove('drop-before', 'drop-after'); }); }
+  m.ondragstart = function (ev) { var h = ev.target.closest && ev.target.closest('.dh[draggable="true"]'); if (!h) return; dsrc = Number(h.closest('tr').dataset.pi); ev.dataTransfer.effectAllowed = 'move'; try { ev.dataTransfer.setData('text/plain', 'p'); } catch (e) {} };
+  m.ondragover = function (ev) { if (dsrc == null) return; var tr = ev.target.closest && ev.target.closest('tr[data-pi]'); dclr(); dtgt = null; if (!tr) return; var p = Number(tr.dataset.pi), r = tr.getBoundingClientRect(), after = ev.clientY > r.top + r.height / 2; if (SU.isOut(it.procs[p].n)) after = false; ev.preventDefault(); tr.classList.add(after ? 'drop-after' : 'drop-before'); dtgt = { p: p, after: after }; };
+  m.ondrop = function (ev) { if (dsrc == null || !dtgt) return; ev.preventDefault(); read(); var to = dtgt.p + (dtgt.after ? 1 : 0); if (to > dsrc) to--; var a = it.procs.splice(dsrc, 1)[0]; var fo = it.procs.map(function (q) { return q.n; }).indexOf(SU.OUT); if (fo >= 0 && to > fo) to = fo; it.procs.splice(to, 0, a); dsrc = null; draw(); };
+  m.ondragend = function () { dsrc = null; dclr(); };
+  m.onkeydown = function (ev) { if (ev.key === 'Enter' && ev.target.classList && ev.target.classList.contains('pnew')) { ev.preventDefault(); ev.target.blur(); } };
   m.onclick = function (ev) {
     var t = ev.target;
     if (t.dataset.close != null || t === m) { m.remove(); render(); return; }
@@ -2489,11 +2544,11 @@ function openItem(id) {
     if ((i = t.dataset.up) != null) { read(); i = Number(i); if (i > 0) { var a = it.procs.splice(i, 1)[0]; it.procs.splice(i - 1, 0, a); } draw(); }
     else if ((i = t.dataset.dn) != null) { read(); i = Number(i); if (i < it.procs.length - 1) { var b = it.procs.splice(i, 1)[0]; it.procs.splice(i + 1, 0, b); } draw(); }
     else if ((i = t.dataset.del) != null) { read(); i = Number(i); var pr = it.procs[i]; if (hasEnt(pr.id) && !confirm('«' + pr.n + '» 공정에 입력 기록 있음. 빼면 그 기록은 계산에서 빠짐. 뺄까?')) return; it.procs.splice(i, 1); draw(); }
-    else if (t.id === 'addProc') { read(); var n = prompt('추가할 공정 이름', ''); if (!n) return; var ids = it.procs.map(function (q) { return Number(String(q.id).replace(/\D/g, '')) || 0; }); var np = { id: 'p' + (Math.max.apply(null, ids.concat([0])) + 1), n: SU.normProc(n) }; var oi = it.procs.map(function (q) { return q.n; }).indexOf(SU.OUT); if (oi >= 0) it.procs.splice(oi, 0, np); else it.procs.push(np); draw(); }
+    else if (t.id === 'addProc') { read(); var ids = it.procs.map(function (q) { return Number(String(q.id).replace(/\D/g, '')) || 0; }); var np = { id: 'p' + (Math.max.apply(null, ids.concat([0])) + 1), n: '' }; var oi = it.procs.map(function (q) { return q.n; }).indexOf(SU.OUT); if (oi >= 0) it.procs.splice(oi, 0, np); else it.procs.push(np); draw(); var ni = $('tr[data-pi="' + (oi >= 0 ? oi : it.procs.length - 1) + '"] input[data-f="n"]', m); if (ni) ni.focus(); }
     else if ((i = t.dataset.rmo) != null) { read(); var ab = i.split(':'); it.procs[ab[0]].out.splice(Number(ab[1]), 1); draw(); }
     else if ((i = t.dataset.addo) != null) { read(); pickLink(function (o) { var pr = it.procs[Number(i)]; pr.out = (pr.out || []).concat([o]); draw(); }); }
     else if (t.id === 'saveItem') {
-      read();
+      read(); it.procs = it.procs.filter(function (p) { return p.n; });
       if (!it.procs.length) { alert('공정이 하나 이상 있어야 함'); return; }
       if ($('#chkDone', m) && $('#chkDone', m).checked) delete it.chk;
       setRec('i:' + id, SU.cleanForSave(it)); schedulePush(); m.remove(); render(); toast('저장함: ' + (it.p || it.n));
@@ -2543,7 +2598,7 @@ function renderSettings() {
   h += '<div class="card"><h3>서버 · 이 PC</h3><div class="kv">화면 ' + SUB_VER + ' · 서버 ' + esc(S.sync.srv || '확인 전') + ' · 받은 기록 ' + S.sync.pos.toLocaleString() + '줄 · 품목 ' + store.items.size.toLocaleString() + ' · 입력 칸 ' + store.ent.size.toLocaleString() + ' · 보낼 것 ' + S.pending.size + '</div>' +
     '<div class="act"><button type="button" id="diag">🩺 서버 점검</button>' + (adm ? '<button type="button" id="compact">기록 정리 (옛 기록 줄이기)</button>' : '') + '<button type="button" id="reload">이 PC 자료 다시 받기</button></div><pre id="diagOut" class="diag"></pre></div></div>';
   $('#view').innerHTML = h;
-  $('#view').onclick = null; $('#view').onchange = null; $('#view').onkeydown = null;
+  $('#view').onclick = null; $('#view').onchange = null; $('#view').onkeydown = null; $('#view').ondragstart = $('#view').ondragover = $('#view').ondrop = $('#view').ondragend = null;
   var tpls = {}; SU.CATS.forEach(function (c) { tpls[c.id] = store.tpl(c.id); });
   SU.CATS.forEach(function (c) {
     (function bind() { bindChips($('#tpl_' + c.id), function () { return tpls[c.id].slice(); }, function (l) { tpls[c.id] = l; $('#tpl_' + c.id).outerHTML = procChips(l, 'tpl_' + c.id); bind(); }); })();
