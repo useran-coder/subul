@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v22">
+<meta name="su-ver" content="v23">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -116,7 +116,7 @@ textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-
 .kpi{background:#fff;border:1px solid #e0e5ed;border-radius:10px;padding:10px 12px}.kpi.go{cursor:pointer}.kpi.go:hover{border-color:#2f6ac6}
 .k-l{font-size:12px;font-weight:700;color:#64748b}.k-v{font-size:22px;font-weight:900;color:#0f172a;margin:2px 0;font-variant-numeric:tabular-nums}.k-s{font-size:11.5px;color:#64748b}
 .kpi.warn .k-v{color:var(--warn)}.kpi.bad .k-v{color:var(--bad)}
-.chart-card{margin-bottom:10px}.chart-wrap{position:relative}.chart{width:100%;height:240px;display:block;overflow:visible}
+.chart-card{margin-bottom:10px}.chart-wrap{position:relative}.chart{width:100%;height:250px;display:block;overflow:visible}
 .chart .gl{stroke:#eef1f5;stroke-width:1}.chart .base{stroke:#94a3b8;stroke-width:1}.chart .ax{font-size:11px;fill:#64748b}
 .chart .b1,.sw.b1{fill:#2a78d6;background:#2a78d6}.chart .b2,.sw.b2{fill:#eb6834;background:#eb6834}
 .chart .hit{fill:transparent;cursor:pointer}.chart .hit.on{fill:#0f172a0d}
@@ -168,6 +168,7 @@ textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-
 .sc-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:12px 0 8px}.sc-bar button{border:1px solid #cbd5e1;background:#fff;border-radius:7px;padding:4px 10px;font-weight:700;color:#475569;font-size:12.5px}.sc-bar button.on{background:#2f6ac6;border-color:#2f6ac6;color:#fff}.sc-bar button small{opacity:.75}.sc-bar input{height:30px;border:1px solid #cbd5e1;border-radius:7px;padding:0 8px}.sc-wrap{max-height:520px}.grid td.ok{color:#15803d}
 .grid td.c-proc .pname{cursor:pointer;border-bottom:1px dashed transparent}.grid td.c-proc .pname:hover{color:#2f6ac6;border-bottom-color:#2f6ac6}.padd-menu .cbx-it.dis{opacity:.35;cursor:default}.padd-menu .cbx-it.del span{color:#b91c1c}.padd-menu .cbx-none.small{font-size:11.5px;line-height:1.5;border-top:1px solid #e2e8f0}
 .pc-wait{color:#94a3b8;font-size:12px;font-weight:600}
+.chart .vl{font-weight:700;pointer-events:none}.chart .vl.v1{fill:#1d5fb0}.chart .vl.v2{fill:#c2410c}.topbar .title h1{cursor:pointer}.topbar .title h1:hover{opacity:.85}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -1268,6 +1269,25 @@ function renderTabs(list) {
   $('#catTabs').innerHTML = h;
   $$('#catTabs button').forEach(function (b) { b.onclick = function () { S.ui.cat = b.dataset.c; S.ui.page = 1; render(); }; });
 }
+/* ── 브라우저 뒤로가기 : 화면(현황판·월현황·일일입력…)이 바뀔 때마다 기록, 같은 화면에서 날짜만 바뀌면 덮어씀 ── */
+var NAV = { v: null, pop: false };
+function navPush() {
+  var u = S.ui, st = { su: 1, view: u.view, date: u.date, proc: u.proc, scope: u.scope };
+  try {
+    if (NAV.pop) { NAV.pop = false; NAV.v = u.view; return; }
+    if (NAV.v === null) history.replaceState(st, '');
+    else if (NAV.v !== u.view) history.pushState(st, '');
+    else history.replaceState(st, '');
+  } catch (e) {}
+  NAV.v = u.view;
+}
+window.addEventListener('popstate', function (ev) {
+  var st = ev.state; if (!st || !st.su || !dataStarted) return;
+  var m = $('#paddMenu'); if (m) m.remove();
+  S.ui.view = st.view; S.ui.date = st.date || S.ui.date; S.ui.proc = st.proc || ''; S.ui.scope = st.scope || S.ui.scope; S.ui.page = 1;
+  lsSet('subul.view', S.ui.view); NAV.pop = true; render();
+});
+function goHome() { if (!dataStarted) return; S.ui.view = 'dash'; S.ui.page = 1; lsSet('subul.view', 'dash'); render(); scrollTo(0, 0); }
 function render() {
   if (!dataStarted) return;
   var u = S.ui;
@@ -1283,6 +1303,7 @@ function render() {
   if (pf.dataset.sig !== pl.join('|')) { pf.innerHTML = '<option value="">모든 공정</option>' + pl.map(function (n) { return '<option>' + esc(n) + '</option>'; }).join(''); pf.dataset.sig = pl.join('|'); }
   pf.value = u.proc;
   renderTabs();
+  navPush();
   if (u.view === 'dash') renderDash();
   else if (u.view === 'day') renderDay();
   else if (u.view === 'month') renderMonth();
@@ -1427,7 +1448,7 @@ var CHART_D = null, CHART_W = 0;
 function drawChart() {
   var svg = $('.chart'), D = CHART_D; if (!svg || !D) return;
   var keys = D.keys, n = keys.length, W = Math.max(300, Math.round(svg.parentNode.clientWidth || 1000)); CHART_W = W;
-  var H = 240, L = 54, Rr = 10, Tp = 14, B = 30, cw = (W - L - Rr) / n, bw = Math.max(2, Math.min(18, cw * 0.36));
+  var H = 250, L = 54, Rr = 10, Tp = 26, B = 30, cw = (W - L - Rr) / n, bw = Math.max(2, Math.min(18, cw * 0.36));
   var max = 0; keys.forEach(function (k) { max = Math.max(max, D.ser[k].fin, D.ser[k].out); });
   var mag = Math.pow(10, Math.floor(Math.log10(max))), step = [1, 2, 2.5, 5, 10].map(function (f) { return f * mag; }).filter(function (s) { return max / s <= 5; })[0] || mag * 10, top = Math.ceil(max / step) * step;
   function y(v) { return Tp + (H - Tp - B) * (1 - v / top); }
@@ -1438,6 +1459,11 @@ function drawChart() {
     var x0 = L + i * cw + cw / 2, s = D.ser[k];
     if (s.fin) g += '<path class="b1" d="' + barPath(x0 - bw - 1, y(s.fin), bw, y(0)) + '"/>';
     if (s.out) g += '<path class="b2" d="' + barPath(x0 + 1, y(s.out), bw, y(0)) + '"/>';
+    /* 막대 위 수량 : 칸이 넓으면 전체 숫자, 좁으면 «5.3만» */
+    var vfs = cw >= 34 ? 11 : cw >= 24 ? 10 : 9, both = s.fin && s.out;
+    function vl(v) { return cw >= (both ? 80 : 46) || v < 1e4 ? Math.round(v).toLocaleString() : (Math.round(v / 1e3) / 10) + '만'; }
+    if (s.fin) g += '<text class="vl v1" x="' + (x0 - bw / 2 - 1).toFixed(1) + '" y="' + (y(s.fin) - 4).toFixed(1) + '" text-anchor="middle" style="font-size:' + vfs + 'px">' + vl(s.fin) + '</text>';
+    if (s.out) g += '<text class="vl v2" x="' + (x0 + 1 + bw / 2).toFixed(1) + '" y="' + (y(s.out) - 4 - (both && Math.abs(y(s.out) - y(s.fin)) < 12 ? 12 : 0)).toFixed(1) + '" text-anchor="middle" style="font-size:' + vfs + 'px">' + vl(s.out) + '</text>';
     if (i % lblEvery === 0) g += '<text x="' + x0.toFixed(1) + '" y="' + (H - B + 16) + '" class="ax" style="font-size:' + lfs + 'px" text-anchor="middle">' + (D.monthly ? Number(k.slice(5)) + '월' : Number(k.slice(8))) + '</text>';
     g += '<rect class="hit" x="' + (L + i * cw).toFixed(1) + '" y="' + Tp + '" width="' + cw.toFixed(1) + '" height="' + (H - Tp - B) + '" data-k="' + k + '" data-f="' + s.fin + '" data-o="' + s.out + '"/>';
   });
@@ -1459,7 +1485,7 @@ function bindChart() {
     tip.style.display = 'block'; tip.style.left = Math.min(box.width - 170, x + 12) + 'px'; tip.style.top = Math.max(0, ev.clientY - box.top - 30) + 'px';
   };
   svg.onmouseleave = function () { tip.style.display = 'none'; $$('rect.hit.on', svg).forEach(function (x) { x.classList.remove('on'); }); };
-  svg.onclick = function (ev) { var r = ev.target.closest && ev.target.closest('rect.hit'); if (r && r.dataset.k.length === 10) { S.ui.date = r.dataset.k; S.ui.view = 'day'; render(); } };
+  svg.onclick = function (ev) { var r = ev.target.closest && ev.target.closest('rect.hit'); if (r && r.dataset.k.length === 10) { S.ui.date = r.dataset.k; S.ui.view = 'day'; S.ui.page = 1; lsSet('subul.view', 'day'); render(); scrollTo(0, 0); } };
 }
 
 /* ───────── 일일 입력 ───────── */
@@ -2258,6 +2284,7 @@ async function appStart() {
   addEventListener('beforeunload', function (e) { if (S.pending.size) { e.preventDefault(); e.returnValue = ''; } });
 }
 document.getElementById('syncBtn').onclick = function () { sync(); };
+document.querySelector('.topbar .title h1').onclick = goHome;
 document.getElementById('undoBtn').onclick = function () { undo(); };
 document.getElementById('redoBtn').onclick = function () { redo(); };
 document.getElementById('verTag').textContent = SUB_VER;
