@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v31">
+<meta name="su-ver" content="v32">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -175,6 +175,7 @@ textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-
 .ns-go{display:inline-block;padding:0 7px;border-radius:999px;background:#fef3c7;color:#b45309;border:1px solid #fcd34d;font-weight:800;cursor:pointer}.ns-go small{font-weight:600;margin-left:2px;font-size:10.5px}.ns-go:hover{background:#d97706;color:#fff;border-color:#d97706}
 .grid.month tr.outrow.plain td{background:#fff}.grid.month tr.outrow.plain td.c-proc{color:#334155}.grid.month tr.outrow.plain:hover td{background:#f8fafc}
 .pc-miss{color:#dc2626;font-size:12px;font-weight:800;border-bottom:1px dashed #dc2626;cursor:help}
+.al-go{cursor:pointer}.al-go:hover{text-decoration:underline}.neg-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 10px}.neg-head h2{margin:0;font-size:19px;color:var(--navy)}.neg-head h2 b{color:#dc2626}.neg-head input[type=date]{height:32px;border:1px solid #cbd5e1;border-radius:7px;padding:0 8px}.neg-back{height:32px;border:1px solid #cbd5e1;background:#fff;border-radius:7px;padding:0 12px;font-weight:700;color:#475569}.neg-why{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}.neg-why button{border:1px solid #cbd5e1;background:#fff;border-radius:7px;padding:5px 11px;font-weight:700;color:#475569;font-size:13px}.neg-why button.on{background:#dc2626;border-color:#dc2626;color:#fff}.neg-why button:disabled{opacity:.4}.neg-why small{opacity:.75}.neg-hint{font-size:12.5px;color:#7f1d1d;background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:4px 10px}.neg-tbl tr.neg-row{cursor:pointer}.neg-tbl tr.neg-row:hover td{background:#fef2f2}.neg-tbl tr.neg-row.open td{background:#fee2e2;font-weight:600}.nw{display:inline-block;padding:0 7px;border-radius:999px;font-size:11.5px;font-weight:800;white-space:nowrap;line-height:19px}.nw-noin{background:#fee2e2;color:#b91c1c}.nw-short{background:#ffedd5;color:#c2410c}.nw-base{background:#ede9fe;color:#6d28d9}.nw-link{background:#e0f2fe;color:#0369a1}.neg-detail>td{background:#fff7f7!important;padding:10px 14px!important}.nd-f{font-size:14px;margin-bottom:6px}.nd-why{font-size:13px;margin-bottom:6px}.nd-act{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.nd-act button{border:1px solid #cbd5e1;background:#fff;border-radius:7px;padding:5px 11px;font-weight:700;color:#334155;font-size:12.5px}.nd-act button:hover{border-color:#2f6ac6;color:#2f6ac6}.nd-t{max-width:860px}.nd-t tr.first-neg td{background:#fee2e2;font-weight:700}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -1332,6 +1333,7 @@ function render() {
   else if (u.view === 'day') renderDay();
   else if (u.view === 'month') renderMonth();
   else if (u.view === 'order') renderOrder();
+  else if (u.view === 'neg') renderNeg();
   else renderSettings();
 }
 /* 다른 사람 입력이 들어왔을 때 : 입력 중인 칸은 그대로 두고 숫자만 새로 */
@@ -1443,7 +1445,7 @@ function renderDash() {
   T.neg.sort(function (a, b) { return a.st - b.st; }); T.old.sort(function (a, b) { return String(a.it.od).localeCompare(String(b.it.od)); }); T.idle.sort(function (a, b) { return b.st - a.st; });
   function alist(arr, f) { return arr.slice(0, 8).map(f).join('') + (arr.length > 8 ? '<div class="muted small">외 ' + (arr.length - 8) + '건</div>' : ''); }
   h += '<div class="card"><h3>확인할 것</h3><div class="alerts">' +
-    '<div class="al bad"><b>⛔ 마이너스 재고 ' + T.neg.length + '</b><div class="muted small">입력 빠짐·공정 연결 잘못·기초재고 확인</div>' + alist(T.neg, function (x) { return '<div class="link" data-open="' + x.it.id + '">' + esc(x.it.p || x.it.n) + ' · ' + esc(x.pr.n) + ' <b class="neg">' + fmt(x.st) + '</b></div>'; }) + '</div>' +
+    '<div class="al bad"><b class="al-go" data-negpage="1" title="눌러서 마이너스 재고 페이지로">⛔ 마이너스 재고 ' + T.neg.length + ' ›</b><div class="muted small">입력 빠짐·공정 연결 잘못·기초재고 확인</div>' + alist(T.neg, function (x) { return '<div class="link" data-open="' + x.it.id + '">' + esc(x.it.p || x.it.n) + ' · ' + esc(x.pr.n) + ' <b class="neg">' + fmt(x.st) + '</b></div>'; }) + '</div>' +
     '<div class="al warn"><b>⏰ 30일 넘은 수주 잔량 ' + T.old.length + '</b><div class="muted small">수주일 30일 지남 · 아직 출고 남음</div>' + alist(T.old, function (x) { return '<div class="link" data-open="' + x.it.id + '">' + esc(x.it.p || x.it.n) + ' · ' + esc(x.it.od || '') + ' 잔량 <b>' + fmt(x.bal.rem) + '</b></div>'; }) + '</div>' +
     '<div class="al"><b>💤 30일 움직임 없는 재고 ' + T.idle.length + '</b><div class="muted small">생산·출고 없이 재고만 있음 (장기 재고)</div>' + alist(T.idle, function (x) { return '<div class="link" data-open="' + x.it.id + '">' + esc(x.it.p || x.it.n) + ' · 완제품 ' + fmt(x.st, false) + '</div>'; }) + '</div>' +
     '<div class="al"><b>🔗 ERP 연동 ' + (info.ship || 0).toLocaleString() + '출고 · ' + (info.order || 0).toLocaleString() + '수주</b><div class="muted small">' + esc(info.from || '-') + '부터 반영</div>' +
@@ -1454,6 +1456,7 @@ function renderDash() {
   $$('.mbar [data-per]').forEach(function (b) { b.onclick = function () { S.ui.per = b.dataset.per; renderDash(); }; });
   $('#view').onclick = function (ev) {
     var o = ev.target.closest('[data-open]'); if (o) { openItem(o.dataset.open); return; }
+    var ng = ev.target.closest('[data-negpage]') || ev.target.closest('[data-go="neg"]'); if (ng) { S.neg = { d: R.sd, r: '', open: '', q: '', page: 1 }; S.ui.view = 'neg'; render(); scrollTo(0, 0); return; }
     var ns = ev.target.closest('[data-ns]'); if (ns) { S.ui.cat = ns.dataset.ns; S.ui.ns = true; S.ui.scope = 'all'; S.ui.view = 'month'; S.ui.page = 1; lsSet('subul.view', 'month'); render(); scrollTo(0, 0); return; }
     var c = ev.target.closest('[data-cat]'); if (c) { S.ui.cat = c.dataset.cat; render(); return; }
     var p = ev.target.closest('[data-proc]'); if (p) { S.ui.proc = p.dataset.proc; S.ui.view = 'day'; S.ui.scope = 'active'; render(); return; }
@@ -1461,6 +1464,107 @@ function renderDash() {
   };
   bindChart();
 }
+/* ───────── ⛔ 마이너스 재고 페이지 : 목록 + 줄 누르면 왜 마이너스인지 계산 풀이 ───────── */
+S.neg = null;
+var NEG_WHY = {
+  noin: ['생산 입력 없음', '다음 공정·출고는 있는데 이 공정 양품 입력이 하나도 없음 → 이 공정 작업일보 입력 빠짐 (또는 기초재고 누락)'],
+  short: ['생산보다 많이 씀', '양품 입력은 있지만 다음 공정·출고가 더 많음 → 일부 날짜 입력 빠짐 또는 수량 오타'],
+  base: ['기초재고 마이너스', '기초재고(또는 재고 조정)가 마이너스로 들어가 있음 → 기초재고 확인'],
+  link: ['조립 연결 사용', '다른 품목 조립(연결)이 이 공정 재고를 가져감 → 연결 수량(×소요량) 또는 이 공정 입력 확인']
+};
+/* 재고 계산 풀이 (기초재고 날짜 다음 날 ~ d) */
+function negParts(it, pi, d) {
+  var pr = it.procs[pi], d0 = it.d0 || '0000-00-00', nx = it.procs[pi + 1], self = store;
+  var s0 = store.sum(it.id, pr.id, d0, d);
+  var x = { o0: SU.num(pr.o0), g: s0.g, a: s0.a, nxN: '', nxP: 0, nxOut: false, link: 0, links: [] };
+  if (pr.nx !== false && nx) { x.nxN = nx.n; x.nxOut = SU.isOut(nx.n); x.nxP = store.sum(it.id, nx.id, d0, d).p; }
+  (pr.out || []).forEach(function (o) { var t = self.items.get(o.i); if (!t) return; var tp = t.procs.filter(function (q) { return q.id === o.p; })[0], u = SU.num(o.q || 1) * store.sum(t.id, o.p, d0, d).p; x.link += u; if (u) x.links.push({ it: t, n: tp ? tp.n : '?', q: o.q, u: u }); });
+  x.st = Math.round((x.o0 + x.g + x.a - x.nxP - x.link) * 1000) / 1000;
+  x.why = x.o0 < 0 || (x.a < 0 && x.g + x.o0 >= 0 && x.a + x.o0 + x.g < 0 && !x.nxP) ? 'base' : x.link > 0 && x.link >= x.nxP ? 'link' : !x.g ? 'noin' : 'short';
+  return x;
+}
+function negRows(d) {
+  var u = S.ui, out = [];
+  sortedItems().forEach(function (it) {
+    if (u.cat !== 'all' && it.cat !== u.cat) return;
+    it.procs.forEach(function (pr, pi) { if (SU.isOut(pr.n)) return; var st = store.stock(it, pi, d); if (st != null && st < 0) out.push({ it: it, pi: pi, pr: pr, st: st }); });
+  });
+  return out;
+}
+function renderNeg() {
+  var N = S.neg || (S.neg = { d: SU.today(), r: '', open: '', q: '', page: 1 }), d = N.d;
+  var all = negRows(d);
+  all.forEach(function (x) { x.x = negParts(x.it, x.pi, d); });
+  var cnt = {}; all.forEach(function (x) { cnt[x.x.why] = (cnt[x.x.why] || 0) + 1; });
+  var q = (N.q || '').toLowerCase();
+  var rows = all.filter(function (x) { return (!N.r || x.x.why === N.r) && (!q || (itemText(x.it) + ' ' + prodCode(x.it).toLowerCase() + ' ' + x.pr.n).indexOf(q) >= 0); });
+  rows.sort(function (a, b) { return a.st - b.st; });
+  var shown = rows.slice(0, N.page * 200);
+  var h = '<div class="neg-head"><button type="button" class="neg-back" id="negBack">‹ 현황판</button><h2>⛔ 마이너스 재고 <b>' + all.length.toLocaleString() + '</b>건</h2>' +
+    '<label class="muted small">기준일 <input type="date" id="negD" value="' + d + '"></label>' +
+    '<input type="search" id="negQ" class="search" placeholder="품번·제품번호·품명·고객사·공정" value="' + esc(N.q || '') + '" autocomplete="off">' +
+    '<span class="muted small">위 구분 탭으로 구분별 보기 · 줄 누르면 계산 풀이</span></div>';
+  h += '<div class="neg-why"><button type="button" data-nr="" class="' + (!N.r ? 'on' : '') + '">전체 <small>' + all.length.toLocaleString() + '</small></button>' +
+    Object.keys(NEG_WHY).map(function (k) { return '<button type="button" data-nr="' + k + '" class="' + (N.r === k ? 'on' : '') + '"' + (cnt[k] ? '' : ' disabled') + ' title="' + esc(NEG_WHY[k][1]) + '">' + NEG_WHY[k][0] + ' <small>' + (cnt[k] || 0).toLocaleString() + '</small></button>'; }).join('') +
+    (N.r ? '<span class="neg-hint">' + esc(NEG_WHY[N.r][1]) + '</span>' : '') + '</div>';
+  h += '<div class="tbl-wrap"><table class="grid neg-tbl"><thead><tr><th>구분</th><th>품번</th><th>제품번호</th><th>품명·규격</th><th>고객사</th><th>공정</th><th class="num">기초재고</th><th class="num">+ 양품</th><th class="num">± 조정</th><th class="num">− 다음 공정·출고</th><th class="num">− 조립 연결</th><th class="num">= 재고</th><th>원인</th></tr></thead><tbody>';
+  shown.forEach(function (r) {
+    var it = r.it, x = r.x, key = it.id + '|' + r.pi, op = N.open === key;
+    h += '<tr class="neg-row' + (op ? ' open' : '') + '" data-nk="' + key + '"><td><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span></td><td class="c-p">' + esc(it.p) + '</td><td class="c-pc">' + prodCell(it) + '</td><td class="c-n">' + esc([it.it || it.n, it.s].filter(Boolean).join(' · ')) + '</td><td class="c-cust">' + esc(it.cust || '') + '</td><td class="c-proc">' + esc(r.pr.n) + '</td>' +
+      '<td class="num">' + fmt(x.o0, false) + '</td><td class="num">' + (x.g ? fmt(x.g, false) : '<span class="neg">0</span>') + '</td><td class="num">' + (x.a ? fmt(x.a, false) : '-') + '</td><td class="num">' + (x.nxP ? fmt(x.nxP, false) + ' <small class="muted">' + esc(x.nxN) + '</small>' : '-') + '</td><td class="num">' + (x.link ? fmt(x.link, false) : '-') + '</td><td class="num neg"><b>' + fmt(r.st, false) + '</b></td><td><span class="nw nw-' + x.why + '">' + NEG_WHY[x.why][0] + '</span></td></tr>';
+    if (op) h += '<tr class="neg-detail"><td colspan="13">' + negDetail(it, r.pi, d, x) + '</td></tr>';
+  });
+  if (!shown.length) h += '<tr><td colspan="13" class="empty">' + (all.length ? '조건에 맞는 줄 없음' : '마이너스 재고 없음 👍') + '</td></tr>';
+  h += '</tbody></table></div>';
+  if (rows.length > shown.length) h += '<div class="more"><button id="negMore">더 보기 (' + shown.length.toLocaleString() + ' / ' + rows.length.toLocaleString() + ')</button></div>';
+  $('#view').innerHTML = h;
+  $('#view').onchange = null; $('#view').onkeydown = null;
+  $('#negBack').onclick = function () { history.length > 1 && NAV.v ? history.back() : goHome(); };
+  $('#negD').onchange = function () { if (this.value) { N.d = this.value; N.page = 1; renderNeg(); } };
+  var t = null; $('#negQ').oninput = function () { var v = this.value; clearTimeout(t); t = setTimeout(function () { N.q = v.trim(); N.page = 1; renderNeg(); var e = $('#negQ'); e.focus(); e.setSelectionRange(e.value.length, e.value.length); }, 300); };
+  if ($('#negMore')) $('#negMore').onclick = function () { N.page++; renderNeg(); };
+  $$('.neg-why [data-nr]').forEach(function (b) { b.onclick = function () { N.r = b.dataset.nr; N.page = 1; N.open = ''; renderNeg(); }; });
+  $('#view').onclick = function (ev) {
+    var a = ev.target.closest('[data-act]');
+    if (a) {
+      var it = store.items.get(a.dataset.i); if (!it) return;
+      if (a.dataset.act === 'item') openItem(it.id);
+      else if (a.dataset.act === 'month') { S.ui.q = it.p || ''; S.ui.cat = it.cat; S.ui.scope = 'all'; S.ui.date = N.d; S.ui.view = 'month'; S.ui.page = 1; if ($('#q')) $('#q').value = S.ui.q; render(); scrollTo(0, 0); }
+      else if (a.dataset.act === 'day') { S.ui.q = it.p || ''; S.ui.cat = it.cat; S.ui.scope = 'all'; S.ui.date = a.dataset.d || N.d; S.ui.view = 'day'; S.ui.page = 1; if ($('#q')) $('#q').value = S.ui.q; render(); scrollTo(0, 0); }
+      return;
+    }
+    var r = ev.target.closest('tr.neg-row'); if (r) { N.open = N.open === r.dataset.nk ? '' : r.dataset.nk; renderNeg(); var o = $('tr.neg-row.open'); if (o) o.scrollIntoView({ block: 'nearest' }); }
+  };
+}
+/* 한 줄 풀이 : 계산식 + 날짜별 움직임 + 처음 마이너스 된 날 */
+function negDetail(it, pi, d, x) {
+  var pr = it.procs[pi], nx = it.procs[pi + 1], d0 = it.d0 || '0000-00-00', ix = store.index();
+  var dates = {};
+  function grab(pk) { var e = ix.get(pk); if (!e) return; e.ds.forEach(function (dd) { if (dd > d0 && dd <= d) dates[dd] = 1; }); }
+  grab(it.id + '|' + pr.id); if (pr.nx !== false && nx) grab(it.id + '|' + nx.id);
+  (pr.out || []).forEach(function (o) { grab(o.i + '|' + o.p); });
+  var ds = Object.keys(dates).sort(), run = x.o0, first = '', lines = [];
+  ds.forEach(function (dd) {
+    var pv = SU.addDays(dd, -1), a = store.sum(it.id, pr.id, pv, dd), use = 0, erp = false, lk = 0;
+    if (pr.nx !== false && nx) { use = store.sum(it.id, nx.id, pv, dd).p; var e = store.day(it.id, nx.id, dd); erp = !!(e && e.erp); }
+    (pr.out || []).forEach(function (o) { var t = store.items.get(o.i); if (t) lk += SU.num(o.q || 1) * store.sum(t.id, o.p, pv, dd).p; });
+    var prev = run; run = Math.round((run + a.g + a.a - use - lk) * 1000) / 1000;
+    if (!first && run < 0 && prev >= 0) first = dd;
+    lines.push({ d: dd, g: a.g, b: a.b, a: a.a, use: use, erp: erp, lk: lk, run: run });
+  });
+  var h = '<div class="nd">';
+  h += '<div class="nd-f"><b>' + esc(pr.n) + ' 재고 (' + d.slice(5).replace('-', '/') + ' 끝)</b> = 기초재고 <b>' + fmt(x.o0, false) + '</b> <small class="muted">(' + esc(d0) + ' 끝)</small> + 양품 <b>' + fmt(x.g, false) + '</b>' + (x.a ? ' + 조정 <b>' + fmt(x.a, false) + '</b>' : '') +
+    (x.nxN ? ' − ' + esc(x.nxN) + (x.nxOut ? '' : ' 생산') + ' <b>' + fmt(x.nxP, false) + '</b>' : '') + (x.link ? ' − 조립 연결 <b>' + fmt(x.link, false) + '</b>' : '') + ' = <b class="neg">' + fmt(x.st, false) + '</b></div>';
+  h += '<div class="nd-why"><span class="nw nw-' + x.why + '">' + NEG_WHY[x.why][0] + '</span> ' + esc(NEG_WHY[x.why][1]) + (first ? ' · 처음 마이너스 된 날 <b>' + first.slice(5).replace('-', '/') + '</b>' : '') + '</div>';
+  if (x.links.length) h += '<div class="nd-why muted">조립 연결 : ' + x.links.map(function (l) { return esc((l.it.p || l.it.n) + ' ' + l.n) + ' ' + fmt(l.u, false) + (SU.num(l.q || 1) !== 1 ? ' (×' + l.q + ')' : ''); }).join(' · ') + '</div>';
+  h += '<div class="nd-act"><button type="button" data-act="day" data-i="' + it.id + '" data-d="' + (first || d) + '">📝 ' + (first ? first.slice(5).replace('-', '/') + ' ' : '') + '일일 입력에서 고치기</button><button type="button" data-act="month" data-i="' + it.id + '">📅 월 현황에서 보기</button><button type="button" data-act="item" data-i="' + it.id + '">품목 열기 (기초재고·공정 연결)</button></div>';
+  h += '<table class="grid small nd-t"><thead><tr><th>날짜</th><th class="num">' + esc(pr.n) + ' 양품</th><th class="num">불량</th><th class="num">조정</th><th class="num">' + (x.nxN ? esc(x.nxN) + (x.nxOut ? '' : ' 생산') : '다음 공정') + '</th><th class="num">조립 연결</th><th class="num">그날 끝 재고</th></tr></thead><tbody>' +
+    '<tr class="muted"><td>' + esc(d0 === '0000-00-00' ? '처음' : d0.slice(5).replace('-', '/')) + ' 기초</td><td colspan="5"></td><td class="num">' + fmt(x.o0, false) + '</td></tr>' +
+    lines.map(function (l) { return '<tr' + (l.d === first ? ' class="first-neg"' : '') + '><td>' + l.d.slice(5).replace('-', '/') + ' ' + dlabel(l.d).replace(/^.*?(\([^)]*\)).*$/, '$1') + '</td><td class="num">' + (l.g ? fmt(l.g, false) : '-') + '</td><td class="num">' + (l.b ? fmt(l.b, false) : '-') + '</td><td class="num">' + (l.a ? fmt(l.a, false) : '-') + '</td><td class="num' + (l.erp ? ' erpc' : '') + '"' + (l.erp ? ' title="ERP 출고현황"' : '') + '>' + (l.use ? '−' + fmt(l.use, false) : '-') + '</td><td class="num">' + (l.lk ? '−' + fmt(l.lk, false) : '-') + '</td><td class="num' + (l.run < 0 ? ' neg' : '') + '"><b>' + fmt(l.run, false) + '</b></td></tr>'; }).join('') +
+    (lines.length ? '' : '<tr><td colspan="7" class="muted">움직임 없음 (기초재고가 마이너스)</td></tr>') + '</tbody></table>';
+  return h + '</div>';
+}
+
 /* 막대 그래프 (생산=파랑, 출고=주황) · 마우스를 올리면 그날 숫자 */
 function dashChart(D) {
   var keys = D.keys, n = keys.length; if (!n) return '';
@@ -1563,7 +1667,7 @@ function renderDay() {
         h += '<td rowspan="' + n + '" class="c-cat"><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || it.cat) + '</span>' + (it.src === 'erp' ? '<span class="erp-tag" title="ERP 수주·출고로 자동 생긴 품목">ERP</span>' : '') + nsTag(it) + (it.chk && it.chk.length ? '<span class="warn-dot" title="' + esc(it.chk.join('\n')) + '">!</span>' : '') + '</td>';
         cols.forEach(function (c) { var cv = colVal(it, c.k); h += '<td rowspan="' + n + '" class="c-' + c.k + (c.k === 'p' || c.k === 'n' ? ' link' : '') + '" data-open="' + it.id + '" title="' + esc(c.k === 'pc' ? prodTitle(it) : cv) + '">' + (c.k === 'pc' ? prodCell(it) : esc(cv)) + '</td>'; });
       }
-      h += '<td class="c-proc" title="' + esc(out ? '' : '재고를 빼 가는 곳: ' + (store.usedBy(it, pi).join(', ') || '없음')) + '">' + esc(pr.n) + (pr.out && pr.out.length ? ' <span class="lk">🔗</span>' : '') + '</td>';
+      h += '<td class="c-proc" title="' + esc(out ? '' : '재고를 빼 가는 곳: ' + (store.usedBy(it, pi).join(', ') || '없음')) + '"><span class="pname" data-pm="' + it.id + '" data-pi="' + pi + '" title="눌러서 공정 순서 바꾸기·삭제">' + esc(pr.n) + '</span>' + (pr.out && pr.out.length ? ' <span class="lk">🔗</span>' : '') + (si === n - 1 ? '<button type="button" class="padd" data-add="' + it.id + '" title="이 품목에 공정 추가">＋</button>' : '') + '</td>';
       if (out) {
         h += '<td class="num muted" data-c="oq"></td><td class="num in"><input class="qi" data-k="' + k + '" data-f="g" inputmode="decimal" value="' + fmtIn(e.g) + '" placeholder="출고"></td><td class="num" data-c="erp"></td><td class="num"></td><td></td>' +
           '<td class="num st" data-c="rem"></td><td class="num" data-c="ms"></td><td class="num muted" data-c="cum"></td>';
@@ -1750,7 +1854,11 @@ function bindDayInputs() {
     if (nx) { nx.focus(); nx.select(); }
   };
   view.onfocusin = function (ev) { if (ev.target.classList && ev.target.classList.contains('qi')) ev.target.select(); };
-  view.onclick = function (ev) { var o = ev.target.closest('[data-open]'); if (o && !ev.target.closest('#qk')) openItem(o.dataset.open); };
+  view.onclick = function (ev) {
+    var pa = ev.target.closest('.padd'); if (pa) { ev.stopPropagation(); procAddMenu(pa); return; }
+    var pn = ev.target.closest('.pname'); if (pn) { ev.stopPropagation(); procEditMenu(pn); return; }
+    var o = ev.target.closest('[data-open]'); if (o && !ev.target.closest('#qk')) openItem(o.dataset.open);
+  };
 }
 
 /* ───────── 월 현황 ───────── */
