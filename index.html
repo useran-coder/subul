@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v17">
+<meta name="su-ver" content="v18">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -161,6 +161,7 @@ textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-
 .cbx-none{padding:6px 10px;color:#94a3b8;font-size:12px}
 .mbar .spacer{flex:1}.mbar .msel{font-size:12.5px;color:#475569;font-weight:700}.mbar .msel select{height:28px;border:1px solid #cbd5e1;border-radius:7px;margin-left:4px}.grid td.c-pc{font-variant-numeric:tabular-nums;color:#334155;white-space:nowrap}
 #qL{max-width:460px}
+.mbar button:disabled{opacity:.35;cursor:default;background:#f1f5f9}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -1616,9 +1617,13 @@ function renderMonth() {
   while (x <= me_) { days.push(x); x = SU.addDays(x, 1); }
   var list = filtered(), shown = list.slice(0, u.page * PAGE), td = SU.today();
   /* 공정 버튼 : 지금 구분 탭 품목에 있는 공정만 (출고는 맨 뒤) */
-  var pset = {}; store.items.forEach(function (it) { if (u.cat !== 'all' && it.cat !== u.cat) return; (it.procs || []).forEach(function (p) { pset[p.n] = 1; }); });
-  var pnames = store.procList().filter(function (n) { return pset[n]; });
-  var h = '<div class="mbar"><b>' + ms.slice(0, 4) + '년 ' + Number(ms.slice(5, 7)) + '월</b> 공정: <button data-pf="" class="' + (!u.proc ? 'on' : '') + '">전체</button>' + pnames.map(function (n) { return '<button data-pf="' + esc(n) + '" class="' + (u.proc === n ? 'on' : '') + '">' + esc(n) + '</button>'; }).join('') +
+  /* 지금 조건(구분·검색·고객사·품명·진행 중)으로 표에 나오는 품목의 공정만 누를 수 있게 · 다른 공정은 흐리게 */
+  var pset = {}, pall = {}, keepP = u.proc; u.proc = '';
+  var base = filtered(); u.proc = keepP;
+  base.forEach(function (it) { (it.procs || []).forEach(function (p) { pset[p.n] = (pset[p.n] || 0) + 1; }); });
+  store.items.forEach(function (it) { if (u.cat !== 'all' && it.cat !== u.cat) return; (it.procs || []).forEach(function (p) { pall[p.n] = 1; }); });
+  var pnames = store.procList().filter(function (n) { return pall[n] || pset[n]; });
+  var h = '<div class="mbar"><b>' + ms.slice(0, 4) + '년 ' + Number(ms.slice(5, 7)) + '월</b> 공정: <button data-pf="" class="' + (!u.proc ? 'on' : '') + '">전체</button>' + pnames.map(function (n) { var c = pset[n] || 0; return '<button data-pf="' + esc(n) + '" class="' + (u.proc === n ? 'on' : '') + '"' + (c || u.proc === n ? '' : ' disabled') + ' title="' + (c ? c.toLocaleString() + '품목' : '지금 표에 이 공정 없음') + '">' + esc(n) + '</button>'; }).join('') +
     '<span class="spacer"></span><label class="msel">숫자 <select id="mMetric">' + Object.keys(METRICS).map(function (m) { return '<option value="' + m + '"' + (u.metric === m ? ' selected' : '') + '>' + METRICS[m] + '</option>'; }).join('') + '</select></label>' +
     '<span class="muted small">머리글 누르면 정렬 · 날짜 옆 ↗ 그날 입력 · <span class="erpc">파란 글씨</span> = ERP 출고</span></div>';
   h += '<div class="tbl-wrap"><table class="grid month"><thead><tr>' + sortTh('cat', 'c-cat', '구분') + sortTh('p', 'c-p', '품번') + sortTh('pc', 'c-pc', '제품번호') + sortTh('pn', 'c-n', '품명·규격') + sortTh('proc', 'c-proc', '공정') + sortTh('base', 'num', '기초') +
