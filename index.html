@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v29">
+<meta name="su-ver" content="v30">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -174,6 +174,7 @@ textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-
 .ns-tag{display:inline-block;margin-left:4px;padding:0 6px;border-radius:999px;background:#fef3c7;color:#b45309;border:1px solid #fcd34d;font-size:11px;font-weight:800;line-height:17px;white-space:nowrap;vertical-align:middle}.ns-btn{height:32px;border:1px solid #fcd34d;background:#fffbeb;color:#b45309;border-radius:7px;padding:0 10px;font-weight:800}.ns-btn small{font-weight:700;opacity:.8;margin-left:2px}.ns-btn.on{background:#d97706;border-color:#d97706;color:#fff}.grid td.c-cat{white-space:nowrap}
 .ns-go{display:inline-block;padding:0 7px;border-radius:999px;background:#fef3c7;color:#b45309;border:1px solid #fcd34d;font-weight:800;cursor:pointer}.ns-go small{font-weight:600;margin-left:2px;font-size:10.5px}.ns-go:hover{background:#d97706;color:#fff;border-color:#d97706}
 .grid.month tr.outrow.plain td{background:#fff}.grid.month tr.outrow.plain td.c-proc{color:#334155}.grid.month tr.outrow.plain:hover td{background:#f8fafc}
+.pc-miss{color:#dc2626;font-size:12px;font-weight:800;border-bottom:1px dashed #dc2626;cursor:help}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -1206,7 +1207,7 @@ function notShipped(it) {
 }
 function nsTag(it) { return notShipped(it) ? '<span class="ns-tag" title="아직 출고 없음">출고 전</span>' : ''; }
 function scopeOk(it, sc, d) {
-  if (sc === 'chk') return !!(it.chk && it.chk.length);
+  if (sc === 'chk') return !!(it.chk && it.chk.length) || ((it.cat === 'inner' || it.cat === 'laser') && !prodCode(it));
   if (sc === 'erp') return it.src === 'erp';
   if (sc === 'rem') { var b = store.balance(it, d); return !!(b && b.rem > 0); }
   if (sc === 'neg') { for (var i = 0; i < it.procs.length; i++) { var s = store.stock(it, i, d); if (s != null && s < 0) return true; } return false; }
@@ -1535,6 +1536,7 @@ function shipCodes(it) {
 /* 화면용 제품번호 칸 : 번호가 있으면 번호, 아직 출고 안 된 부자재·유통은 흐리게 «출고 전» */
 function prodCell(it) {
   var c = prodCode(it); if (c) return esc(c);
+  if (it.cat === 'inner' || it.cat === 'laser') return '<span class="pc-miss" title="' + esc('ERP 수주현황 비고에 ' + (it.cat === 'inner' ? 'B' : 'D') + '번호가 없음' + (it.ord ? ' (주문번호 ' + it.ord + ')' : '') + '\nERP 비고에 번호를 넣고 출고매칭에 수주현황을 다시 올리면 자동 표시') + '">번호 없음</span>';
   if (it.cat === 'part' || it.cat === 'oem') return '<span class="pc-wait" title="아직 출고 안 됨 — 출고매칭이 출고 줄마다 번호(S00001…)를 붙이면 자동 표시">출고 전</span>';
   return '';
 }
