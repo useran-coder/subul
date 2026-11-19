@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v47">
+<meta name="su-ver" content="v48">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -188,6 +188,7 @@ textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-
 .neg-tbl th.sortable{cursor:pointer;white-space:nowrap}.neg-tbl th.sortable:hover{background:#3b4a63}.neg-tbl .sa{margin-left:3px;font-size:10px}.neg-tbl td.c-s,.pg-tbl td.c-s{white-space:nowrap}
 .card-more{border-color:transparent!important;background:transparent}.card-more:hover{background:#eaf1fc!important;color:#2f6ac6!important;border-color:transparent!important}
 #viewsR{margin-left:4px}
+.pc-fix{cursor:pointer}.pc-fix:hover{background:#f1f5f9;border-radius:4px}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -1321,7 +1322,7 @@ function notShipped(it) {
   return !store.sum(it.id, pr.id, '0000-00-00', '9999-12-31').g;
 }
 /* 제품번호 없음 : 제품번호 칸이 비어 있음 (아직 출고 안 된 부자재·유통/OEM «출고 전»은 뺌 — 출고되면 번호가 붙음) */
-function noNum(it) { if (prodCode(it)) return false; if ((it.cat === 'part' || it.cat === 'oem') && notShipped(it)) return false; return true; }
+function noNum(it) { if (prodCode(it)) return false; if (notShipped(it)) return false; return true; }   // 출고 전(번호 대기·출고 전)은 뺌 — 출고됐는데 번호 없는 품목만
 function nsTag(it) { return notShipped(it) ? '<span class="ns-tag" title="아직 출고 없음">출고 전</span>' : ''; }
 function scopeOk(it, sc, d) {
   if (sc === 'chk') return !!(it.chk && it.chk.length) || ((it.cat === 'inner' || it.cat === 'laser') && !prodCode(it));
@@ -1339,7 +1340,7 @@ function renderShell() {
         '<button data-v="dash">📊 현황판</button><button data-v="month">📅 월 현황</button><button data-v="day">📝 일일 입력</button><button data-v="order">➕ 수주 입력</button>' +
       '</div>' +
       '<button type="button" id="nsBtn" class="ns-btn" title="출고가 한 번도 없는 제품만 보기 (ERP 출고·직접 입력 출고 모두 없음) · 한 번 더 누르면 해제">출고 전 제품 <small id="nsCnt"></small></button>' +
-      '<button type="button" id="nmBtn" class="nm-btn" title="제품번호가 없는 제품만 보기 · 누르면 먼저 출고매칭 자료를 다시 받아 번호를 다시 매칭함 · 한 번 더 누르면 해제">제품번호 없음 <small id="nmCnt"></small></button>' +
+      '<button type="button" id="nmBtn" class="nm-btn" title="출고됐는데 제품번호가 없는 제품만 보기 (출고 전 «번호 대기»는 뺌) · 누르면 먼저 출고매칭 자료를 다시 받아 번호를 다시 매칭함 · 한 번 더 누르면 해제">제품번호 없음 <small id="nmCnt"></small></button>' +
 
       '<span class="spacer"></span>' +
       '<div class="datebox" id="dateBox"><button id="dPrev" title="전날">◀</button><input type="date" id="dDate"><button id="dNext" title="다음 날">▶</button><button id="dToday" class="small">오늘</button></div>' +
@@ -1878,7 +1879,7 @@ function prodCode(it) {
 /* 제품번호 넣기 : «번호 없음» 누르면 창 → 출고매칭 서버 수주 줄 비고 끝에 « / 번호» + code 저장 (smPush order upd)
    → 출고매칭은 다음 동기화 때 그 번호로 출고 줄을 다시 매칭, 수불관리는 바로 다시 받아 반영 */
 document.addEventListener('click', function (ev) {
-  var t = ev.target.closest && ev.target.closest('.pc-miss[data-fix]'); if (!t) return;
+  var t = ev.target.closest && ev.target.closest('[data-fix]'); if (!t) return;
   ev.preventDefault(); ev.stopPropagation(); fixCode(t.dataset.fix);
 }, true);
 function usedCodes() {
@@ -1968,6 +1969,7 @@ function shipCodes(it) {
 /* 화면용 제품번호 칸 : 번호가 있으면 번호, 아직 출고 안 된 부자재·유통은 흐리게 «출고 전» */
 function prodCell(it) {
   var c = prodCode(it); if (c) return esc(c);
+  if ((it.cat === 'inner' || it.cat === 'laser') && notShipped(it)) return '<span class="pc-wait pc-fix" data-fix="' + it.id + '" title="' + esc('아직 출고 전 · ERP 수주 비고에 ' + (it.cat === 'inner' ? 'B' : 'D') + '번호가 아직 없음 (발행 전)' + (it.ord ? ' (주문번호 ' + it.ord + ')' : '') + '\n번호가 나오면 눌러서 넣거나 ERP 비고에 넣고 수주현황을 다시 올릴 것') + '">번호 대기 ✎</span>';
   if (it.cat === 'inner' || it.cat === 'laser') return '<span class="pc-miss" data-fix="' + it.id + '" title="' + esc('ERP 수주현황 비고에 ' + (it.cat === 'inner' ? 'B' : 'D') + '번호가 없음' + (it.ord ? ' (주문번호 ' + it.ord + ')' : '') + '\n누르면 번호를 넣음 → 출고매칭·수불관리에 같이 반영') + '">번호 없음 ✎</span>';
   if (it.cat === 'part' || it.cat === 'oem') return '<span class="pc-wait" title="아직 출고 안 됨 — 출고매칭이 출고 줄마다 번호(S00001…)를 붙이면 자동 표시">출고 전</span>';
   return '';
