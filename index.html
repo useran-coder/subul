@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v62">
+<meta name="su-ver" content="v63">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -201,6 +201,8 @@ textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-
 html .dbfm-btn{background:var(--navy)!important;border-color:var(--navy)!important;color:#fff!important;box-shadow:none!important}html .dbfm-btn:hover{background:#ffffff1f!important;border-color:#ffffff33!important}
 html:has(#bootSu:not(.out)) .dbfm-btn{display:none!important}
 .kpi .k-v .k-u{font-size:.5em;font-weight:700;color:#64748b;margin-left:4px;letter-spacing:0}
+.sreset{height:28px;padding:0 10px;margin-right:6px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;color:#1e3a5f;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap}.sreset:hover:not(:disabled){background:#eff6ff;border-color:#93c5fd}.sreset:disabled{opacity:.4;cursor:default}
+.grid td.c-proc .padd{float:left;margin:0 4px 0 0!important;width:18px;height:18px;line-height:16px;font-size:11px}.pname.drag::before{display:inline-block;width:18px;margin-right:4px;text-align:center;letter-spacing:-2px}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -1329,7 +1331,9 @@ function sortTh(k, cls, inner, extra) {
   var so = S.sort[S.ui.view], on = so && so.k === k;
   return '<th class="' + cls + ' sortable' + (on ? ' sorted' : '') + '" data-sort="' + k + '"' + (extra || '') + ' title="눌러서 정렬 (오름차순 → 내림차순 → 원래 순서)">' + inner + (on ? '<span class="sarr">' + (so.dir > 0 ? '▲' : '▼') + '</span>' : '') + '</th>';
 }
+function sortResetBtn() { var so = S.sort[S.ui.view]; return '<button type="button" id="sortReset" class="sreset"' + (so ? '' : ' disabled') + ' title="' + (so ? '지금 정렬 풀고 원래 순서로' : '정렬 안 함 (머리글 누르면 정렬)') + '">↺ 정렬 초기화</button>'; }
 function bindSort(rerender) {
+  var rb = $('#sortReset'); if (rb) rb.onclick = function () { S.sort[S.ui.view] = null; S.ui.page = 1; rerender(); };
   $$('#view th[data-sort]').forEach(function (th) {
     th.addEventListener('click', function (ev) {
       if (ev.target.closest('.dgo')) return;
@@ -2030,7 +2034,7 @@ function usedCols(items) { return DAY_COLS.filter(function (c) { return c.k === 
 function shownProcs(it) { var f = S.ui.proc; return f ? it.procs.filter(function (p) { return p.n === f; }) : it.procs; }
 function renderDay() {
   var u = S.ui, d = u.date, list = filtered(), shown = list.slice(0, u.page * PAGE), cols = usedCols(shown);
-  var h = quickBox() + '<div class="mbar"><span class="spacer"></span><button type="button" id="baseZero" class="bz" title="지금 표에 보이는 조건의 전일 재고(' + SU.addDays(d, -1) + ' 끝)를 모두 0으로 · 개별 칸은 전일 재고 칸에서 직접 수정">전일 재고 모두 0</button></div>' + '<div class="tbl-wrap"><table class="grid day"><thead><tr>' + sortTh('cat', 'c-cat', '구분') + cols.map(function (c) { return sortTh(c.k, 'c-' + c.k, c.t); }).join('') +
+  var h = quickBox() + '<div class="mbar"><span class="spacer"></span>' + sortResetBtn() + '<button type="button" id="baseZero" class="bz" title="지금 표에 보이는 조건의 전일 재고(' + SU.addDays(d, -1) + ' 끝)를 모두 0으로 · 개별 칸은 전일 재고 칸에서 직접 수정">전일 재고 모두 0</button></div>' + '<div class="tbl-wrap"><table class="grid day"><thead><tr>' + sortTh('cat', 'c-cat', '구분') + cols.map(function (c) { return sortTh(c.k, 'c-' + c.k, c.t); }).join('') +
     sortTh('proc', 'c-proc', '공정') + sortTh('prev', 'num', '전일 재고<small>출고: 수주</small>') + sortTh('g', 'num in', '양품<small>출고: 직접 입력</small>') + sortTh('b', 'num in', '불량<small>출고: ERP</small>') + sortTh('p', 'num', '생산') + sortTh('r', 'num', '불량율') + sortTh('s', 'num st', '재고<small>' + dlabel(d) + ' · 출고: 잔량</small>') + sortTh('ms', 'num', '이달 생산<small>출고: 이달 출고</small>') + sortTh('now', 'num', '현 재고<small>오늘 · 출고: 누계</small>') + '</tr></thead><tbody>';
   if (!shown.length) h += '<tr><td colspan="' + (cols.length + 10) + '" class="empty">' + (store.items.size ? '조건에 맞는 품목 없음. 위 «진행 중 품목» → «전체 품목», «모든 공정»으로 바꿔 볼 것' : '아직 품목 없음. «➕ 수주 입력»에서 등록하거나 관리자가 «⚙ 설정 → 구글시트에서 가져오기» 실행. ERP 수주현황·출고현황은 출고매칭에 올리면 자동 반영') + '</td></tr>';
   shown.forEach(function (it) {
@@ -2254,7 +2258,7 @@ function renderMonth() {
   store.items.forEach(function (it) { if (u.cat !== 'all' && it.cat !== u.cat) return; (it.procs || []).forEach(function (p) { pall[p.n] = 1; }); });
   var pnames = store.procList().filter(function (n) { return pall[n] || pset[n]; });
   var h = '<div class="mbar"><b>' + ms.slice(0, 4) + '년 ' + Number(ms.slice(5, 7)) + '월</b> 공정: <button data-pf="" class="' + (!u.proc ? 'on' : '') + '">전체</button>' + pnames.map(function (n) { var c = pset[n] || 0; return '<button data-pf="' + esc(n) + '" class="' + (u.proc === n ? 'on' : '') + '"' + (c || u.proc === n ? '' : ' disabled') + ' title="' + (c ? c.toLocaleString() + '품목' : '지금 표에 이 공정 없음') + '">' + esc(n) + '</button>'; }).join('') +
-    '<span class="spacer"></span><span class="muted small">공정 줄 = 그날 끝 재고 · 매입·출고 줄 = 그날 수량 (<span class="outc">빨간 글씨</span> = 출고 · <span class="buyc">초록 글씨</span> = 매입) · 머리글 누르면 정렬</span><button type="button" id="baseZero" class="bz" title="지금 표에 보이는 조건의 기초재고를 모두 0으로 (개별 칸은 기초 칸에서 직접 수정)">기초재고 모두 0</button></div>';
+    '<span class="spacer"></span><span class="muted small">공정 줄 = 그날 끝 재고 · 매입·출고 줄 = 그날 수량 (<span class="outc">빨간 글씨</span> = 출고 · <span class="buyc">초록 글씨</span> = 매입) · 머리글 누르면 정렬</span>' + sortResetBtn() + '<button type="button" id="baseZero" class="bz" title="지금 표에 보이는 조건의 기초재고를 모두 0으로 (개별 칸은 기초 칸에서 직접 수정)">기초재고 모두 0</button></div>';
   h += '<div class="tbl-wrap"><table class="grid month"><thead><tr>' + sortTh('cat', 'c-cat', '구분') + sortTh('p', 'c-p', '품번') + sortTh('pc', 'c-pc', '제품번호') + sortTh('pn', 'c-n', '품명·규격') + sortTh('proc', 'c-proc', '공정') + sortTh('base', 'num', '기초') +
     days.map(function (dd) { var w = new Date(dd + 'T00:00:00').getDay(); return sortTh('d' + dd, 'num day' + (w === 0 ? ' sun' : w === 6 ? ' sat' : '') + (dd === td ? ' today' : ''), Number(dd.slice(8)) + '<span class="dgo" title="그날 입력 화면으로">↗</span>', ' data-d="' + dd + '"'); }).join('') + sortTh('tot', 'num', '합계') + '</tr></thead><tbody>';
   var before = SU.addDays(ms, -1);
