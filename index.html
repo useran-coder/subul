@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v5">
+<meta name="su-ver" content="v6">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -1190,12 +1190,12 @@ function drawChart() {
   function y(v) { return Tp + (H - Tp - B) * (1 - v / top); }
   var g = '';
   for (var v = 0; v <= top + 1e-9; v += step) g += '<line x1="' + L + '" x2="' + (W - Rr) + '" y1="' + y(v).toFixed(1) + '" y2="' + y(v).toFixed(1) + '" class="gl"/><text x="' + (L - 6) + '" y="' + (y(v) + 4).toFixed(1) + '" class="ax" text-anchor="end">' + (v >= 1e4 ? (v / 1e4) + '만' : v.toLocaleString()) + '</text>';
-  var lblEvery = Math.max(1, Math.ceil(n / Math.max(4, Math.floor((W - L - Rr) / 34))));
+  var lblEvery = n > 62 ? Math.ceil(n / 62) : 1, lfs = cw >= 20 ? 11 : cw >= 15 ? 10 : 9; /* 일자 모두 표기, 좁으면 글자만 작게 */
   keys.forEach(function (k, i) {
     var x0 = L + i * cw + cw / 2, s = D.ser[k];
     if (s.fin) g += '<path class="b1" d="' + barPath(x0 - bw - 1, y(s.fin), bw, y(0)) + '"/>';
     if (s.out) g += '<path class="b2" d="' + barPath(x0 + 1, y(s.out), bw, y(0)) + '"/>';
-    if (i % lblEvery === 0) g += '<text x="' + x0.toFixed(1) + '" y="' + (H - B + 16) + '" class="ax" text-anchor="middle">' + (D.monthly ? Number(k.slice(5)) + '월' : Number(k.slice(8))) + '</text>';
+    if (i % lblEvery === 0) g += '<text x="' + x0.toFixed(1) + '" y="' + (H - B + 16) + '" class="ax" style="font-size:' + lfs + 'px" text-anchor="middle">' + (D.monthly ? Number(k.slice(5)) + '월' : Number(k.slice(8))) + '</text>';
     g += '<rect class="hit" x="' + (L + i * cw).toFixed(1) + '" y="' + Tp + '" width="' + cw.toFixed(1) + '" height="' + (H - Tp - B) + '" data-k="' + k + '" data-f="' + s.fin + '" data-o="' + s.out + '"/>';
   });
   g += '<line x1="' + L + '" x2="' + (W - Rr) + '" y1="' + y(0) + '" y2="' + y(0) + '" class="base"/>';
