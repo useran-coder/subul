@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v24">
+<meta name="su-ver" content="v25">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -170,6 +170,7 @@ textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-
 .pc-wait{color:#94a3b8;font-size:12px;font-weight:600}
 .chart .vl{font-weight:700;pointer-events:none}.chart .vl.v1{fill:#1d5fb0}.chart .vl.v2{fill:#c2410c}.topbar .title h1{cursor:pointer}.topbar .title h1:hover{opacity:.85}
 .pc-list{margin:4px 0 8px;font-size:12.5px;line-height:2}.pc-chip{display:inline-block;border:1px solid #cbd5e1;background:#f8fafc;border-radius:6px;padding:0 6px;margin:0 3px 2px 0;font-weight:700;color:#334155;font-size:12px;line-height:20px}
+.modal:has(.modal-box.wide){padding:16px;align-items:center}.modal-box.wide{max-width:min(1700px,97vw);width:97vw;max-height:calc(100vh - 32px);overflow-y:auto;overflow-x:hidden;padding-top:0}.modal-box.wide .modal-head{position:sticky;top:0;z-index:20;background:#fff;padding:14px 0 8px;margin-bottom:4px;border-bottom:1px solid #eef1f5}.modal-box.wide .two{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)}.modal-box.wide .tw{overflow:auto;max-height:460px;border:1px solid #e2e8f0;border-radius:8px}.modal-box.wide .tw .grid{width:100%}.modal-box.wide .tw .grid th{position:sticky;top:0}.modal-box.wide .tw td.c-pc{white-space:normal;max-width:220px;font-size:12px}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -385,6 +386,8 @@ var SU = (function () {
   }
   /* 개별번호 : 내부보강 B12345 · 레이저 D1234 (비고·규격에 적힌 것) */
   function codesOf(t) { var m = String(t || '').toUpperCase().match(/(?:^|[^A-Z0-9])([BD]\d{3,6})(?![0-9])/g) || []; return m.map(function (x) { return x.replace(/^[^BD]/, ''); }); }
+  /* 운반비(택배요금 등)는 제품이 아니라 수불에서 뺌 */
+  function isFreight(r) { return /운반비|택배\s*요금/.test(String(r.n || '') + ' ' + String(r.s || '')) || /^MAINTRAN/i.test(String(r.p || '').trim()); }
   function nk(s) { return String(s || '').replace(/\s+/g, '').toUpperCase(); }
   Store.prototype.setErp = function (res) {
     var E = this.erp, n = 0;
@@ -475,6 +478,7 @@ var SU = (function () {
     function lineKeys(r) { var base = nk(r.o) + '|' + nk(r.p); if (!nk(r.o)) return []; var cs = codesOf((r.r || '') + ' ' + (r.s || '')).join(','); return [base + '|' + nk(r.s) + '|' + nk(r.r), cs ? base + '|#' + cs : '', base + '|' + nk(r.s)].filter(Boolean); }
     var orders = Array.from(E.order.values()).sort(function (a, b) { return String(a.od || '').localeCompare(String(b.od || '')) || String(a.o || '').localeCompare(String(b.o || '')); });
     orders.forEach(function (o) {
+      if (isFreight(o)) return;
       var od = ymd(o.od); if (!od || od < from) return;
       info.order++;
       var cat = catOfErp(o), it = find(o, cat);
@@ -488,6 +492,7 @@ var SU = (function () {
     info.badDate = 0; info.early = 0; info.beforeD0 = 0; info.days = {};
     E.ship.forEach(function (s) {
       s._r = ''; s._i = '';   /* 줄마다 결과 : 화면 «출고 대조»에서 씀 */
+      if (isFreight(s)) { s._r = 'freight'; return; }
       var d = ymd(s.d); if (!d) { info.badDate++; s._r = 'date'; return; } if (d < from) { info.early++; s._r = 'early'; return; }
       var q = num(s.q); if (!q) { s._r = 'q0'; return; }
       info.ship++;
@@ -1060,7 +1065,7 @@ function catOrder(c) { var i = SU.CATS.map(function (x) { return x.id; }).indexO
 function seqNum(s) { var n = parseFloat(String(s || '').replace(/[^\d.]/g, '')); return isFinite(n) ? n : 1e9; }
 function sortedItems() {
   store.deriveErp();
-  var arr = Array.from(store.items.values());
+  var arr = Array.from(store.items.values()).filter(function (it) { return !(/운반비/.test(it.n || '') || /^MAINTRAN/i.test(String(it.p || '').trim())); });   /* 운반비는 수불에서 뺌 */
   arr.sort(function (a, b) { return catOrder(a.cat) - catOrder(b.cat) || String(a.src || 'w').localeCompare(String(b.src || 'w')) || seqNum(a.seq) - seqNum(b.seq) || String(a.od || '').localeCompare(String(b.od || '')); });
   return arr;
 }
@@ -1793,16 +1798,16 @@ function renderMonth() {
 }
 
 /* ── 출고 대조 : ERP 출고현황 줄마다 수불관리에 어떻게 들어갔는지 (빠진 줄·이유) ── */
-var SC_WHY = { ok: '반영됨', manual: '그날 직접 넣은 출고 사용', early: '반영 시작일 전', d0: '품목 기초재고 날짜 이전', noout: '품목에 출고 공정 없음', dead: '지운 품목', date: '출고일자 못 읽음', q0: '수량 0' };
+var SC_WHY = { freight: '운반비 (수불 제외)', ok: '반영됨', manual: '그날 직접 넣은 출고 사용', early: '반영 시작일 전', d0: '품목 기초재고 날짜 이전', noout: '품목에 출고 공정 없음', dead: '지운 품목', date: '출고일자 못 읽음', q0: '수량 0' };
 function shipCheck() {
   var box = $('#shipChkBox'); if (!box) return;
   var sc = S.ui.sc; if (!sc) { box.innerHTML = ''; return; }
   store.deriveErp();
   var all = Array.from(store.erp.ship.values()).filter(function (s) { var y = SU.ymd(s.d); return y ? y.slice(0, 7) === sc.m : true; });
   var cnt = {}; all.forEach(function (s) { var r = s._r || 'ok'; cnt[r] = (cnt[r] || 0) + 1; });
-  var rows = all.filter(function (s) { var r = s._r || 'ok'; return sc.r === 'all' || (sc.r === 'bad' ? r !== 'ok' : r === sc.r); }).filter(function (s) { return !sc.q || hasTxt([s.o, s.p, s.n, s.s, s.r, s.c].join(' '), sc.q); });
+  var rows = all.filter(function (s) { var r = s._r || 'ok'; return sc.r === 'all' || (sc.r === 'bad' ? r !== 'ok' && r !== 'freight' : r === sc.r); }).filter(function (s) { return !sc.q || hasTxt([s.o, s.p, s.n, s.s, s.r, s.c].join(' '), sc.q); });
   rows.sort(function (a, b) { return String(a.d).localeCompare(String(b.d)) || String(a.p).localeCompare(String(b.p)); });
-  var tabs = [['bad', '빠지거나 바뀐 줄', all.length - (cnt.ok || 0)], ['all', '전체', all.length]].concat(Object.keys(SC_WHY).filter(function (k) { return cnt[k]; }).map(function (k) { return [k, SC_WHY[k], cnt[k]]; }));
+  var tabs = [['bad', '빠지거나 바뀐 줄', all.length - (cnt.ok || 0) - (cnt.freight || 0)], ['all', '전체', all.length]].concat(Object.keys(SC_WHY).filter(function (k) { return cnt[k]; }).map(function (k) { return [k, SC_WHY[k], cnt[k]]; }));
   var h = '<div class="sc-bar"><b>출고 대조</b> <input type="month" id="scM" value="' + sc.m + '"> ' + tabs.map(function (t) { return '<button type="button" data-sr="' + t[0] + '" class="' + (sc.r === t[0] ? 'on' : '') + '">' + esc(t[1]) + ' <small>' + t[2].toLocaleString() + '</small></button>'; }).join('') + ' <input id="scQ" placeholder="주문번호·품번·품명·비고" value="' + esc(sc.q) + '"></div>';
   h += '<div class="tbl-wrap sc-wrap"><table class="grid small"><thead><tr><th>출고일자</th><th>주문번호</th><th>고객</th><th>품번</th><th>품명</th><th>규격</th><th>비고</th><th class="num">수량</th><th>수불관리 품목</th><th>결과</th></tr></thead><tbody>' +
     (rows.slice(0, 500).map(function (s) {
@@ -2074,9 +2079,18 @@ function openItem(id) {
     var ol = (store.erpOrd.get(id) || []).slice().sort(function (a, b) { return String(b.od).localeCompare(String(a.od)); }), sl = (store.erpShip.get(id) || []).slice().sort(function (a, b) { return String(b.d).localeCompare(String(a.d)); });
     var bal = store.balance(src, SU.today());
     if (!ol.length && !sl.length && !bal) return '';
+    /* 수주 줄 ↔ 출고 줄 : 주문번호+품번+비고 같으면 그 출고 줄 제품번호, 아니면 주문번호+품번 (그 주문에 수주 줄이 하나일 때만) */
+    function nz(x) { return String(x || '').replace(/\s+/g, '').toUpperCase(); }
+    var byR = {}, byO = {}, oCnt = {};
+    sl.forEach(function (r) { var c = String(r.code || r.ac || '').toUpperCase(); if (!c) return; [nz(r.o) + '|' + nz(r.p) + '|' + nz(r.r), nz(r.o) + '|' + nz(r.p)].forEach(function (k, i) { var m = i ? byO : byR; (m[k] = m[k] || []).indexOf(c) < 0 && m[k].push(c); }); });
+    ol.forEach(function (o) { var k = nz(o.o) + '|' + nz(o.p); oCnt[k] = (oCnt[k] || 0) + 1; });
+    function ordCodes(o) {
+      var own = o.code || SU.codesOf((o.r || '') + ' ' + (o.s || ''))[0]; if (own) return [String(own).toUpperCase()];
+      var k = nz(o.o) + '|' + nz(o.p); return byR[k + '|' + nz(o.r)] || (oCnt[k] === 1 && byO[k]) || [];
+    }
     return '<div class="lbl">수주 · 출고 (ERP 자동) ' + (bal ? '<small>수주 ' + fmt(bal.oq, false) + ' · 출고 누계 ' + fmt(bal.out, false) + ' · <b class="' + (bal.rem < 0 ? 'neg' : '') + '">잔량 ' + fmt(bal.rem, false) + '</b></small>' : '') + '</div>' + (function () { var L = shipCodes(src); return L.length ? '<div class="pc-list"><b>제품번호 ' + L.length + '개</b> <small class="muted">(출고 줄마다 · 출고일 순)</small> ' + L.map(function (c) { return '<span class="pc-chip">' + esc(c) + '</span>'; }).join('') + '</div>' : ''; })() + '<div class="two">' +
-      '<table class="grid small"><thead><tr><th>수주일</th><th>주문번호</th><th>제품번호</th><th>고객</th><th>비고</th><th class="num">수량</th></tr></thead><tbody>' + (ol.slice(0, 40).map(function (o) { return '<tr><td>' + esc(o.od) + '</td><td>' + esc(o.o) + '</td><td class="c-pc">' + esc(o.code || SU.codesOf((o.r || '') + ' ' + (o.s || ''))[0] || '') + '</td><td class="c-cust">' + esc(o.c) + '</td><td class="c-memo">' + esc(o.r || o.s) + '</td><td class="num">' + fmt(SU.num(o.q)) + '</td></tr>'; }).join('') || '<tr><td colspan="6" class="muted">ERP 수주 없음</td></tr>') + '</tbody></table>' +
-      '<table class="grid small"><thead><tr><th>출고일</th><th>주문번호</th><th>제품번호</th><th>고객</th><th>납품처</th><th class="num">수량</th><th class="num">공급가</th></tr></thead><tbody>' + (sl.slice(0, 40).map(function (r) { return '<tr><td>' + esc(r.d) + '</td><td>' + esc(r.o) + '</td><td class="c-pc"><b>' + esc(String(r.code || r.ac || '').toUpperCase()) + '</b></td><td class="c-cust">' + esc(r.c) + '</td><td class="c-cust">' + esc(r.dl) + '</td><td class="num">' + fmt(SU.num(r.q)) + '</td><td class="num">' + fmt(SU.num(r.a)) + '</td></tr>'; }).join('') || '<tr><td colspan="7" class="muted">ERP 출고 없음</td></tr>') + '</tbody></table></div>' + (ol.length > 40 || sl.length > 40 ? '<div class="muted small">최근 40줄만 표시 (수주 ' + ol.length + '줄 · 출고 ' + sl.length + '줄)</div>' : '');
+      '<div class="tw"><table class="grid small"><thead><tr><th>수주일</th><th>주문번호</th><th>제품번호</th><th>고객</th><th>비고</th><th class="num">수량</th></tr></thead><tbody>' + (ol.slice(0, 300).map(function (o) { return '<tr><td>' + esc(o.od) + '</td><td>' + esc(o.o) + '</td><td class="c-pc">' + (function () { var L = ordCodes(o); return L.length ? '<b>' + esc(L.join(', ')) + '</b>' : '<span class="pc-wait">출고 전</span>'; })() + '</td><td class="c-cust">' + esc(o.c) + '</td><td class="c-memo">' + esc(o.r || o.s) + '</td><td class="num">' + fmt(SU.num(o.q)) + '</td></tr>'; }).join('') || '<tr><td colspan="6" class="muted">ERP 수주 없음</td></tr>') + '</tbody></table></div>' +
+      '<div class="tw"><table class="grid small"><thead><tr><th>출고일</th><th>주문번호</th><th>제품번호</th><th>고객</th><th>납품처</th><th class="num">수량</th><th class="num">공급가</th></tr></thead><tbody>' + (sl.slice(0, 300).map(function (r) { return '<tr><td>' + esc(r.d) + '</td><td>' + esc(r.o) + '</td><td class="c-pc"><b>' + esc(String(r.code || r.ac || '').toUpperCase()) + '</b></td><td class="c-cust">' + esc(r.c) + '</td><td class="c-cust">' + esc(r.dl) + '</td><td class="num">' + fmt(SU.num(r.q)) + '</td><td class="num">' + fmt(SU.num(r.a)) + '</td></tr>'; }).join('') || '<tr><td colspan="7" class="muted">ERP 출고 없음</td></tr>') + '</tbody></table></div></div>' + (ol.length > 300 || sl.length > 300 ? '<div class="muted small">최근 300줄만 표시 (수주 ' + ol.length + '줄 · 출고 ' + sl.length + '줄)</div>' : '');
   }
   function draw() {
     var feeders = store.feeders(id);
