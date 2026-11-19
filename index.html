@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v34">
+<meta name="su-ver" content="v35">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -1527,7 +1527,7 @@ function renderDash() {
   T.neg.sort(function (a, b) { return a.st - b.st; }); T.old.sort(function (a, b) { return String(a.it.od).localeCompare(String(b.it.od)); }); T.idle.sort(function (a, b) { return b.st - a.st; });
   function alist(arr, f) { return arr.slice(0, 8).map(f).join('') + (arr.length > 8 ? '<div class="muted small">외 ' + (arr.length - 8) + '건</div>' : ''); }
   h += '<div class="card"><h3>확인할 것</h3><div class="alerts">' +
-    '<div class="al bad"><b class="al-go" data-negpage="1" title="눌러서 마이너스 재고 페이지로">⛔ 마이너스 재고 ' + T.neg.length + ' ›</b><div class="muted small">입력 빠짐·공정 연결 잘못·기초재고 확인</div>' + alist(T.neg, function (x) { return '<div class="link" data-open="' + x.it.id + '">' + esc(x.it.p || x.it.n) + ' · ' + esc(x.pr.n) + ' <b class="neg">' + fmt(x.st) + '</b></div>'; }) + '</div>' +
+    '<div class="al bad"><b class="al-go" data-negpage="1" title="눌러서 마이너스 재고 페이지로">⛔ 마이너스 재고 ' + T.neg.length + ' ›</b><div class="muted small">입력 빠짐·공정 연결 잘못·기초재고 확인</div>' + alist(T.neg, function (x) { return '<div class="link" data-negitem="' + x.it.id + '|' + x.it.procs.indexOf(x.pr) + '" title="마이너스 재고 페이지에서 계산 풀이 보기">' + esc(x.it.p || x.it.n) + ' · ' + esc(x.pr.n) + ' <b class="neg">' + fmt(x.st) + '</b></div>'; }) + '</div>' +
     '<div class="al warn"><b>⏰ 30일 넘은 수주 잔량 ' + T.old.length + '</b><div class="muted small">수주일 30일 지남 · 아직 출고 남음</div>' + alist(T.old, function (x) { return '<div class="link" data-open="' + x.it.id + '">' + esc(x.it.p || x.it.n) + ' · ' + esc(x.it.od || '') + ' 잔량 <b>' + fmt(x.bal.rem) + '</b></div>'; }) + '</div>' +
     '<div class="al"><b>💤 30일 움직임 없는 재고 ' + T.idle.length + '</b><div class="muted small">생산·출고 없이 재고만 있음 (장기 재고)</div>' + alist(T.idle, function (x) { return '<div class="link" data-open="' + x.it.id + '">' + esc(x.it.p || x.it.n) + ' · 완제품 ' + fmt(x.st, false) + '</div>'; }) + '</div>' +
     '<div class="al"><b>🔗 ERP 연동 ' + (info.ship || 0).toLocaleString() + '출고 · ' + (info.order || 0).toLocaleString() + '수주</b><div class="muted small">' + esc(info.from || '-') + '부터 반영</div>' +
@@ -1538,6 +1538,7 @@ function renderDash() {
   $$('.mbar [data-per]').forEach(function (b) { b.onclick = function () { S.ui.per = b.dataset.per; renderDash(); }; });
   $('#view').onclick = function (ev) {
     var o = ev.target.closest('[data-open]'); if (o) { openItem(o.dataset.open); return; }
+    var ni = ev.target.closest('[data-negitem]'); if (ni) { var nit = store.items.get(ni.dataset.negitem.split('|')[0]); S.neg = { d: R.sd, r: '', open: ni.dataset.negitem, q: nit ? (nit.p || nit.n || '') : '', page: 1 }; S.ui.view = 'neg'; render(); scrollTo(0, 0); return; }
     var ng = ev.target.closest('[data-negpage]') || ev.target.closest('[data-go="neg"]'); if (ng) { S.neg = { d: R.sd, r: '', open: '', q: '', page: 1 }; S.ui.view = 'neg'; render(); scrollTo(0, 0); return; }
     var ns = ev.target.closest('[data-ns]'); if (ns) { S.ui.cat = ns.dataset.ns; S.ui.ns = true; S.ui.scope = 'all'; S.ui.view = 'month'; S.ui.page = 1; lsSet('subul.view', 'month'); render(); scrollTo(0, 0); return; }
     var c = ev.target.closest('[data-cat]'); if (c) { S.ui.cat = c.dataset.cat; render(); return; }
