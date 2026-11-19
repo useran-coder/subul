@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v52">
+<meta name="su-ver" content="v53">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -339,7 +339,7 @@ var SU = (function () {
     var rec = { v: v, r: meta && meta.r != null ? meta.r : (old ? old.r : 0), by: meta && meta.by || '', at: meta && meta.at || '' };
     this.recs.set(k, rec);
     var t = k.charAt(0);
-    if (t === 'i') { var id = k.slice(2); this.virt.delete(id); if (v && !v.del) { v.id = id; if (v.cat === 'part' && !v.catSet && (isFrameName(v.n) || isFrameName(v.it))) v.cat = 'frame'; this.items.set(id, v); this.dead.delete(id); } else { this.items.delete(id); this.dead.add(id); } this.erpDirty = true; }
+    if (t === 'i') { var id = k.slice(2); this.virt.delete(id); if (v && !v.del) { v.id = id; if (!v.catSet && (v.cat === 'part' || v.cat === 'frame')) v.cat = (isFrameName(v.n) || isFrameName(v.it)) ? 'frame' : 'part'; this.items.set(id, v); this.dead.delete(id); } else { this.items.delete(id); this.dead.add(id); } this.erpDirty = true; }
     else if (t === 'e') { if (v && (v.g || v.b)) this.ent.set(k.slice(2), v); else this.ent.delete(k.slice(2)); }
     else if (t === 'a') { if (v && num(v.a)) this.adj.set(k.slice(2), v); else this.adj.delete(k.slice(2)); }   /* 기초재고 조정 a:품목|공정|날짜 {a: 더할 수량} */
     else if (k === 'c:procs') this.cfg = v;
@@ -444,10 +444,10 @@ var SU = (function () {
     if (isFrameName(n)) return 'frame';
     return 'part';
   }
-  /* 문틀 품목 : 매출분석도구 «도어/문틀 매출분석» 기본 문틀 품명 (DF_DEFAULT_NAMES.문틀, (L) 레이저 품목은 레이저로 먼저 감) */
-  var FRAME_NAMES = ['십자앙카', '스트라이크보강대일체형', '스트라이크보강대', '스트라이크보강', '스트라이크보강일체형', '실커버 빗각'];
-  var FRAME_N = {}; FRAME_NAMES.forEach(function (x) { FRAME_N[x.normalize('NFKC').replace(/\s+/g, '').toLowerCase()] = 1; });
-  function isFrameName(n) { return !!FRAME_N[String(n || '').normalize('NFKC').replace(/\s+/g, '').toLowerCase()]; }
+  /* 문틀 품목 : 품명에 아래 낱말이 들어가면 문틀 (후레임바B(절곡)·스텐실201·스텐실304·하바 …, (L) 레이저·_G 유통 품목은 그쪽이 먼저) */
+  var FRAME_NAMES = ['후레임바', '스텐실', '하바'];
+  var FRAME_K = FRAME_NAMES.map(function (x) { return x.normalize('NFKC').replace(/\s+/g, '').toLowerCase(); });
+  function isFrameName(n) { n = String(n || '').normalize('NFKC').replace(/\s+/g, '').toLowerCase(); return !!n && FRAME_K.some(function (k) { return n.indexOf(k) >= 0; }); }
   /* 개별번호 : 내부보강 B12345 · 레이저 D1234 (비고·규격에 적힌 것) */
   function codesOf(t) { var m = String(t || '').toUpperCase().match(/(?:^|[^A-Z0-9])([BD]\d{3,6})(?![0-9])/g) || []; return m.map(function (x) { return x.replace(/^[^BD]/, ''); }); }
   /* 운반비(택배요금 등)는 제품이 아니라 수불에서 뺌 */
