@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v30">
+<meta name="su-ver" content="v31">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -1318,6 +1318,7 @@ function render() {
   $('#dateBox').style.display = (lv || u.view === 'dash') ? '' : 'none';
   $('#qBox').style.display = (lv || u.view === 'dash') ? '' : 'none';
   $('#scope').style.display = $('#procF').style.display = $('#custF').style.display = $('#nameF').style.display = lv ? '' : 'none';
+  if (!lv) u.ns = false;   /* 현황판·수주 입력·설정으로 오면 «출고 전 제품» 선택 풀기 */
   { var keepNs = u.ns; u.ns = false; var nsN = filtered().filter(notShipped).length; u.ns = keepNs; $('#nsCnt').textContent = nsN.toLocaleString(); }
   $('#nsBtn').classList.toggle('on', !!u.ns);
   if (lv) fillSelF();
