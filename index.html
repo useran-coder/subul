@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v4">
+<meta name="su-ver" content="v5">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -118,7 +118,7 @@ textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-
 .kpi{background:#fff;border:1px solid #e0e5ed;border-radius:10px;padding:10px 12px}.kpi.go{cursor:pointer}.kpi.go:hover{border-color:#2f6ac6}
 .k-l{font-size:12px;font-weight:700;color:#64748b}.k-v{font-size:22px;font-weight:900;color:#0f172a;margin:2px 0;font-variant-numeric:tabular-nums}.k-s{font-size:11.5px;color:#64748b}
 .kpi.warn .k-v{color:var(--warn)}.kpi.bad .k-v{color:var(--bad)}
-.chart-card{margin-bottom:10px}.chart-wrap{position:relative}.chart{width:100%;height:240px;display:block}
+.chart-card{margin-bottom:10px}.chart-wrap{position:relative}.chart{width:100%;height:240px;display:block;overflow:visible}
 .chart .gl{stroke:#eef1f5;stroke-width:1}.chart .base{stroke:#94a3b8;stroke-width:1}.chart .ax{font-size:11px;fill:#64748b}
 .chart .b1,.sw.b1{fill:#2a78d6;background:#2a78d6}.chart .b2,.sw.b2{fill:#eb6834;background:#eb6834}
 .chart .hit{fill:transparent;cursor:pointer}.chart .hit.on{fill:#0f172a0d}
@@ -1174,14 +1174,23 @@ function renderDash() {
 /* 막대 그래프 (생산=파랑, 출고=주황) · 마우스를 올리면 그날 숫자 */
 function dashChart(D) {
   var keys = D.keys, n = keys.length; if (!n) return '';
-  var W = 1000, H = 240, L = 54, Rr = 10, Tp = 14, B = 30, cw = (W - L - Rr) / n, bw = Math.max(2, Math.min(18, cw * 0.36));
   var max = 0; keys.forEach(function (k) { max = Math.max(max, D.ser[k].fin, D.ser[k].out); });
   if (!max) return '<div class="muted small" style="padding:20px 0">이 기간 생산·출고 입력이 없습니다.</div>';
+  CHART_D = D;
+  return '<div class="legend"><span><i class="sw b1"></i>완성 생산 (출고 앞 공정 양품)</span><span><i class="sw b2"></i>출고</span></div><div class="chart-wrap"><svg class="chart"></svg><div class="tip" id="chartTip"></div></div>';
+}
+/* 실제 화면 폭으로 그림 (글자가 늘어나지 않도록 viewBox = 화면 픽셀) */
+var CHART_D = null, CHART_W = 0;
+function drawChart() {
+  var svg = $('.chart'), D = CHART_D; if (!svg || !D) return;
+  var keys = D.keys, n = keys.length, W = Math.max(300, Math.round(svg.parentNode.clientWidth || 1000)); CHART_W = W;
+  var H = 240, L = 54, Rr = 10, Tp = 14, B = 30, cw = (W - L - Rr) / n, bw = Math.max(2, Math.min(18, cw * 0.36));
+  var max = 0; keys.forEach(function (k) { max = Math.max(max, D.ser[k].fin, D.ser[k].out); });
   var mag = Math.pow(10, Math.floor(Math.log10(max))), step = [1, 2, 2.5, 5, 10].map(function (f) { return f * mag; }).filter(function (s) { return max / s <= 5; })[0] || mag * 10, top = Math.ceil(max / step) * step;
   function y(v) { return Tp + (H - Tp - B) * (1 - v / top); }
   var g = '';
   for (var v = 0; v <= top + 1e-9; v += step) g += '<line x1="' + L + '" x2="' + (W - Rr) + '" y1="' + y(v).toFixed(1) + '" y2="' + y(v).toFixed(1) + '" class="gl"/><text x="' + (L - 6) + '" y="' + (y(v) + 4).toFixed(1) + '" class="ax" text-anchor="end">' + (v >= 1e4 ? (v / 1e4) + '만' : v.toLocaleString()) + '</text>';
-  var lblEvery = Math.ceil(n / 16);
+  var lblEvery = Math.max(1, Math.ceil(n / Math.max(4, Math.floor((W - L - Rr) / 34))));
   keys.forEach(function (k, i) {
     var x0 = L + i * cw + cw / 2, s = D.ser[k];
     if (s.fin) g += '<path class="b1" d="' + barPath(x0 - bw - 1, y(s.fin), bw, y(0)) + '"/>';
@@ -1190,11 +1199,14 @@ function dashChart(D) {
     g += '<rect class="hit" x="' + (L + i * cw).toFixed(1) + '" y="' + Tp + '" width="' + cw.toFixed(1) + '" height="' + (H - Tp - B) + '" data-k="' + k + '" data-f="' + s.fin + '" data-o="' + s.out + '"/>';
   });
   g += '<line x1="' + L + '" x2="' + (W - Rr) + '" y1="' + y(0) + '" y2="' + y(0) + '" class="base"/>';
-  return '<div class="legend"><span><i class="sw b1"></i>완성 생산 (출고 앞 공정 양품)</span><span><i class="sw b2"></i>출고</span></div><div class="chart-wrap"><svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" class="chart">' + g + '</svg><div class="tip" id="chartTip"></div></div>';
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.setAttribute('width', W); svg.setAttribute('height', H);
+  svg.innerHTML = g;
 }
+window.addEventListener('resize', function () { clearTimeout(drawChart.t); drawChart.t = setTimeout(function () { var svg = $('.chart'); if (svg && Math.abs((svg.parentNode.clientWidth || 0) - CHART_W) > 4) drawChart(); }, 150); });
 function barPath(x, y0, w, yb) { var h = yb - y0; if (h < 0.5) return ''; var r = Math.min(4, w / 2, h); return 'M' + x.toFixed(1) + ',' + yb.toFixed(1) + 'V' + (y0 + r).toFixed(1) + 'Q' + x.toFixed(1) + ',' + y0.toFixed(1) + ' ' + (x + r).toFixed(1) + ',' + y0.toFixed(1) + 'H' + (x + w - r).toFixed(1) + 'Q' + (x + w).toFixed(1) + ',' + y0.toFixed(1) + ' ' + (x + w).toFixed(1) + ',' + (y0 + r).toFixed(1) + 'V' + yb.toFixed(1) + 'Z'; }
 function bindChart() {
   var svg = $('.chart'), tip = $('#chartTip'); if (!svg || !tip) return;
+  drawChart();
   svg.onmousemove = function (ev) {
     var r = ev.target.closest && ev.target.closest('rect.hit'); if (!r) { tip.style.display = 'none'; return; }
     $$('rect.hit.on', svg).forEach(function (x) { x.classList.remove('on'); }); r.classList.add('on');
