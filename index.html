@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v38">
+<meta name="su-ver" content="v39">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -178,6 +178,8 @@ textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-
 .grid.month tr.buyrow td{background:#fff}.grid.month tr.buyrow td.c-proc{color:#15803d}.buy-st{margin-top:12px;padding-top:10px;border-top:1px dashed #cbd5e1;font-size:13px}.buy-st button{margin-left:6px}
 .grid tr.go.sel td{background:#dbeafe!important;font-weight:800}.grid tr.go.sel td:first-child{box-shadow:inset 4px 0 0 #2f6ac6}
 .grid.month td.mcell{padding:0 2px}.grid.month input.mi{width:100%;min-width:38px;height:24px;border:1px solid transparent;border-radius:4px;background:transparent;text-align:right;font:inherit;font-weight:700;color:#0f172a;padding:0 4px}.grid.month input.mi::placeholder{color:#2563eb;font-weight:700;opacity:1}.grid.month tr.buyrow:hover input.mi{border-color:#e2e8f0}.grid.month input.mi:focus{outline:none;border-color:#2f6ac6;background:#fff;box-shadow:0 0 0 2px #2f6ac633}.grid.month input.mi.err{border-color:#dc2626}
+.nm-btn{height:32px;border:1px solid #fca5a5;background:#fef2f2;color:#b91c1c;border-radius:7px;padding:0 10px;font-weight:800;margin-left:6px}.nm-btn small{font-weight:700;opacity:.8;margin-left:2px}.nm-btn.on{background:#dc2626;border-color:#dc2626;color:#fff}.nm-btn.zero:not(.on){opacity:.55}.nm-btn.busy{cursor:progress;opacity:.7}.rm-tag{font-size:10px;font-weight:700;color:#7c3aed;background:#f3e8ff;border-radius:999px;padding:0 5px}
+.toast{white-space:pre-line}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -508,6 +510,24 @@ var SU = (function () {
       push(self.erpOrd, it.id, o);
       self.erpOq.set(it.id, (self.erpOq.get(it.id) || 0) + num(o.q));
     });
+    /* 출고매칭 다시 확인 : 출고현황이 수주현황보다 먼저 올라오면 출고매칭이 «주문현황에 수주번호 없음»으로 S 자동번호를 붙임
+       → 지금 받은 수주현황에 같은 주문번호·품번 줄이 있고 B·D 번호가 있으면 그 번호로 다시 매칭 (화면 계산만, 서버 자료는 그대로) */
+    var rm = { chk: 0, fix: 0, rows: [] }, byOP = new Map(), usedC = new Set();
+    info.rm = rm;
+    orders.forEach(function (o) { if (!nk(o.o) || isFreight(o)) return; var c = String(o.code || codesOf((o.r || '') + ' ' + (o.s || ''))[0] || '').toUpperCase(); if (!/^[BD]\d/.test(c)) return; push(byOP, nk(o.o) + '|' + nk(o.p), { o: o, c: c }); });
+    E.ship.forEach(function (s) { s._lc = ''; s._lmk = ''; var c = String(s.code || '').toUpperCase(); if (/^[BD]\d/.test(c)) usedC.add(c); codesOf((s.r || '') + ' ' + (s.s || '')).forEach(function (x) { usedC.add(x); }); });
+    Array.from(E.ship.values()).sort(function (a, b) { return String(a.d || '').localeCompare(String(b.d || '')) || String(a.k).localeCompare(String(b.k)); }).forEach(function (s) {
+      if (isFreight(s)) return;
+      var c = String(s.code || s.ac || '').toUpperCase();
+      if (c && !/^S\d/.test(c)) return;                                   // 이미 B·D·숫자 번호
+      if (codesOf((s.r || '') + ' ' + (s.s || '')).length) return;
+      var L = byOP.get(nk(s.o) + '|' + nk(s.p)); if (!L) return;
+      rm.chk++;
+      var cand = L.filter(function (x) { return !usedC.has(x.c); }); if (!cand.length) return;
+      var sc = function (x) { return (nk(x.o.s) === nk(s.s) ? 4 : 0) + (nk(x.o.r) === nk(s.r) ? 2 : 0) + (num(x.o.q) === num(s.q) ? 1 : 0); };
+      cand.sort(function (a, b) { return sc(b) - sc(a) || (num(a.o.no) - num(b.o.no)); });
+      var w = cand[0]; usedC.add(w.c); s._lc = w.c; s._lmk = w.o.k; rm.fix++; rm.rows.push(s);
+    });
     /* 출고 */
     info.badDate = 0; info.early = 0; info.beforeD0 = 0; info.days = {};
     E.ship.forEach(function (s) {
@@ -516,9 +536,10 @@ var SU = (function () {
       var d = ymd(s.d); if (!d) { info.badDate++; s._r = 'date'; return; } if (d < from) { info.early++; s._r = 'early'; return; }
       var q = num(s.q); if (!q) { s._r = 'q0'; return; }
       info.ship++;
-      var cat = catOfErp(s), id = s.mk && lineItem.get(s.mk);
+      var cat = catOfErp(s), id = (s._lmk && lineItem.get(s._lmk)) || (s.mk && lineItem.get(s.mk));
       if (!id) lineKeys(s).some(function (k) { var v = ordItem.get(k); if (v && v !== '*') { id = v; return true; } return false; });
       var it = id && self.items.get(id);
+      if (!it && s._lc && byCode.has(s._lc)) it = pick(byCode.get(s._lc), s, cat);
       if (!it) it = find(s, cat);
       if (it) info.shipIn++;
       else { it = virtual(s, cat, d); if (it) info.shipNoOrder.push(s); }
@@ -1137,7 +1158,7 @@ document.addEventListener('keydown', function (ev) {
 /* ───────── 보조 화면 요소 ───────── */
 function toast(msg, kind) {
   var t = document.createElement('div'); t.className = 'toast ' + (kind || ''); t.textContent = msg;
-  $('#toasts').appendChild(t); setTimeout(function () { t.classList.add('out'); setTimeout(function () { t.remove(); }, 400); }, kind === 'bad' ? 9000 : 4500);
+  $('#toasts').appendChild(t); setTimeout(function () { t.classList.add('out'); setTimeout(function () { t.remove(); }, 400); }, kind === 'bad' || / long/.test(' ' + (kind || '')) ? 9000 : 4500);
 }
 function setStatus(s) { var el = $('#status'); if (el) el.textContent = s || ''; }
 function renderSync() {
@@ -1180,6 +1201,7 @@ function filtered() {
     if (u.scope === 'active' && !isActive(it, d)) return false;
     if (!scopeOk(it, u.scope, d)) return false;
     if (u.ns && !notShipped(it)) return false;
+    if (u.nm && !noNum(it)) return false;
     if (u.proc && (u.view === 'day' || u.view === 'month') && !it.procs.some(function (p) { return p.n === u.proc; })) return false;
     return true;
   });
@@ -1289,6 +1311,8 @@ function notShipped(it) {
   if ((store.erpShip.get(it.id) || []).length) return false;
   return !store.sum(it.id, pr.id, '0000-00-00', '9999-12-31').g;
 }
+/* 제품번호 없음 : 제품번호 칸이 비어 있음 (아직 출고 안 된 부자재·유통/OEM «출고 전»은 뺌 — 출고되면 번호가 붙음) */
+function noNum(it) { if (prodCode(it)) return false; if ((it.cat === 'part' || it.cat === 'oem') && notShipped(it)) return false; return true; }
 function nsTag(it) { return notShipped(it) ? '<span class="ns-tag" title="아직 출고 없음">출고 전</span>' : ''; }
 function scopeOk(it, sc, d) {
   if (sc === 'chk') return !!(it.chk && it.chk.length) || ((it.cat === 'inner' || it.cat === 'laser') && !prodCode(it));
@@ -1306,6 +1330,7 @@ function renderShell() {
         '<button data-v="dash">📊 현황판</button><button data-v="month">📅 월 현황</button><button data-v="day">📝 일일 입력</button><button data-v="order">➕ 수주 입력</button><button data-v="set">⚙ 설정</button>' +
       '</div>' +
       '<button type="button" id="nsBtn" class="ns-btn" title="출고가 한 번도 없는 제품만 보기 (ERP 출고·직접 입력 출고 모두 없음) · 한 번 더 누르면 해제">출고 전 제품 <small id="nsCnt"></small></button>' +
+      '<button type="button" id="nmBtn" class="nm-btn" title="제품번호가 없는 제품만 보기 · 누르면 먼저 출고매칭 자료를 다시 받아 번호를 다시 매칭함 · 한 번 더 누르면 해제">제품번호 없음 <small id="nmCnt"></small></button>' +
 
       '<span class="spacer"></span>' +
       '<div class="datebox" id="dateBox"><button id="dPrev" title="전날">◀</button><input type="date" id="dDate"><button id="dNext" title="다음 날">▶</button><button id="dToday" class="small">오늘</button></div>' +
@@ -1318,7 +1343,8 @@ function renderShell() {
     '<div id="view"></div><div id="status" class="status"></div>';
   $$('#views button').forEach(function (b) { b.onclick = function () { S.ui.view = b.dataset.v; S.ui.page = 1; lsSet('subul.view', S.ui.view); render(); }; });
   $('#procF').onchange = function () { S.ui.proc = this.value; S.ui.page = 1; render(); };
-  $('#nsBtn').onclick = function () { S.ui.ns = !S.ui.ns; S.ui.page = 1; if (S.ui.ns && S.ui.view !== 'day' && S.ui.view !== 'month') { S.ui.view = 'month'; lsSet('subul.view', 'month'); } render(); };
+  $('#nmBtn').onclick = nmToggle;
+  $('#nsBtn').onclick = function () { S.ui.ns = !S.ui.ns; S.ui.nm = false; S.ui.page = 1; if (S.ui.ns && S.ui.view !== 'day' && S.ui.view !== 'month') { S.ui.view = 'month'; lsSet('subul.view', 'month'); } render(); };
   /* 입력 + 목록 (선택 상자처럼 아래로 펼침, 쓰는 글자로 목록이 줄어듦) */
   function selF(el, key, lst) {
     var t = null, hi = -1;
@@ -1402,9 +1428,10 @@ function render() {
   $('#dateBox').style.display = (lv || u.view === 'dash') ? '' : 'none';
   $('#qBox').style.display = (lv || u.view === 'dash') ? '' : 'none';
   $('#scope').style.display = $('#procF').style.display = $('#custF').style.display = $('#nameF').style.display = lv ? '' : 'none';
-  if (!lv) u.ns = false;   /* 현황판·수주 입력·설정으로 오면 «출고 전 제품» 선택 풀기 */
-  { var keepNs = u.ns; u.ns = false; var nsN = filtered().filter(notShipped).length; u.ns = keepNs; $('#nsCnt').textContent = nsN.toLocaleString(); }
+  if (!lv) u.ns = u.nm = false;   /* 현황판·수주 입력·설정으로 오면 «출고 전 제품»·«제품번호 없음» 선택 풀기 */
+  { var keepNs = u.ns, keepNm = u.nm; u.ns = u.nm = false; var base = filtered(); u.ns = keepNs; u.nm = keepNm; $('#nsCnt').textContent = base.filter(notShipped).length.toLocaleString(); var nmN = base.filter(noNum).length; $('#nmCnt').textContent = nmN.toLocaleString(); $('#nmBtn').classList.toggle('zero', !nmN); }
   $('#nsBtn').classList.toggle('on', !!u.ns);
+  $('#nmBtn').classList.toggle('on', !!u.nm); $('#nmBtn').classList.toggle('busy', !!S.nmBusy);
   if (lv) fillSelF();
   $('#scope').value = u.scope;
   var pl = store.procList(), pf = $('#procF');
@@ -1544,7 +1571,7 @@ function renderDash() {
     var o = ev.target.closest('[data-open]'); if (o) { openItem(o.dataset.open); return; }
     var ni = ev.target.closest('[data-negitem]'); if (ni) { var nit = store.items.get(ni.dataset.negitem.split('|')[0]); S.neg = { d: R.sd, r: '', open: ni.dataset.negitem, q: nit ? (nit.p || nit.n || '') : '', page: 1 }; S.ui.view = 'neg'; render(); scrollTo(0, 0); return; }
     var ng = ev.target.closest('[data-negpage]') || ev.target.closest('[data-go="neg"]'); if (ng) { S.neg = { d: R.sd, r: '', open: '', q: '', page: 1 }; S.ui.view = 'neg'; render(); scrollTo(0, 0); return; }
-    var ns = ev.target.closest('[data-ns]'); if (ns) { S.ui.cat = ns.dataset.ns; S.ui.ns = true; S.ui.scope = 'all'; S.ui.view = 'month'; S.ui.page = 1; lsSet('subul.view', 'month'); render(); scrollTo(0, 0); return; }
+    var ns = ev.target.closest('[data-ns]'); if (ns) { S.ui.cat = ns.dataset.ns; S.ui.ns = true; S.ui.nm = false; S.ui.scope = 'all'; S.ui.view = 'month'; S.ui.page = 1; lsSet('subul.view', 'month'); render(); scrollTo(0, 0); return; }
     var c = ev.target.closest('[data-cat]'); if (c) { S.ui.cat = S.ui.cat === c.dataset.cat ? 'all' : c.dataset.cat; render(); return; }
     var p = ev.target.closest('[data-proc]'); if (p) { S.ui.proc = p.dataset.proc; S.ui.view = 'day'; S.ui.scope = 'active'; render(); return; }
     var g = ev.target.closest('[data-go]'); if (g) { S.ui.scope = g.dataset.go; S.ui.view = 'day'; S.ui.proc = ''; render(); }
@@ -1717,12 +1744,33 @@ function prodCode(it) {
   /* 부자재·유통 : 품목에 번호가 없음 → 출고매칭이 출고 줄마다 붙인 제품번호(S00001…) */
   var L = shipCodes(it); return L.length ? L[L.length - 1] + (L.length > 1 ? ' 외 ' + (L.length - 1) : '') : '';
 }
+/* «제품번호 없음» 버튼 : 켤 때 먼저 출고매칭 자료를 다시 받고(서버) 번호를 다시 매칭한 뒤 번호 없는 제품만 보여 줌 */
+async function nmToggle() {
+  var u = S.ui;
+  if (u.nm) { u.nm = false; u.page = 1; render(); return; }
+  if (S.nmBusy) return;
+  u.nm = true; u.ns = false; u.page = 1;
+  if (u.view !== 'day' && u.view !== 'month') { u.view = 'month'; lsSet('subul.view', 'month'); }
+  S.nmBusy = true; render(); toast('출고매칭 자료 다시 받는 중…');
+  var before = sortedItems().filter(noNum).length, err = '';
+  try { if (AU.token) { await erpPull(false); err = S.erp.err || ''; } } catch (e) { err = e.message || String(e); }
+  store.erpDirty = true; store.deriveErp();
+  S.nmBusy = false; render();
+  var rm = (store.erpInfo && store.erpInfo.rm) || { chk: 0, fix: 0 }, after = sortedItems().filter(noNum);
+  var why = { inner: 0, laser: 0, other: 0 }; after.forEach(function (it) { why[it.cat === 'inner' || it.cat === 'laser' ? it.cat : 'other']++; });
+  toast((err ? '출고매칭 자료 받기 오류 (가지고 있던 자료로 확인): ' + err + '\n' : '출고매칭 자료 다시 받음\n') +
+    '다시 매칭 : S 자동번호 출고 ' + rm.chk.toLocaleString() + '줄 확인 → 수주현황 B·D 번호로 ' + rm.fix.toLocaleString() + '줄 바꿈\n' +
+    '제품번호 없음 ' + after.length.toLocaleString() + '품목' + (before !== after.length ? ' (확인 전 ' + before.toLocaleString() + ')' : '') +
+    (after.length ? ' — 내부보강 ' + why.inner + ' · 레이저 ' + why.laser + (why.other ? ' · 기타 ' + why.other : '') + ' : ERP 수주 비고에 번호 없음' : ''), err ? 'warn long' : 'long');
+}
+/* 출고 줄 제품번호 : 다시 매칭한 번호(_lc) → 출고매칭 번호 */
+function scode(s) { return String(s._lc || s.code || s.ac || '').toUpperCase(); }
 /* 이 품목 출고 줄의 제품번호 (출고일 순) */
 function shipCodes(it) {
   var sl = store.erpShip.get(it.id); if (!sl || !sl.length) return [];
   var seen = {}, out = [];
-  sl.slice().sort(function (a, b) { return String(a.d).localeCompare(String(b.d)) || String(a.code || a.ac || '').localeCompare(String(b.code || b.ac || '')); })
-    .forEach(function (s) { var c = String(s.code || s.ac || '').toUpperCase(); if (c && !seen[c]) { seen[c] = 1; out.push(c); } });
+  sl.slice().sort(function (a, b) { return String(a.d).localeCompare(String(b.d)) || scode(a).localeCompare(scode(b)); })
+    .forEach(function (s) { var c = scode(s); if (c && !seen[c]) { seen[c] = 1; out.push(c); } });
   return out;
 }
 /* 화면용 제품번호 칸 : 번호가 있으면 번호, 아직 출고 안 된 부자재·유통은 흐리게 «출고 전» */
@@ -1991,7 +2039,7 @@ function renderMonth() {
           h += '<td class="num mcell' + (dd === td ? ' today' : '') + '"><input class="mi" data-k="e:' + it.id + '|' + pr.id + '|' + dd + '" inputmode="decimal" value="' + (man ? fmtIn(SU.num(man.g)) : '') + '" placeholder="' + (bq ? fmt(bq, false) : '') + '" title="' + esc(dd.slice(5).replace('-', '/') + ' 매입' + (bq ? '\n매입분석도구 ' + fmt(bq, false) + (bd[dd] || []).map(function (r) { return '\n' + (r.vendor || '') + ' · ' + fmt(SU.num(r.qty)) + (SU.num(r.price) ? ' × ' + fmt(SU.num(r.price)) : ''); }).join('') : '') + '\n숫자를 넣으면 그 값을 씀 · 지우면 매입분석도구 값') + '"></td>';
           return;
         }
-        h += '<td class="num' + (v < 0 ? ' neg' : '') + (dd === td ? ' today' : '') + (er && v ? ' erpc' : '') + '"' + (er && v && buy ? ' title="' + esc('매입분석도구 매입현황' + (bd[dd] || []).map(function (r) { return '\n' + (r.vendor || '') + ' · ' + fmt(SU.num(r.qty)) + (SU.num(r.price) ? ' × ' + fmt(SU.num(r.price)) : ''); }).join('')) + '"' : er && v ? ' title="' + esc('ERP 출고현황' + (sd[dd] || []).map(function (s) { return '\n' + (s.code || s.ac || '') + ' · ' + (s.o || '') + ' · ' + fmt(SU.num(s.q)); }).join('')) + '"' : '') + '>' + (v == null ? '' : fmt(v)) + '</td>'; er = false;
+        h += '<td class="num' + (v < 0 ? ' neg' : '') + (dd === td ? ' today' : '') + (er && v ? ' erpc' : '') + '"' + (er && v && buy ? ' title="' + esc('매입분석도구 매입현황' + (bd[dd] || []).map(function (r) { return '\n' + (r.vendor || '') + ' · ' + fmt(SU.num(r.qty)) + (SU.num(r.price) ? ' × ' + fmt(SU.num(r.price)) : ''); }).join('')) + '"' : er && v ? ' title="' + esc('ERP 출고현황' + (sd[dd] || []).map(function (s) { return '\n' + scode(s) + (s._lc ? ' (다시 매칭, 출고매칭 ' + (s.code || s.ac || '') + ')' : '') + ' · ' + (s.o || '') + ' · ' + fmt(SU.num(s.q)); }).join('')) + '"' : '') + '>' + (v == null ? '' : fmt(v)) + '</td>'; er = false;
       });
       h += '<td class="num tot"' + (buy ? ' title="' + esc('이달 매입 합계 · 지금 재고 (매입 − 출고) ' + fmt(store.stock(it, pi, me_ < td ? me_ : td), false)) + '"' : '') + '>' + (!out && !buy ? fmt(store.stock(it, pi, me_ < td ? me_ : td)) : (tot ? '<b class="erpc">' + fmt(tot) + '</b>' : '')) + '</td></tr>';
     });
@@ -2332,7 +2380,7 @@ function openItem(id) {
     /* 수주 줄 ↔ 출고 줄 : 주문번호+품번+비고 같으면 그 출고 줄 제품번호, 아니면 주문번호+품번 (그 주문에 수주 줄이 하나일 때만) */
     function nz(x) { return String(x || '').replace(/\s+/g, '').toUpperCase(); }
     var byR = {}, byO = {}, oCnt = {};
-    sl.forEach(function (r) { var c = String(r.code || r.ac || '').toUpperCase(); if (!c) return; [nz(r.o) + '|' + nz(r.p) + '|' + nz(r.r), nz(r.o) + '|' + nz(r.p)].forEach(function (k, i) { var m = i ? byO : byR; (m[k] = m[k] || []).indexOf(c) < 0 && m[k].push(c); }); });
+    sl.forEach(function (r) { var c = scode(r); if (!c) return; [nz(r.o) + '|' + nz(r.p) + '|' + nz(r.r), nz(r.o) + '|' + nz(r.p)].forEach(function (k, i) { var m = i ? byO : byR; (m[k] = m[k] || []).indexOf(c) < 0 && m[k].push(c); }); });
     ol.forEach(function (o) { var k = nz(o.o) + '|' + nz(o.p); oCnt[k] = (oCnt[k] || 0) + 1; });
     function ordCodes(o) {
       var own = o.code || SU.codesOf((o.r || '') + ' ' + (o.s || ''))[0]; if (own) return [String(own).toUpperCase()];
@@ -2340,7 +2388,7 @@ function openItem(id) {
     }
     return '<div class="lbl">수주 · 출고 (ERP 자동) ' + (bal ? '<small>수주 ' + fmt(bal.oq, false) + ' · 출고 누계 ' + fmt(bal.out, false) + ' · <b class="' + (bal.rem < 0 ? 'neg' : '') + '">잔량 ' + fmt(bal.rem, false) + '</b></small>' : '') + '</div>' + (function () { var L = shipCodes(src); return L.length ? '<div class="pc-list"><b>제품번호 ' + L.length + '개</b> <small class="muted">(출고 줄마다 · 출고일 순)</small> ' + L.map(function (c) { return '<span class="pc-chip">' + esc(c) + '</span>'; }).join('') + '</div>' : ''; })() + '<div class="two">' +
       '<div class="tw"><table class="grid small"><thead><tr><th>수주일</th><th>주문번호</th><th>제품번호</th><th>고객</th><th>비고</th><th class="num">수량</th></tr></thead><tbody>' + (ol.slice(0, 300).map(function (o) { return '<tr><td>' + esc(o.od) + '</td><td>' + esc(o.o) + '</td><td class="c-pc">' + (function () { var L = ordCodes(o); return L.length ? '<b>' + esc(L.join(', ')) + '</b>' : '<span class="pc-wait">출고 전</span>'; })() + '</td><td class="c-cust">' + esc(o.c) + '</td><td class="c-memo">' + esc(o.r || o.s) + '</td><td class="num">' + fmt(SU.num(o.q)) + '</td></tr>'; }).join('') || '<tr><td colspan="6" class="muted">ERP 수주 없음</td></tr>') + '</tbody></table></div>' +
-      '<div class="tw"><table class="grid small"><thead><tr><th>출고일</th><th>주문번호</th><th>제품번호</th><th>고객</th><th>납품처</th><th class="num">수량</th><th class="num">단가</th><th class="num">공급가</th></tr></thead><tbody>' + (sl.slice(0, 300).map(function (r) { return '<tr><td>' + esc(r.d) + '</td><td>' + esc(r.o) + '</td><td class="c-pc"><b>' + esc(String(r.code || r.ac || '').toUpperCase()) + '</b></td><td class="c-cust">' + esc(r.c) + '</td><td class="c-cust">' + esc(r.dl) + '</td><td class="num">' + fmt(SU.num(r.q)) + '</td><td class="num">' + fmt(SU.num(r.up)) + '</td><td class="num">' + fmt(SU.num(r.a)) + '</td></tr>'; }).join('') || '<tr><td colspan="8" class="muted">ERP 출고 없음</td></tr>') + '</tbody></table></div></div>' + (ol.length > 300 || sl.length > 300 ? '<div class="muted small">최근 300줄만 표시 (수주 ' + ol.length + '줄 · 출고 ' + sl.length + '줄)</div>' : '');
+      '<div class="tw"><table class="grid small"><thead><tr><th>출고일</th><th>주문번호</th><th>제품번호</th><th>고객</th><th>납품처</th><th class="num">수량</th><th class="num">단가</th><th class="num">공급가</th></tr></thead><tbody>' + (sl.slice(0, 300).map(function (r) { return '<tr><td>' + esc(r.d) + '</td><td>' + esc(r.o) + '</td><td class="c-pc"' + (r._lc ? ' title="' + esc('다시 매칭한 번호 · 출고매칭에는 ' + (r.code || r.ac || '') + '로 되어 있음') + '"' : '') + '><b>' + esc(scode(r)) + '</b>' + (r._lc ? ' <small class="rm-tag">다시 매칭</small>' : '') + '</td><td class="c-cust">' + esc(r.c) + '</td><td class="c-cust">' + esc(r.dl) + '</td><td class="num">' + fmt(SU.num(r.q)) + '</td><td class="num">' + fmt(SU.num(r.up)) + '</td><td class="num">' + fmt(SU.num(r.a)) + '</td></tr>'; }).join('') || '<tr><td colspan="8" class="muted">ERP 출고 없음</td></tr>') + '</tbody></table></div></div>' + (ol.length > 300 || sl.length > 300 ? '<div class="muted small">최근 300줄만 표시 (수주 ' + ol.length + '줄 · 출고 ' + sl.length + '줄)</div>' : '');
   }
   function draw() {
     var feeders = store.feeders(id);
