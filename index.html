@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v27">
+<meta name="su-ver" content="v28">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -172,6 +172,7 @@ textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-
 .pc-list{margin:4px 0 8px;font-size:12.5px;line-height:2}.pc-chip{display:inline-block;border:1px solid #cbd5e1;background:#f8fafc;border-radius:6px;padding:0 6px;margin:0 3px 2px 0;font-weight:700;color:#334155;font-size:12px;line-height:20px}
 .modal:has(.modal-box.wide){padding:16px;align-items:center}.modal-box.wide{max-width:min(1700px,97vw);width:97vw;max-height:calc(100vh - 32px);overflow-y:auto;overflow-x:hidden;padding-top:0}.modal-box.wide .modal-head{position:sticky;top:0;z-index:20;background:#fff;padding:14px 0 8px;margin-bottom:4px;border-bottom:1px solid #eef1f5}.modal-box.wide .two{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)}.modal-box.wide .tw{overflow:auto;max-height:460px;border:1px solid #e2e8f0;border-radius:8px}.modal-box.wide .tw .grid{width:100%}.modal-box.wide .tw .grid th{position:sticky;top:0}.modal-box.wide .tw td.c-pc{white-space:normal;max-width:220px;font-size:12px}
 .ns-tag{display:inline-block;margin-left:4px;padding:0 6px;border-radius:999px;background:#fef3c7;color:#b45309;border:1px solid #fcd34d;font-size:11px;font-weight:800;line-height:17px;white-space:nowrap;vertical-align:middle}.ns-btn{height:32px;border:1px solid #fcd34d;background:#fffbeb;color:#b45309;border-radius:7px;padding:0 10px;font-weight:800}.ns-btn small{font-weight:700;opacity:.8;margin-left:2px}.ns-btn.on{background:#d97706;border-color:#d97706;color:#fff}.grid td.c-cat{white-space:nowrap}
+.ns-go{display:inline-block;padding:0 7px;border-radius:999px;background:#fef3c7;color:#b45309;border:1px solid #fcd34d;font-weight:800;cursor:pointer}.ns-go small{font-weight:600;margin-left:2px;font-size:10.5px}.ns-go:hover{background:#d97706;color:#fff;border-color:#d97706}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -1371,6 +1372,7 @@ function dashData() {
   var idleFrom = SU.addDays(R.sd, -30), oldOrd = SU.addDays(R.sd, -30);
   items.forEach(function (it) {
     var C = byCat[it.cat] || (byCat[it.cat] = { ordQ: 0, fin: 0, p: 0, b: 0, out: 0, stF: 0, stW: 0, rem: 0, n: 0 });
+    if (notShipped(it)) { C.ns = (C.ns || 0) + 1; var nb = store.balance(it, R.b); C.nsQ = (C.nsQ || 0) + (nb ? nb.oq : 0); }
     var fi = SU.finIndex(it), op = SU.outProc(it), moved = false, stF = 0, anyStock = false;
     it.procs.forEach(function (pr, pi) {
       var out = SU.isOut(pr.n), s = store.sum(it.id, pr.id, R.a, R.b);
@@ -1419,8 +1421,8 @@ function renderDash() {
     '</div>';
   h += '<div class="card chart-card"><h3>' + (D.monthly ? '월별' : '일별') + ' 완성 생산 · 출고</h3>' + dashChart(D) + '</div>';
   /* 구분별 */
-  var cr = SU.CATS.filter(function (c) { return D.byCat[c.id] && D.byCat[c.id].n; }).map(function (c) { var X = D.byCat[c.id]; return '<tr class="go" data-cat="' + c.id + '"><td><span class="cb cat-' + c.id + '">' + c.name + '</span></td><td class="num">' + X.n.toLocaleString() + '</td><td class="num">' + fmt(X.ordQ) + '</td><td class="num">' + fmt(X.fin) + '</td><td class="num">' + pct(X.b, X.p) + '</td><td class="num">' + fmt(X.out) + '</td><td class="num">' + fmt(X.stF) + '</td><td class="num">' + fmt(X.stW) + '</td><td class="num">' + fmt(X.rem) + '</td></tr>'; }).join('');
-  h += '<div class="dash-grid"><div class="card"><h3>구분별 <small class="muted">누르면 그 구분만</small></h3><table class="grid small"><thead><tr><th>구분</th><th class="num">품목</th><th class="num">수주</th><th class="num">완성 생산</th><th class="num">불량률</th><th class="num">출고</th><th class="num">완제품 재고</th><th class="num">재공</th><th class="num">수주 잔량</th></tr></thead><tbody>' + (cr || '<tr><td colspan="9" class="muted">자료 없음</td></tr>') + '</tbody></table></div>';
+  var cr = SU.CATS.filter(function (c) { return D.byCat[c.id] && D.byCat[c.id].n; }).map(function (c) { var X = D.byCat[c.id]; return '<tr class="go" data-cat="' + c.id + '"><td><span class="cb cat-' + c.id + '">' + c.name + '</span></td><td class="num">' + X.n.toLocaleString() + '</td><td class="num">' + fmt(X.ordQ) + '</td><td class="num">' + fmt(X.fin) + '</td><td class="num">' + pct(X.b, X.p) + '</td><td class="num">' + (X.ns ? '<span class="ns-go" data-ns="' + c.id + '" title="수주 ' + fmt(X.nsQ || 0, false) + ' · 누르면 출고 전 제품만">' + X.ns.toLocaleString() + '<small>품목</small></span>' : '-') + '</td><td class="num">' + fmt(X.out) + '</td><td class="num">' + fmt(X.stF) + '</td><td class="num">' + fmt(X.stW) + '</td><td class="num">' + fmt(X.rem) + '</td></tr>'; }).join('');
+  h += '<div class="dash-grid"><div class="card"><h3>구분별 <small class="muted">누르면 그 구분만</small></h3><table class="grid small"><thead><tr><th>구분</th><th class="num">품목</th><th class="num">수주</th><th class="num">완성 생산</th><th class="num">불량률</th><th class="num" title="출고가 한 번도 없는 제품 수 · 누르면 그 구분 출고 전 제품만">출고 전</th><th class="num">출고</th><th class="num">완제품 재고</th><th class="num">재공</th><th class="num">수주 잔량</th></tr></thead><tbody>' + (cr || '<tr><td colspan="10" class="muted">자료 없음</td></tr>') + '</tbody></table></div>';
   /* 공정별 */
   var pr = Object.keys(D.byProc).map(function (k) { return [k, D.byProc[k]]; }).filter(function (x) { return x[1].p || x[1].st; }).sort(function (a, b) { return b[1].p - a[1].p; });
   var maxP = pr.length ? pr[0][1].p : 0;
@@ -1449,6 +1451,7 @@ function renderDash() {
   $$('.mbar [data-per]').forEach(function (b) { b.onclick = function () { S.ui.per = b.dataset.per; renderDash(); }; });
   $('#view').onclick = function (ev) {
     var o = ev.target.closest('[data-open]'); if (o) { openItem(o.dataset.open); return; }
+    var ns = ev.target.closest('[data-ns]'); if (ns) { S.ui.cat = ns.dataset.ns; S.ui.ns = true; S.ui.scope = 'all'; S.ui.view = 'month'; S.ui.page = 1; lsSet('subul.view', 'month'); render(); scrollTo(0, 0); return; }
     var c = ev.target.closest('[data-cat]'); if (c) { S.ui.cat = c.dataset.cat; render(); return; }
     var p = ev.target.closest('[data-proc]'); if (p) { S.ui.proc = p.dataset.proc; S.ui.view = 'day'; S.ui.scope = 'active'; render(); return; }
     var g = ev.target.closest('[data-go]'); if (g) { S.ui.scope = g.dataset.go; S.ui.view = 'day'; S.ui.proc = ''; render(); }
