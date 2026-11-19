@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v14">
+<meta name="su-ver" content="v15">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -474,8 +474,9 @@ var SU = (function () {
       self.erpOq.set(it.id, (self.erpOq.get(it.id) || 0) + num(o.q));
     });
     /* 출고 */
+    info.badDate = 0; info.early = 0; info.beforeD0 = 0; info.days = {};
     E.ship.forEach(function (s) {
-      var d = ymd(s.d); if (!d || d < from) return;
+      var d = ymd(s.d); if (!d) { info.badDate++; return; } if (d < from) { info.early++; return; }
       var q = num(s.q); if (!q) return;
       info.ship++;
       var cat = catOfErp(s), id = s.mk && lineItem.get(s.mk);
@@ -485,7 +486,8 @@ var SU = (function () {
       if (it) info.shipIn++;
       else { it = virtual(s, cat, d); if (it) info.shipNoOrder.push(s); }
       if (!it) return;
-      if (it.d0 && d <= it.d0) return;
+      if (it.d0 && d <= it.d0) { info.beforeD0++; return; }
+      info.days[d] = (info.days[d] || 0) + 1;
       if (!outProc(it)) { info.noOut++; return; }
       var m = self.erpOut.get(it.id); if (!m) self.erpOut.set(it.id, m = new Map());
       m.set(d, (m.get(d) || 0) + q);
@@ -875,7 +877,7 @@ function pendKey() { return 'subul.pending:' + (AU.id || ''); }
 function savePending() { try { localStorage.setItem(pendKey(), JSON.stringify(Array.from(S.pending.values()))); } catch (e) {} }
 function loadPending() { try { (JSON.parse(localStorage.getItem(pendKey()) || '[]') || []).forEach(function (p) { if (p && p.k) S.pending.set(p.k, p); }); } catch (e) {} }
 
-/* ───────── ERP 자료 (출고현황 개별번호 매칭 프로그램이 서버에 모은 수주현황·출고현황) ───────── */
+/* ───────── ERP 자료 (출고현황 제품번호 매칭 프로그램이 서버에 모은 수주현황·출고현황) ───────── */
 function erpKey() { return 'erp:' + (AU.id || ''); }
 async function loadErpCache() {
   try { var c = await idb.get(erpKey()); if (c && c.ship) store.setErp({ reset: true, rev: c.rev, epoch: c.epoch, ship: c.ship, order: c.order, upload: c.up || [] }); S.erp.last = c && c.at ? new Date(c.at) : null; } catch (e) {}
@@ -1457,13 +1459,13 @@ function refreshDay() {
   drawQkSel();
 }
 
-/* ── 작업일보 빠른 입력 : 품번·개별번호로 찾아 공정·수량 넣고 Enter (그날 값에 더함) ── */
+/* ── 작업일보 빠른 입력 : 품번·제품번호로 찾아 공정·수량 넣고 Enter (그날 값에 더함) ── */
 S.qk = { id: '', pid: '', lastProc: '', log: [], hi: 0, sug: [] };
 function quickBox() {
   var open = lsGet('subul.qk', '1') === '1';
   var td = SU.today(), past = S.ui.date < td, fut = S.ui.date > td;
-  return '<div class="qk card' + (open ? '' : ' closed') + (past ? ' past' : '') + (fut ? ' fut' : '') + '" id="qk"><div class="qk-head"><b>⚡ 작업일보 빠른 입력</b>' + (past ? ' <span class="qk-flag">📅 지난 날짜 ' + dlabel(S.ui.date) + ' 입력 중 (밀린 작업일보)</span>' : fut ? ' <span class="qk-flag bad">⚠ 미래 날짜 ' + dlabel(S.ui.date) + '</span>' : '') + ' <span class="muted small">' + dlabel(S.ui.date) + ' · 품번·개별번호(B·D)로 찾고 → 공정 → 양품·불량 → Enter. 그날 이미 있는 값에 <b>더함</b></span><span class="spacer"></span><button type="button" id="qkTog" class="small">' + (open ? '접기' : '펼치기') + '</button></div>' +
-    '<div class="qk-body"><div class="qk-row"><label>입력 날짜<span class="qk-date"><button type="button" id="qkDp" title="전날">◀</button><input type="date" id="qkD" value="' + S.ui.date + '" max="' + SU.today() + '"><button type="button" id="qkDn" title="다음 날">▶</button><button type="button" id="qkDt" class="small">오늘</button></span></label><div class="qk-find"><input id="qkF" placeholder="🔍 품번 · B/D 개별번호 · 품명 · 고객사" autocomplete="off"><div id="qkSug" class="qk-sug"></div></div>' +
+  return '<div class="qk card' + (open ? '' : ' closed') + (past ? ' past' : '') + (fut ? ' fut' : '') + '" id="qk"><div class="qk-head"><b>⚡ 작업일보 빠른 입력</b>' + (past ? ' <span class="qk-flag">📅 지난 날짜 ' + dlabel(S.ui.date) + ' 입력 중 (밀린 작업일보)</span>' : fut ? ' <span class="qk-flag bad">⚠ 미래 날짜 ' + dlabel(S.ui.date) + '</span>' : '') + ' <span class="muted small">' + dlabel(S.ui.date) + ' · 품번·제품번호(B·D)로 찾고 → 공정 → 양품·불량 → Enter. 그날 이미 있는 값에 <b>더함</b></span><span class="spacer"></span><button type="button" id="qkTog" class="small">' + (open ? '접기' : '펼치기') + '</button></div>' +
+    '<div class="qk-body"><div class="qk-row"><label>입력 날짜<span class="qk-date"><button type="button" id="qkDp" title="전날">◀</button><input type="date" id="qkD" value="' + S.ui.date + '" max="' + SU.today() + '"><button type="button" id="qkDn" title="다음 날">▶</button><button type="button" id="qkDt" class="small">오늘</button></span></label><div class="qk-find"><input id="qkF" placeholder="🔍 품번 · B/D 제품번호 · 품명 · 고객사" autocomplete="off"><div id="qkSug" class="qk-sug"></div></div>' +
     '<div id="qkSel" class="qk-sel muted">품목 선택</div>' +
     '<label>공정<select id="qkP"></select></label><label>양품<input id="qkG" class="qi" inputmode="decimal"></label><label>불량<input id="qkB" class="qi bad" inputmode="decimal"></label>' +
     '<button type="button" id="qkAdd" class="primary">더하기 ↵</button></div><div id="qkLog" class="qk-log"></div></div></div>';
@@ -1884,11 +1886,13 @@ function renderSettings() {
     SU.CATS.map(function (c) { return '<div class="tplrow"><b>' + c.name + '</b>' + procChips(store.tpl(c.id), 'tpl_' + c.id) + '</div>'; }).join('') +
     (adm ? '<div class="act"><button type="button" id="tplSave" class="primary">기본 공정 저장</button><span class="msg" id="tplMsg"></span></div>' : '<div class="muted small">관리자만 변경 가능</div>') + '</div>';
   var inf = store.erpInfo || {}, E = store.erp;
-  h += '<div class="card"><h3>ERP 수주·출고 자동 연동 <small class="muted">출고현황 개별번호 매칭 프로그램에 올린 수주현황·출고현황 (같은 서버)</small></h3>' +
+  h += '<div class="card"><h3>ERP 수주·출고 자동 연동 <small class="muted">출고현황 제품번호 매칭 프로그램에 올린 수주현황·출고현황 (같은 서버)</small></h3>' +
     '<div class="kv">받은 자료: 수주 ' + E.order.size.toLocaleString() + '줄 · 출고 ' + E.ship.size.toLocaleString() + '줄 · 마지막 받음 ' + (S.erp.last ? hhmm(S.erp.last) : '-') + ' (1분마다 자동)' + (S.erp.err ? ' · <span class="neg">' + esc(S.erp.err) + '</span>' : '') + '</div>' +
     '<div class="kv">반영 시작일 <input type="date" id="erpFrom" value="' + esc(inf.from || '') + '"' + (adm ? '' : ' disabled') + '> ' + (adm ? '<button type="button" id="erpFromSave" class="small">저장</button>' : '') + ' <span class="muted small">이 날짜부터의 수주·출고만 반영. 시트를 가져오면 «시트 마지막 출고 다음 날»로 자동 설정 (시트 출고와 겹치지 않게)</span></div>' +
+    '<div class="kv">출고일자별 반영 줄: ' + (Object.keys(inf.days || {}).sort().map(function (d) { return d.slice(5).replace('-', '/') + ' ' + inf.days[d]; }).join(' · ') || '없음') +
+      ((inf.early || inf.beforeD0 || inf.badDate) ? ' <span class="muted small">— 뺀 줄: 반영 시작일 전 ' + (inf.early || 0) + ' · 품목 기초재고 날짜 이전 ' + (inf.beforeD0 || 0) + ' · 출고일자 못 읽음 ' + (inf.badDate || 0) + '</span>' : '') + '</div>' +
     '<div class="kv">결과: 수주 ' + (inf.order || 0).toLocaleString() + '줄 (있던 품목 ' + (inf.orderIn || 0) + ' · 새 ERP 품목 ' + (inf.orderNew || 0) + ') · 출고 ' + (inf.ship || 0).toLocaleString() + '줄 (품목 찾음 ' + (inf.shipIn || 0) + ' · 수주 없이 출고 ' + (inf.shipNoOrder || []).length + ')' + (inf.noOut ? ' · <span class="neg">출고 공정 없는 품목에 온 출고 ' + inf.noOut + '</span>' : '') + (inf.amb ? ' · 같은 번호 품목 여럿(출고 공정 있는 것 우선) ' + inf.amb : '') + '</div>' +
-    '<div class="note">품목 찾는 순서: ① 비고·규격의 개별번호 (내부보강 B·레이저 D) ② 품번 (부자재·유통/OEM) ③ 품번+규격 (번호 없는 내부보강·레이저). 못 찾으면 «ERP 품목»을 자동으로 만듦 (구분 기본 공정). 그날 출고 칸에 사람이 직접 넣으면 그 값이 ERP 보다 우선.</div>' +
+    '<div class="note">품목 찾는 순서: ① 비고·규격의 제품번호 (내부보강 B·레이저 D) ② 품번 (부자재·유통/OEM) ③ 품번+규격 (번호 없는 내부보강·레이저). 못 찾으면 «ERP 품목»을 자동으로 만듦 (구분 기본 공정). 그날 출고 칸에 사람이 직접 넣으면 그 값이 ERP 보다 우선.</div>' +
     ((inf.shipNoOrder || []).length ? '<div class="lbl">수주 없이 출고된 줄 (수주현황을 아직 안 올렸거나 반영 시작일 전 수주)</div><table class="grid small"><thead><tr><th>출고일</th><th>주문번호</th><th>고객</th><th>품번</th><th>품명</th><th>규격</th><th>비고</th><th class="num">수량</th></tr></thead><tbody>' + inf.shipNoOrder.slice(0, 30).map(function (r) { return '<tr><td>' + esc(r.d) + '</td><td>' + esc(r.o) + '</td><td>' + esc(r.c) + '</td><td>' + esc(r.p) + '</td><td>' + esc(r.n) + '</td><td>' + esc(r.s) + '</td><td>' + esc(r.r) + '</td><td class="num">' + fmt(SU.num(r.q)) + '</td></tr>'; }).join('') + '</tbody></table>' : '') +
     erpUpLine() +
     '<div class="act"><a class="btn-link" href="' + CM_URL + '" target="_blank" rel="noopener">📤 출고매칭에 파일 올리러 가기</a><button type="button" id="erpNow">지금 받기</button></div></div>';
