@@ -2952,5 +2952,128 @@ if(onPages()){
 })();
 </script>
 
+<style id="dbf-menu-v1-style">
+.dbfm-btn{position:fixed;top:14px;left:14px;z-index:2147481999;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;padding:0;margin:0;
+  background:#fff;border:1px solid #e2e8f0;border-radius:9px;color:#334155;cursor:pointer;box-shadow:0 1px 2px rgba(15,23,42,.05);transition:background .15s,border-color .15s}
+.dbfm-btn:hover{background:#f1f5f9;border-color:#cbd5e1}
+.dbfm-btn:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}
+.dbfm-btn svg{width:20px;height:20px;display:block}
+.dbfm-scrim{position:fixed;inset:0;z-index:2147482000;background:rgba(15,23,42,.35);opacity:0;pointer-events:none;transition:opacity .2s}
+.dbfm-scrim.on{opacity:1;pointer-events:auto}
+.dbfm-dr{position:fixed;top:0;left:0;bottom:0;z-index:2147482001;width:270px;max-width:84vw;background:#fff;color:#0f172a;border-right:1px solid #e2e8f0;
+  box-shadow:8px 0 30px rgba(15,23,42,.12);transform:translateX(-102%);transition:transform .22s ease;display:flex;flex-direction:column;
+  font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic","맑은 고딕",system-ui,sans-serif;text-align:left}
+.dbfm-dr.on{transform:none}
+.dbfm-hd{display:flex;align-items:center;padding:16px 16px 14px 20px;border-bottom:1px solid #eef2f6}
+.dbfm-hd b{font-size:15px;font-weight:700}
+.dbfm-x{margin-left:auto;background:none;border:none;color:#94a3b8;font-size:22px;line-height:1;cursor:pointer;padding:4px 8px;border-radius:7px}
+.dbfm-x:hover{background:#f1f5f9;color:#475569}
+.dbfm-lb{font-size:12px;color:#94a3b8;padding:16px 20px 6px}
+.dbfm-dr a{display:flex;align-items:center;gap:12px;margin:1px 10px;padding:8px 12px;border-radius:9px;color:#1e293b;text-decoration:none;font-size:15px;font-weight:400}
+.dbfm-dr a:hover{background:#f1f5f9}
+.dbfm-dr a .i{font-size:18px;width:22px;text-align:center}
+.dbfm-dr a.cur{background:#eff6ff;color:#1d4ed8;font-weight:600}
+.dbfm-dr a.cur::after{content:"현재";margin-left:auto;font-size:11px;font-weight:600;color:#2563eb;background:#dbeafe;border-radius:999px;padding:2px 8px}
+.dbfm-sep{height:1px;background:#eef2f6;margin:8px 20px}
+@media print{.dbfm-btn,.dbfm-scrim,.dbfm-dr{display:none!important}}
+</style>
+<style>.dbfm-btn{top:6px}</style>
+<script id="dbf-menu-v1" data-cur="subul" data-sel="header.topbar">
+/* 업무분석도구 공통 메뉴(왼쪽 위 삼선) — 홈페이지와 같은 바로가기, 흰 바탕용 */
+(function(){
+  var me=document.currentScript, CUR=(me&&me.getAttribute('data-cur'))||'', SEL=(me&&me.getAttribute('data-sel'))||'', PAD=(me&&me.getAttribute('data-pad'))||'';
+  var B='https://useran-coder.github.io/';
+  var LINKS=[
+    {k:'home',i:'🏠',n:'업무분석도구 홈',u:B+'bookmark/'},
+    {sep:1},
+    {k:'sales',i:'📈',n:'매출 분석 도구',u:B+'sales/'},
+    {k:'purchase',i:'📦',n:'매입 분석 도구',u:B+'purchase/'},
+    {k:'price',i:'💲',n:'단가표 만들기',u:B+'price/'},
+    {k:'material',i:'🧱',n:'원자재 사용현황',u:B+'material/'},
+    {k:'cost',i:'🧮',n:'가공비 견적기',u:B+'cost/'},
+    {k:'coil',i:'🌀',n:'코일 슬리팅 조합 · 발주기',u:B+'coil/'},
+    {k:'salesteam',i:'👥',n:'영업팀 업무분석',u:B+'salesteam/'},
+    {k:'codematch',i:'🔗',n:'출고현황 Code Match',u:B+'codematch/'},
+    {k:'subul',i:'🏭',n:'수불관리',u:B+'subul/'}
+  ];
+  /* dbf-menu-auto (2026-11-19): 바로가기 목록을 홈페이지(bookmark)의 도구 목록(TOOLS)에서 자동으로 받아 옴
+     → 홈에 도구를 추가하면 모든 도구의 왼쪽 메뉴에 저절로 나타남. 위 목록은 받기 전·실패 때 쓰는 기본값 */
+  var LKEY='dbfMenuToolsV2';
+  function dbfmList(L){ return [LINKS[0],{sep:1}].concat(L); }
+  try{ var lc0=JSON.parse(localStorage.getItem(LKEY)||'null'); if(lc0&&lc0.list&&lc0.list.length>2) LINKS=dbfmList(lc0.list); }catch(_e){}
+  function dbfmFetch(){
+    var lc=null; try{ lc=JSON.parse(localStorage.getItem(LKEY)||'null'); }catch(_e){}
+    if(lc && lc.at && Date.now()-lc.at<30*60000) return;
+    if(!window.fetch) return;
+    fetch(B+'bookmark/',{cache:'no-cache'}).then(function(r){ return r.ok?r.text():''; }).then(function(t){
+      var a=t.indexOf('var TOOLS'), b=a<0?-1:t.indexOf('];',a); if(b<0) return;
+      var seg=t.slice(a,b), re=/key:\s*'([^']+)'\s*,\s*name:\s*'([^']+)'\s*,\s*icon:\s*'([^']+)'[\s\S]*?url:\s*'([^']+)'/g, m, L=[];
+      while((m=re.exec(seg))) L.push({k:m[1],n:m[2],i:m[3],u:m[4]});
+      if(L.length<3) return;
+      try{ localStorage.setItem(LKEY, JSON.stringify({at:Date.now(), list:L})); }catch(_e){}
+      var nl=dbfmList(L);
+      if(JSON.stringify(nl)!==JSON.stringify(LINKS)){ LINKS=nl; if(dr && !dr.classList.contains('on')){ try{ dr.remove(); scrim.remove(); }catch(_e){} dr=null; } }
+    }).catch(function(){});
+  }
+  setTimeout(dbfmFetch, 2500);
+  var scrim, dr, btn;
+  function build(){
+    if(dr) return;
+    scrim=document.createElement('div'); scrim.className='dbfm-scrim';
+    dr=document.createElement('nav'); dr.className='dbfm-dr'; dr.setAttribute('aria-label','메뉴'); dr.setAttribute('aria-hidden','true');
+    dr.innerHTML='<div class="dbfm-hd"><b>메뉴</b><button type="button" class="dbfm-x" aria-label="닫기">×</button></div><div class="dbfm-lb">바로가기</div>'+
+      LINKS.map(function(l){
+        if(l.sep) return '<div class="dbfm-sep"></div>';
+        var c=l.k===CUR;
+        return '<a href="'+l.u+'"'+(c?' class="cur" data-cur="1"':' target="_blank" rel="noopener"')+'><span class="i">'+l.i+'</span>'+l.n+'</a>';
+      }).join('');
+    document.body.appendChild(scrim); document.body.appendChild(dr);
+    scrim.addEventListener('click', close);
+    dr.querySelector('.dbfm-x').addEventListener('click', close);
+    dr.addEventListener('click', function(e){
+      var a=e.target.closest&&e.target.closest('a'); if(!a) return;
+      if(a.getAttribute('data-cur')){ e.preventDefault(); }
+      close();
+    });
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape' && dr.classList.contains('on')) close(); });
+  }
+  function open(){ build(); scrim.classList.add('on'); dr.classList.add('on'); dr.setAttribute('aria-hidden','false'); var f=dr.querySelector('a'); if(f) try{ f.focus({preventScroll:true}); }catch(_e){} }
+  function close(){ if(!dr) return; scrim.classList.remove('on'); dr.classList.remove('on'); dr.setAttribute('aria-hidden','true'); if(btn) try{ btn.focus({preventScroll:true}); }catch(_e){} }
+  // 버튼은 브라우저 왼쪽 위에 고정(홈페이지와 같은 자리). 머리글 왼쪽 끝(CI)이 버튼과 겹치면 머리글 왼쪽 여백만 늘림
+  var host=null, roomFor=null, ROOM=14+40+14;
+  function findHost(){ var h=null, sels=SEL.split('|'); for(var i=0;i<sels.length && !h;i++){ try{ h=document.querySelector(sels[i]); }catch(_e){} } return h; }
+  function room(){
+    if(!host || !host.isConnected) host=findHost();
+    if(!host) return;
+    // data-pad 가 있으면(영업팀: 머리글이 카드 모양) 머리글 자체를 재고 그 상자(body)의 왼쪽 여백을 늘림
+    var tgt = PAD ? document.querySelector(PAD) : host; if(!tgt) return;
+    tgt.style.removeProperty('padding-left');
+    var fc=null;
+    if(PAD){ fc=host.getBoundingClientRect(); }
+    else { var k=host.children; for(var i=0;i<k.length;i++){ var r=k[i].getBoundingClientRect(); if(r.width>0 && r.height>0){ fc=r; break; } } }
+    if(!fc || fc.width===0 || fc.top > 90) return;   // 머리글이 화면 위쪽에 없으면 그대로
+    if(fc.left < ROOM){ var pl=parseFloat(getComputedStyle(tgt).paddingLeft)||0; tgt.style.setProperty('padding-left',(pl+ROOM-fc.left)+'px','important'); }
+  }
+  function place(){
+    if(!btn || !btn.isConnected){
+      btn=document.createElement('button'); btn.type='button'; btn.className='dbfm-btn'; btn.title='메뉴'; btn.setAttribute('aria-label','메뉴');
+      btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
+      btn.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); open(); });
+      document.body.appendChild(btn);
+    }
+    if(!host || !host.isConnected || roomFor!==host){ room(); roomFor=host; }
+    return true;
+  }
+  function start(){
+    place();
+    // 로그인 뒤에 화면이 만들어지거나 머리글을 다시 그리는 도구도 있어, 버튼이 없어지면 다시 붙임
+    var q=0, mo=new MutationObserver(function(){ if(q) return; q=1; requestAnimationFrame(function(){ q=0; place(); }); });
+    mo.observe(document.body,{childList:true,subtree:true});
+    var rt=0; window.addEventListener('resize', function(){ clearTimeout(rt); rt=setTimeout(room, 120); });
+  }
+  window.dbfMenu={open:open,close:close};
+  if(document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+})();
+</script>
 </body>
 </html>
