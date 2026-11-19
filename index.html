@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v7">
+<meta name="su-ver" content="v8">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -140,6 +140,7 @@ textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-
 .qk-flag{display:inline-block;margin-left:6px;background:#fde68a;color:#7a4500;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:800}.qk-flag.bad{background:#fecaca;color:#991b1b}
 
 .grid th.sortable{cursor:pointer;user-select:none}.grid th.sortable:hover{filter:brightness(1.15)}.grid th.sorted{box-shadow:inset 0 -3px 0 #fbbf24}.grid th .sarr{margin-left:4px;font-size:10px;color:#fbbf24}.grid th.num .sarr{float:left;margin:0 4px 0 0}.grid th .dgo{margin-left:2px;font-size:10px;opacity:.65;cursor:pointer}.grid th .dgo:hover{opacity:1;color:#fbbf24}
+.selF{height:32px;border:1px solid #cbd5e1;border-radius:7px;padding:0 6px;max-width:170px}.selF.on{border-color:#2f6ac6;background:#eef4ff;font-weight:700}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -802,7 +803,7 @@ var store = new SU.Store();
 var S = {
   sync: { pos: 0, epoch: '', rev: 0, busy: false, err: '', last: null, srv: '' },
   pending: new Map(),     // 아직 서버에 못 보낸 칸 key → {k,v,base}
-  ui: { cat: 'all', view: lsGet('subul.view', 'dash'), date: SU.today(), q: '', scope: 'active', page: 1, metric: 'stock', proc: '', per: 'month' },
+  ui: { cust: '', pname: '', cat: 'all', view: lsGet('subul.view', 'dash'), date: SU.today(), q: '', scope: 'active', page: 1, metric: 'stock', proc: '', per: 'month' },
   imp: null,
   erp: { busy: false, err: '', last: null, n: 0 }
 };
@@ -990,6 +991,8 @@ function filtered() {
   var list = sortedItems().filter(function (it) {
     if (u.cat !== 'all' && it.cat !== u.cat) return false;
     if (!matchQ(it, u.q)) return false;
+    if (u.cust && (it.cust || '(고객사 없음)') !== u.cust) return false;
+    if (u.pname && pnameOf(it) !== u.pname) return false;
     if (u.scope === 'active' && !isActive(it, d)) return false;
     if (!scopeOk(it, u.scope, d)) return false;
     if (u.proc && (u.view === 'day' || u.view === 'month') && !it.procs.some(function (p) { return p.n === u.proc; })) return false;
@@ -1076,6 +1079,24 @@ function bindSort(rerender) {
     });
   });
 }
+/* 고객사·품명 선택 필터 : 지금 구분 탭 품목에서 목록을 만들고, 품명은 고른 고객사 안에서만 */
+function pnameOf(it) { return it.n || it.it || '(품명 없음)'; }
+function fillSelF() {
+  store.deriveErp(); var u = S.ui, cc = {}, nc = {};
+  store.items.forEach(function (it) {
+    if (u.cat !== 'all' && it.cat !== u.cat) return;
+    var c = it.cust || '(고객사 없음)'; cc[c] = (cc[c] || 0) + 1;
+    if (!u.cust || c === u.cust) { var n = pnameOf(it); nc[n] = (nc[n] || 0) + 1; }
+  });
+  function opts(el, map, all, cur) {
+    var keys = Object.keys(map).sort(function (a, b) { return (a.charAt(0) === '(') - (b.charAt(0) === '(') || a.localeCompare(b, 'ko'); });
+    if (cur && !map[cur]) { keys.unshift(cur); map[cur] = 0; }
+    var sig = keys.map(function (k) { return k + map[k]; }).join('|');
+    if (el.dataset.sig !== sig) { el.innerHTML = '<option value="">' + all + '</option>' + keys.map(function (k) { return '<option value="' + esc(k) + '">' + esc(k) + ' (' + map[k] + ')</option>'; }).join(''); el.dataset.sig = sig; }
+    el.value = cur || ''; el.classList.toggle('on', !!cur);
+  }
+  opts($('#custF'), cc, '모든 고객사', u.cust || ''); opts($('#nameF'), nc, '모든 품명', u.pname || '');
+}
 function scopeOk(it, sc, d) {
   if (sc === 'chk') return !!(it.chk && it.chk.length);
   if (sc === 'erp') return it.src === 'erp';
@@ -1095,12 +1116,16 @@ function renderShell() {
       '<span class="spacer"></span>' +
       '<div class="datebox" id="dateBox"><button id="dPrev" title="전날">◀</button><input type="date" id="dDate"><button id="dNext" title="다음 날">▶</button><button id="dToday" class="small">오늘</button></div>' +
       '<input id="q" class="search" placeholder="🔍 품번·품명·고객사·수주번호·규격 (띄어쓰기로 여러 단어)">' +
+      '<select id="custF" class="selF" title="이 고객사 품목만 보기"><option value="">모든 고객사</option></select>' +
+      '<select id="nameF" class="selF" title="이 품명만 보기 (고객사를 고르면 그 고객사 품명만 나옴)"><option value="">모든 품명</option></select>' +
       '<select id="procF" title="이 공정 줄만 보기 (작업일보 공정별 입력)"><option value="">모든 공정</option></select>' +
       '<select id="scope"><option value="active">진행 중 품목</option><option value="all">전체 품목</option><option value="rem">수주 잔량 있음</option><option value="neg">마이너스 재고</option><option value="erp">ERP 자동 품목</option><option value="chk">확인 필요</option></select>' +
     '</div>' +
     '<div id="view"></div><div id="status" class="status"></div>';
   $$('#views button').forEach(function (b) { b.onclick = function () { S.ui.view = b.dataset.v; S.ui.page = 1; lsSet('subul.view', S.ui.view); render(); }; });
   $('#procF').onchange = function () { S.ui.proc = this.value; S.ui.page = 1; render(); };
+  $('#custF').onchange = function () { S.ui.cust = this.value; S.ui.pname = ''; S.ui.page = 1; render(); };
+  $('#nameF').onchange = function () { S.ui.pname = this.value; S.ui.page = 1; render(); };
   $('#dDate').onchange = function () { if (this.value) { S.ui.date = this.value; S.ui.page = 1; render(); } };
   function monthly() { return S.ui.view === 'month' || (S.ui.view === 'dash' && S.ui.per === 'month'); }
   function stepD() { return S.ui.view === 'dash' && S.ui.per === 'week' ? 7 : 1; }
@@ -1128,7 +1153,8 @@ function render() {
   var lv = u.view === 'day' || u.view === 'month';
   $('#dateBox').style.display = (lv || u.view === 'dash') ? '' : 'none';
   $('#q').style.display = (lv || u.view === 'dash') ? '' : 'none';
-  $('#scope').style.display = $('#procF').style.display = lv ? '' : 'none';
+  $('#scope').style.display = $('#procF').style.display = $('#custF').style.display = $('#nameF').style.display = lv ? '' : 'none';
+  if (lv) fillSelF();
   $('#scope').value = u.scope;
   var pl = store.procList(), pf = $('#procF');
   if (pf.dataset.sig !== pl.join('|')) { pf.innerHTML = '<option value="">모든 공정</option>' + pl.map(function (n) { return '<option>' + esc(n) + '</option>'; }).join(''); pf.dataset.sig = pl.join('|'); }
