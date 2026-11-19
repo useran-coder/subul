@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v15">
+<meta name="su-ver" content="v16">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -159,6 +159,7 @@ textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-
 .cbx-it.cur{font-weight:700}
 .cbx-it:hover,.cbx-it.hi{background:#2f6ac6;color:#fff}.cbx-it:hover small,.cbx-it.hi small{color:#dbeafe}
 .cbx-none{padding:6px 10px;color:#94a3b8;font-size:12px}
+.mbar .spacer{flex:1}.mbar .msel{font-size:12.5px;color:#475569;font-weight:700}.mbar .msel select{height:28px;border:1px solid #cbd5e1;border-radius:7px;margin-left:4px}.grid td.c-pc{font-variant-numeric:tabular-nums;color:#334155;white-space:nowrap}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -1028,11 +1029,12 @@ function filtered() {
 }
 /* ── 머리글 눌러 정렬 : 한 번 = 오름차순 ▲, 두 번 = 내림차순 ▼, 세 번 = 원래 순서 ── */
 S.sort = { day: null, month: null };
-var TEXT_SORT = { cat: 1, cust: 1, ord: 1, p: 1, it: 1, n: 1, s: 1, memo: 1, proc: 1, pn: 1 };
+var TEXT_SORT = { pc: 1, cat: 1, cust: 1, ord: 1, p: 1, it: 1, n: 1, s: 1, memo: 1, proc: 1, pn: 1 };
 function sortVal(it, k) {
   var u = S.ui, d = u.date;
   if (k === 'cat') return String(SU.CAT_NAME[it.cat] || it.cat || '');
   if (k === 'pn') return [it.it || it.n, it.s].filter(Boolean).join(' ');
+  if (k === 'pc') return prodCode(it);
   if (k === 'proc') { var ps0 = shownProcs(it); return ps0.length ? ps0[0].n : ''; }
   if (TEXT_SORT[k]) return String(it[k] == null ? '' : it[k]);
   /* 숫자 칸 : 보이는 공정 줄 중 오름차순은 가장 작은 값, 내림차순은 가장 큰 값으로 비교 (공정 필터를 고르면 그 공정 값) */
@@ -1392,9 +1394,16 @@ function bindChart() {
 
 /* ───────── 일일 입력 ───────── */
 var DAY_COLS = [
-  { k: 'cust', t: '고객사' }, { k: 'ord', t: '수주번호' }, { k: 'p', t: '품번' }, { k: 'it', t: '품목' }, { k: 'n', t: '품명' }, { k: 's', t: '규격' }, { k: 'memo', t: '비고' }
+  { k: 'cust', t: '고객사' }, { k: 'ord', t: '수주번호' }, { k: 'p', t: '품번' }, { k: 'pc', t: '제품번호' }, { k: 'it', t: '품목' }, { k: 'n', t: '품명' }, { k: 's', t: '규격' }, { k: 'memo', t: '비고' }
 ];
-function usedCols(items) { return DAY_COLS.filter(function (c) { return items.some(function (it) { return it[c.k]; }); }); }
+/* 제품번호 : 내부보강 B·레이저 D·자동 S·숫자 6자리 (품목 code → 비고 → 규격 순) */
+function prodCode(it) {
+  if (it.code) return String(it.code).toUpperCase();
+  var m = String((it.memo || '') + ' ' + (it.s || '')).toUpperCase().match(/(?:^|[^A-Z0-9])(B\d{4,5}|D\d{4}|S\d{5}|\d{6})(?=$|[^A-Z0-9])/);
+  return m ? m[1] : '';
+}
+function colVal(it, k) { return k === 'pc' ? prodCode(it) : it[k]; }
+function usedCols(items) { return DAY_COLS.filter(function (c) { return items.some(function (it) { return colVal(it, c.k); }); }); }
 function shownProcs(it) { var f = S.ui.proc; return f ? it.procs.filter(function (p) { return p.n === f; }) : it.procs; }
 function renderDay() {
   var u = S.ui, d = u.date, list = filtered(), shown = list.slice(0, u.page * PAGE), cols = usedCols(shown);
@@ -1409,7 +1418,7 @@ function renderDay() {
       h += '<tr class="' + cls + '" data-i="' + it.id + '" data-p="' + pi + '">';
       if (si === 0) {
         h += '<td rowspan="' + n + '" class="c-cat"><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || it.cat) + '</span>' + (it.src === 'erp' ? '<span class="erp-tag" title="ERP 수주·출고로 자동 생긴 품목">ERP</span>' : '') + (it.chk && it.chk.length ? '<span class="warn-dot" title="' + esc(it.chk.join('\n')) + '">!</span>' : '') + '</td>';
-        cols.forEach(function (c) { h += '<td rowspan="' + n + '" class="c-' + c.k + (c.k === 'p' || c.k === 'n' ? ' link' : '') + '" data-open="' + it.id + '" title="' + esc(it[c.k]) + '">' + esc(it[c.k]) + '</td>'; });
+        cols.forEach(function (c) { var cv = colVal(it, c.k); h += '<td rowspan="' + n + '" class="c-' + c.k + (c.k === 'p' || c.k === 'n' ? ' link' : '') + '" data-open="' + it.id + '" title="' + esc(cv) + '">' + esc(cv) + '</td>'; });
       }
       h += '<td class="c-proc" title="' + esc(out ? '' : '재고를 빼 가는 곳: ' + (store.usedBy(it, pi).join(', ') || '없음')) + '">' + esc(pr.n) + (pr.out && pr.out.length ? ' <span class="lk">🔗</span>' : '') + '</td>';
       if (out) {
@@ -1597,8 +1606,13 @@ function renderMonth() {
   var u = S.ui, d = u.date, ms = SU.monthStart(d), me_ = SU.monthEnd(d), days = [], x = ms;
   while (x <= me_) { days.push(x); x = SU.addDays(x, 1); }
   var list = filtered(), shown = list.slice(0, u.page * PAGE), td = SU.today();
-  var h = '<div class="mbar"><b>' + ms.slice(0, 4) + '년 ' + Number(ms.slice(5, 7)) + '월</b> 보기: ' + Object.keys(METRICS).map(function (m) { return '<button data-m="' + m + '" class="' + (u.metric === m ? 'on' : '') + '">' + METRICS[m] + '</button>'; }).join('') + '<span class="muted"> · 머리글을 누르면 정렬 · 날짜 옆 ↗ 는 그날 입력 화면으로 · <span class="erpc">파란 글씨</span> = ERP 출고현황에서 자동</span></div>';
-  h += '<div class="tbl-wrap"><table class="grid month"><thead><tr>' + sortTh('cat', 'c-cat', '구분') + sortTh('p', 'c-p', '품번') + sortTh('pn', 'c-n', '품명·규격') + sortTh('proc', 'c-proc', '공정') + sortTh('base', 'num', '기초') +
+  /* 공정 버튼 : 지금 구분 탭 품목에 있는 공정만 (출고는 맨 뒤) */
+  var pset = {}; store.items.forEach(function (it) { if (u.cat !== 'all' && it.cat !== u.cat) return; (it.procs || []).forEach(function (p) { pset[p.n] = 1; }); });
+  var pnames = store.procList().filter(function (n) { return pset[n]; });
+  var h = '<div class="mbar"><b>' + ms.slice(0, 4) + '년 ' + Number(ms.slice(5, 7)) + '월</b> 공정: <button data-pf="" class="' + (!u.proc ? 'on' : '') + '">전체</button>' + pnames.map(function (n) { return '<button data-pf="' + esc(n) + '" class="' + (u.proc === n ? 'on' : '') + '">' + esc(n) + '</button>'; }).join('') +
+    '<span class="spacer"></span><label class="msel">숫자 <select id="mMetric">' + Object.keys(METRICS).map(function (m) { return '<option value="' + m + '"' + (u.metric === m ? ' selected' : '') + '>' + METRICS[m] + '</option>'; }).join('') + '</select></label>' +
+    '<span class="muted small">머리글 누르면 정렬 · 날짜 옆 ↗ 그날 입력 · <span class="erpc">파란 글씨</span> = ERP 출고</span></div>';
+  h += '<div class="tbl-wrap"><table class="grid month"><thead><tr>' + sortTh('cat', 'c-cat', '구분') + sortTh('p', 'c-p', '품번') + sortTh('pc', 'c-pc', '제품번호') + sortTh('pn', 'c-n', '품명·규격') + sortTh('proc', 'c-proc', '공정') + sortTh('base', 'num', '기초') +
     days.map(function (dd) { var w = new Date(dd + 'T00:00:00').getDay(); return sortTh('d' + dd, 'num day' + (w === 0 ? ' sun' : w === 6 ? ' sat' : '') + (dd === td ? ' today' : ''), Number(dd.slice(8)) + '<span class="dgo" title="그날 입력 화면으로">↗</span>', ' data-d="' + dd + '"'); }).join('') + sortTh('tot', 'num', '합계') + '</tr></thead><tbody>';
   var before = SU.addDays(ms, -1);
   shown.forEach(function (it) {
@@ -1608,7 +1622,7 @@ function renderMonth() {
       if (u.proc && pr.n !== u.proc) return;
       if (u.metric === 'out' && !out) return;
       if (u.metric !== 'out' && u.metric !== 'p' && out) return;
-      h += '<tr class="' + (pi === 0 || u.metric === 'out' ? 'first' : '') + '"><td class="c-cat"><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span></td><td class="c-p link" data-open="' + it.id + '">' + esc(it.p) + '</td><td class="c-n">' + esc([it.it || it.n, it.s].filter(Boolean).join(' · ')) + (it.cust ? ' <small class="muted">' + esc(it.cust) + '</small>' : '') + '</td><td class="c-proc">' + esc(pr.n) + '</td>';
+      h += '<tr class="' + (pi === 0 || u.metric === 'out' ? 'first' : '') + '"><td class="c-cat"><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span></td><td class="c-p link" data-open="' + it.id + '">' + esc(it.p) + '</td><td class="c-pc">' + esc(prodCode(it)) + '</td><td class="c-n">' + esc([it.it || it.n, it.s].filter(Boolean).join(' · ')) + (it.cust ? ' <small class="muted">' + esc(it.cust) + '</small>' : '') + '</td><td class="c-proc">' + esc(pr.n) + '</td>';
       var b0 = u.metric === 'stock' ? store.stock(it, pi, before) : null;
       if (b0 == null) h += '<td class="num muted"></td>';
       else { var ak = store.adj.get(it.id + '|' + pr.id + '|' + before), ar = ak ? store.recs.get('a:' + it.id + '|' + pr.id + '|' + before) : null;
@@ -1623,11 +1637,12 @@ function renderMonth() {
       h += '<td class="num tot">' + (u.metric === 'stock' ? fmt(store.stock(it, pi, me_ < td ? me_ : td)) : fmt(tot)) + '</td></tr>';
     });
   });
-  if (!shown.length) h += '<tr><td colspan="' + (days.length + 6) + '" class="empty">조건에 맞는 품목 없음</td></tr>';
+  if (!shown.length) h += '<tr><td colspan="' + (days.length + 7) + '" class="empty">조건에 맞는 품목 없음</td></tr>';
   h += '</tbody></table></div>';
   if (list.length > shown.length) h += '<div class="more"><button id="more">더 보기 (' + shown.length.toLocaleString() + ' / ' + list.length.toLocaleString() + ' 품목)</button></div>';
   $('#view').innerHTML = h;
-  $$('.mbar button').forEach(function (b) { b.onclick = function () { S.ui.metric = b.dataset.m; renderMonth(); }; });
+  $$('.mbar [data-pf]').forEach(function (b) { b.onclick = function () { S.ui.proc = b.dataset.pf; S.ui.page = 1; if (SU.isOut(S.ui.proc)) S.ui.metric = 'out'; else if (S.ui.metric === 'out') S.ui.metric = 'stock'; render(); }; });
+  $('#mMetric').onchange = function () { S.ui.metric = this.value; renderMonth(); };
   $$('th.day .dgo').forEach(function (a) { a.onclick = function (ev) { ev.stopPropagation(); S.ui.date = a.closest('th').dataset.d; S.ui.view = 'day'; render(); }; });
   bindSort(renderMonth);
   $('#view').onclick = function (ev) { var o = ev.target.closest('[data-open]'); if (o) openItem(o.dataset.open); };
