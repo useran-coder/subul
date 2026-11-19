@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v21">
+<meta name="su-ver" content="v22">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -167,6 +167,7 @@ textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-
 .grid.month tr.outrow td{background:#fffbeb}.grid.month tr.outrow td.c-proc{color:#b45309}
 .sc-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:12px 0 8px}.sc-bar button{border:1px solid #cbd5e1;background:#fff;border-radius:7px;padding:4px 10px;font-weight:700;color:#475569;font-size:12.5px}.sc-bar button.on{background:#2f6ac6;border-color:#2f6ac6;color:#fff}.sc-bar button small{opacity:.75}.sc-bar input{height:30px;border:1px solid #cbd5e1;border-radius:7px;padding:0 8px}.sc-wrap{max-height:520px}.grid td.ok{color:#15803d}
 .grid td.c-proc .pname{cursor:pointer;border-bottom:1px dashed transparent}.grid td.c-proc .pname:hover{color:#2f6ac6;border-bottom-color:#2f6ac6}.padd-menu .cbx-it.dis{opacity:.35;cursor:default}.padd-menu .cbx-it.del span{color:#b91c1c}.padd-menu .cbx-none.small{font-size:11.5px;line-height:1.5;border-top:1px solid #e2e8f0}
+.pc-wait{color:#94a3b8;font-size:12px;font-weight:600}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -1481,12 +1482,18 @@ function shipCodes(it) {
     .forEach(function (s) { var c = String(s.code || s.ac || '').toUpperCase(); if (c && !seen[c]) { seen[c] = 1; out.push(c); } });
   return out;
 }
+/* 화면용 제품번호 칸 : 번호가 있으면 번호, 아직 출고 안 된 부자재·유통은 흐리게 «출고 전» */
+function prodCell(it) {
+  var c = prodCode(it); if (c) return esc(c);
+  if (it.cat === 'part' || it.cat === 'oem') return '<span class="pc-wait" title="아직 출고 안 됨 — 출고매칭이 출고 줄마다 번호(S00001…)를 붙이면 자동 표시">출고 전</span>';
+  return '';
+}
 function prodTitle(it) {
   var c = prodCode(it); if (!c || c.indexOf(' 외 ') < 0) return c;
   return '출고매칭 제품번호 (출고 줄마다)\n' + shipCodes(it).join(', ');
 }
 function colVal(it, k) { return k === 'pc' ? prodCode(it) : it[k]; }
-function usedCols(items) { return DAY_COLS.filter(function (c) { return items.some(function (it) { return colVal(it, c.k); }); }); }
+function usedCols(items) { return DAY_COLS.filter(function (c) { return c.k === 'pc' || items.some(function (it) { return colVal(it, c.k); }); }); }
 function shownProcs(it) { var f = S.ui.proc; return f ? it.procs.filter(function (p) { return p.n === f; }) : it.procs; }
 function renderDay() {
   var u = S.ui, d = u.date, list = filtered(), shown = list.slice(0, u.page * PAGE), cols = usedCols(shown);
@@ -1501,7 +1508,7 @@ function renderDay() {
       h += '<tr class="' + cls + '" data-i="' + it.id + '" data-p="' + pi + '">';
       if (si === 0) {
         h += '<td rowspan="' + n + '" class="c-cat"><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || it.cat) + '</span>' + (it.src === 'erp' ? '<span class="erp-tag" title="ERP 수주·출고로 자동 생긴 품목">ERP</span>' : '') + (it.chk && it.chk.length ? '<span class="warn-dot" title="' + esc(it.chk.join('\n')) + '">!</span>' : '') + '</td>';
-        cols.forEach(function (c) { var cv = colVal(it, c.k); h += '<td rowspan="' + n + '" class="c-' + c.k + (c.k === 'p' || c.k === 'n' ? ' link' : '') + '" data-open="' + it.id + '" title="' + esc(c.k === 'pc' ? prodTitle(it) : cv) + '">' + esc(cv) + '</td>'; });
+        cols.forEach(function (c) { var cv = colVal(it, c.k); h += '<td rowspan="' + n + '" class="c-' + c.k + (c.k === 'p' || c.k === 'n' ? ' link' : '') + '" data-open="' + it.id + '" title="' + esc(c.k === 'pc' ? prodTitle(it) : cv) + '">' + (c.k === 'pc' ? prodCell(it) : esc(cv)) + '</td>'; });
       }
       h += '<td class="c-proc" title="' + esc(out ? '' : '재고를 빼 가는 곳: ' + (store.usedBy(it, pi).join(', ') || '없음')) + '">' + esc(pr.n) + (pr.out && pr.out.length ? ' <span class="lk">🔗</span>' : '') + '</td>';
       if (out) {
@@ -1719,7 +1726,7 @@ function renderMonth() {
     it.procs.forEach(function (pr, pi) {
       var out = SU.isOut(pr.n);
       if (!rowOn(pr)) return;
-      h += '<tr class="' + (pi === 0 ? 'first' : '') + (out ? ' outrow' : '') + '"><td class="c-cat"><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span></td><td class="c-p link" data-open="' + it.id + '">' + esc(it.p) + '</td><td class="c-pc" title="' + esc(prodTitle(it)) + '">' + esc(prodCode(it)) + '</td><td class="c-n">' + esc([it.it || it.n, it.s].filter(Boolean).join(' · ')) + (it.cust ? ' <small class="muted">' + esc(it.cust) + '</small>' : '') + '</td><td class="c-proc"><span class="pname" data-pm="' + it.id + '" data-pi="' + pi + '" title="눌러서 공정 순서 바꾸기·삭제">' + esc(pr.n) + '</span>' + (pi === lastPi ? '<button type="button" class="padd" data-add="' + it.id + '" title="이 품목에 공정 추가">＋</button>' : '') + '</td>';
+      h += '<tr class="' + (pi === 0 ? 'first' : '') + (out ? ' outrow' : '') + '"><td class="c-cat"><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span></td><td class="c-p link" data-open="' + it.id + '">' + esc(it.p) + '</td><td class="c-pc" title="' + esc(prodTitle(it)) + '">' + prodCell(it) + '</td><td class="c-n">' + esc([it.it || it.n, it.s].filter(Boolean).join(' · ')) + (it.cust ? ' <small class="muted">' + esc(it.cust) + '</small>' : '') + '</td><td class="c-proc"><span class="pname" data-pm="' + it.id + '" data-pi="' + pi + '" title="눌러서 공정 순서 바꾸기·삭제">' + esc(pr.n) + '</span>' + (pi === lastPi ? '<button type="button" class="padd" data-add="' + it.id + '" title="이 품목에 공정 추가">＋</button>' : '') + '</td>';
       var b0 = out ? null : store.stock(it, pi, before);
       if (b0 == null) h += '<td class="num muted"></td>';
       else { var ak = store.adj.get(it.id + '|' + pr.id + '|' + before), ar = ak ? store.recs.get('a:' + it.id + '|' + pr.id + '|' + before) : null;
