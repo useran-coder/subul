@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v19">
+<meta name="su-ver" content="v20">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -164,6 +164,8 @@ textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-
 .mbar button:disabled{opacity:.35;cursor:default;background:#f1f5f9}
 .grid td.c-proc .padd{margin-left:6px;width:20px;height:20px;line-height:18px;padding:0;border:1px dashed #94a3b8;border-radius:5px;background:#fff;color:#2f6ac6;font-weight:800;font-size:12px;cursor:pointer;opacity:.55}.grid tr:hover td.c-proc .padd{opacity:1}.grid td.c-proc .padd:hover{background:#2f6ac6;color:#fff;border-style:solid}.padd-menu{z-index:200;min-width:200px}
 .mbar button.bz{border-color:#fca5a5;color:#b42318}.mbar button.bz:hover{background:#b42318;color:#fff;border-color:#b42318}.grid input.bi{color:#94a3b8}.grid input.bi:not([value='0']){color:#475569}
+.grid.month tr.outrow td{background:#fffbeb}.grid.month tr.outrow td.c-proc{color:#b45309}
+.sc-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:12px 0 8px}.sc-bar button{border:1px solid #cbd5e1;background:#fff;border-radius:7px;padding:4px 10px;font-weight:700;color:#475569;font-size:12.5px}.sc-bar button.on{background:#2f6ac6;border-color:#2f6ac6;color:#fff}.sc-bar button small{opacity:.75}.sc-bar input{height:30px;border:1px solid #cbd5e1;border-radius:7px;padding:0 8px}.sc-wrap{max-height:520px}.grid td.ok{color:#15803d}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -481,8 +483,9 @@ var SU = (function () {
     /* 출고 */
     info.badDate = 0; info.early = 0; info.beforeD0 = 0; info.days = {};
     E.ship.forEach(function (s) {
-      var d = ymd(s.d); if (!d) { info.badDate++; return; } if (d < from) { info.early++; return; }
-      var q = num(s.q); if (!q) return;
+      s._r = ''; s._i = '';   /* 줄마다 결과 : 화면 «출고 대조»에서 씀 */
+      var d = ymd(s.d); if (!d) { info.badDate++; s._r = 'date'; return; } if (d < from) { info.early++; s._r = 'early'; return; }
+      var q = num(s.q); if (!q) { s._r = 'q0'; return; }
       info.ship++;
       var cat = catOfErp(s), id = s.mk && lineItem.get(s.mk);
       if (!id) lineKeys(s).some(function (k) { var v = ordItem.get(k); if (v && v !== '*') { id = v; return true; } return false; });
@@ -490,10 +493,12 @@ var SU = (function () {
       if (!it) it = find(s, cat);
       if (it) info.shipIn++;
       else { it = virtual(s, cat, d); if (it) info.shipNoOrder.push(s); }
-      if (!it) return;
-      if (it.d0 && d <= it.d0) { info.beforeD0++; return; }
+      if (!it) { s._r = 'dead'; return; }
+      s._i = it.id;
+      if (it.d0 && d <= it.d0) { info.beforeD0++; s._r = 'd0'; return; }
       info.days[d] = (info.days[d] || 0) + 1;
-      if (!outProc(it)) { info.noOut++; return; }
+      if (!outProc(it)) { info.noOut++; s._r = 'noout'; return; }
+      s._r = self.ent.has(it.id + '|' + outProc(it).id + '|' + d) ? 'manual' : 'ok';
       var m = self.erpOut.get(it.id); if (!m) self.erpOut.set(it.id, m = new Map());
       m.set(d, (m.get(d) || 0) + q);
       push(self.erpShip, it.id, s);
@@ -1054,7 +1059,7 @@ function mval(e, m) { return m === 'p' ? SU.num(e.g) + SU.num(e.b) : m === 'out'
 function numVal(it, pi, pr, k, d) {
   var td = SU.today(), out = SU.isOut(pr.n), ms = SU.addDays(SU.monthStart(d), -1);
   if (S.ui.view === 'month') { /* 월 현황 : 보는 항목(재고·생산·양품·불량·출고) 기준 */
-    var m = S.ui.metric, mS = SU.monthStart(d), mE = SU.monthEnd(d);
+    var m = SU.isOut(pr.n) ? 'out' : 'stock', mS = SU.monthStart(d), mE = SU.monthEnd(d);
     if (m === 'out' ? !out : (m !== 'p' && out)) return null;
     if (k === 'base') return m === 'stock' ? store.stock(it, pi, SU.addDays(mS, -1)) : null;
     if (k === 'tot') {
@@ -1627,6 +1632,7 @@ var METRICS = { stock: '재고', p: '생산', g: '양품', b: '불량', out: '�
 function renderMonth() {
   var u = S.ui, d = u.date, ms = SU.monthStart(d), me_ = SU.monthEnd(d), days = [], x = ms;
   while (x <= me_) { days.push(x); x = SU.addDays(x, 1); }
+  u.metric = 'stock';
   var list = filtered(), shown = list.slice(0, u.page * PAGE), td = SU.today();
   /* 공정 버튼 : 지금 구분 탭 품목에 있는 공정만 (출고는 맨 뒤) */
   /* 지금 조건(구분·검색·고객사·품명·진행 중)으로 표에 나오는 품목의 공정만 누를 수 있게 · 다른 공정은 흐리게 */
@@ -1636,39 +1642,37 @@ function renderMonth() {
   store.items.forEach(function (it) { if (u.cat !== 'all' && it.cat !== u.cat) return; (it.procs || []).forEach(function (p) { pall[p.n] = 1; }); });
   var pnames = store.procList().filter(function (n) { return pall[n] || pset[n]; });
   var h = '<div class="mbar"><b>' + ms.slice(0, 4) + '년 ' + Number(ms.slice(5, 7)) + '월</b> 공정: <button data-pf="" class="' + (!u.proc ? 'on' : '') + '">전체</button>' + pnames.map(function (n) { var c = pset[n] || 0; return '<button data-pf="' + esc(n) + '" class="' + (u.proc === n ? 'on' : '') + '"' + (c || u.proc === n ? '' : ' disabled') + ' title="' + (c ? c.toLocaleString() + '품목' : '지금 표에 이 공정 없음') + '">' + esc(n) + '</button>'; }).join('') +
-    '<span class="spacer"></span>' + (u.metric === 'stock' ? '<button type="button" id="baseZero" class="bz" title="지금 표에 보이는 조건의 기초재고를 모두 0으로 (개별 칸은 기초 칸에서 직접 수정)">기초재고 모두 0</button>' : '') + '<label class="msel">숫자 <select id="mMetric">' + Object.keys(METRICS).map(function (m) { return '<option value="' + m + '"' + (u.metric === m ? ' selected' : '') + '>' + METRICS[m] + '</option>'; }).join('') + '</select></label>' +
-    '<span class="muted small">머리글 누르면 정렬 · 날짜 옆 ↗ 그날 입력 · <span class="erpc">파란 글씨</span> = ERP 출고</span></div>';
+    '<span class="spacer"></span><span class="muted small">공정 줄 = 그날 끝 재고 · 출고 줄 = 그날 출고 수량 (<span class="erpc">파란 글씨</span> = ERP 출고현황) · 머리글 누르면 정렬</span><button type="button" id="baseZero" class="bz" title="지금 표에 보이는 조건의 기초재고를 모두 0으로 (개별 칸은 기초 칸에서 직접 수정)">기초재고 모두 0</button></div>';
   h += '<div class="tbl-wrap"><table class="grid month"><thead><tr>' + sortTh('cat', 'c-cat', '구분') + sortTh('p', 'c-p', '품번') + sortTh('pc', 'c-pc', '제품번호') + sortTh('pn', 'c-n', '품명·규격') + sortTh('proc', 'c-proc', '공정') + sortTh('base', 'num', '기초') +
     days.map(function (dd) { var w = new Date(dd + 'T00:00:00').getDay(); return sortTh('d' + dd, 'num day' + (w === 0 ? ' sun' : w === 6 ? ' sat' : '') + (dd === td ? ' today' : ''), Number(dd.slice(8)) + '<span class="dgo" title="그날 입력 화면으로">↗</span>', ' data-d="' + dd + '"'); }).join('') + sortTh('tot', 'num', '합계') + '</tr></thead><tbody>';
   var before = SU.addDays(ms, -1);
-  function rowOn(pr) { var out = SU.isOut(pr.n); if (u.proc && pr.n !== u.proc) return false; if (u.metric === 'out' && !out) return false; if (u.metric !== 'out' && u.metric !== 'p' && out) return false; return true; }
+  function rowOn(pr) { return !(u.proc && pr.n !== u.proc); }
   shown.forEach(function (it) {
     var n = it.procs.length, lastPi = -1;
     it.procs.forEach(function (pr, pi) { if (rowOn(pr)) lastPi = pi; });
     it.procs.forEach(function (pr, pi) {
       var out = SU.isOut(pr.n);
       if (!rowOn(pr)) return;
-      h += '<tr class="' + (pi === 0 || u.metric === 'out' ? 'first' : '') + '"><td class="c-cat"><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span></td><td class="c-p link" data-open="' + it.id + '">' + esc(it.p) + '</td><td class="c-pc">' + esc(prodCode(it)) + '</td><td class="c-n">' + esc([it.it || it.n, it.s].filter(Boolean).join(' · ')) + (it.cust ? ' <small class="muted">' + esc(it.cust) + '</small>' : '') + '</td><td class="c-proc">' + esc(pr.n) + (pi === lastPi ? '<button type="button" class="padd" data-add="' + it.id + '" title="이 품목에 공정 추가">＋</button>' : '') + '</td>';
-      var b0 = u.metric === 'stock' ? store.stock(it, pi, before) : null;
+      h += '<tr class="' + (pi === 0 ? 'first' : '') + (out ? ' outrow' : '') + '"><td class="c-cat"><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span></td><td class="c-p link" data-open="' + it.id + '">' + esc(it.p) + '</td><td class="c-pc">' + esc(prodCode(it)) + '</td><td class="c-n">' + esc([it.it || it.n, it.s].filter(Boolean).join(' · ')) + (it.cust ? ' <small class="muted">' + esc(it.cust) + '</small>' : '') + '</td><td class="c-proc">' + esc(pr.n) + (pi === lastPi ? '<button type="button" class="padd" data-add="' + it.id + '" title="이 품목에 공정 추가">＋</button>' : '') + '</td>';
+      var b0 = out ? null : store.stock(it, pi, before);
       if (b0 == null) h += '<td class="num muted"></td>';
       else { var ak = store.adj.get(it.id + '|' + pr.id + '|' + before), ar = ak ? store.recs.get('a:' + it.id + '|' + pr.id + '|' + before) : null;
         h += '<td class="num bcell' + (ak ? ' adj' : '') + '"><input class="bi" data-i="' + it.id + '" data-p="' + pi + '" inputmode="decimal" value="' + (b0 ? String(b0) : '0') + '" title="' + esc(before <= (it.d0 || '') ? '기초재고 (' + before + ' 끝) — 고치면 품목 기초재고가 바뀜' : '전월말 재고 (' + before + ' 끝) — 고치면 차이만큼 재고 조정으로 기록' + (ak ? '\n조정 ' + fmt(SU.num(ak.a)) + (ar && ar.by ? ' · ' + ar.by : '') : '')) + '"></td>'; }
       var tot = 0;
       days.forEach(function (dd) {
         var v;
-        if (u.metric === 'stock') { v = store.stock(it, pi, dd); if (dd > td) v = null; }
-        else { var e = store.day(it.id, pr.id, dd) || {}; v = u.metric === 'p' ? SU.num(e.g) + SU.num(e.b) : u.metric === 'out' ? SU.num(e.g) : SU.num(e[u.metric]); tot += v; v = v || null; var er = e.erp; }
+        if (!out) { v = store.stock(it, pi, dd); if (dd > td) v = null; }
+        else { var e = store.day(it.id, pr.id, dd) || {}; v = SU.num(e.g); tot += v; v = v || null; var er = e.erp; }
         h += '<td class="num' + (v < 0 ? ' neg' : '') + (dd === td ? ' today' : '') + (er && v ? ' erpc' : '') + '"' + (er && v ? ' title="ERP 출고현황"' : '') + '>' + (v == null ? '' : fmt(v)) + '</td>'; er = false;
       });
-      h += '<td class="num tot">' + (u.metric === 'stock' ? fmt(store.stock(it, pi, me_ < td ? me_ : td)) : fmt(tot)) + '</td></tr>';
+      h += '<td class="num tot">' + (!out ? fmt(store.stock(it, pi, me_ < td ? me_ : td)) : (tot ? '<b class="erpc">' + fmt(tot) + '</b>' : '')) + '</td></tr>';
     });
   });
   if (!shown.length) h += '<tr><td colspan="' + (days.length + 7) + '" class="empty">조건에 맞는 품목 없음</td></tr>';
   h += '</tbody></table></div>';
   if (list.length > shown.length) h += '<div class="more"><button id="more">더 보기 (' + shown.length.toLocaleString() + ' / ' + list.length.toLocaleString() + ' 품목)</button></div>';
   $('#view').innerHTML = h;
-  $$('.mbar [data-pf]').forEach(function (b) { b.onclick = function () { S.ui.proc = b.dataset.pf; S.ui.page = 1; if (SU.isOut(S.ui.proc)) S.ui.metric = 'out'; else if (S.ui.metric === 'out') S.ui.metric = 'stock'; render(); }; });
-  $('#mMetric').onchange = function () { S.ui.metric = this.value; renderMonth(); };
+  $$('.mbar [data-pf]').forEach(function (b) { b.onclick = function () { S.ui.proc = b.dataset.pf; S.ui.page = 1; render(); }; });
   if ($('#baseZero')) $('#baseZero').onclick = baseZeroAll;
   $$('#view .padd').forEach(function (b) { b.onclick = function (ev) { ev.stopPropagation(); procAddMenu(b); }; });
   $$('th.day .dgo').forEach(function (a) { a.onclick = function (ev) { ev.stopPropagation(); S.ui.date = a.closest('th').dataset.d; S.ui.view = 'day'; render(); }; });
@@ -1684,6 +1688,32 @@ function renderMonth() {
     nx = nx && $$('input.bi', $('#view'))[i + dir]; if (nx) { nx.focus(); nx.select(); }
   };
   if ($('#more')) $('#more').onclick = function () { S.ui.page++; renderMonth(); };
+}
+
+/* ── 출고 대조 : ERP 출고현황 줄마다 수불관리에 어떻게 들어갔는지 (빠진 줄·이유) ── */
+var SC_WHY = { ok: '반영됨', manual: '그날 직접 넣은 출고 사용', early: '반영 시작일 전', d0: '품목 기초재고 날짜 이전', noout: '품목에 출고 공정 없음', dead: '지운 품목', date: '출고일자 못 읽음', q0: '수량 0' };
+function shipCheck() {
+  var box = $('#shipChkBox'); if (!box) return;
+  var sc = S.ui.sc; if (!sc) { box.innerHTML = ''; return; }
+  store.deriveErp();
+  var all = Array.from(store.erp.ship.values()).filter(function (s) { var y = SU.ymd(s.d); return y ? y.slice(0, 7) === sc.m : true; });
+  var cnt = {}; all.forEach(function (s) { var r = s._r || 'ok'; cnt[r] = (cnt[r] || 0) + 1; });
+  var rows = all.filter(function (s) { var r = s._r || 'ok'; return sc.r === 'all' || (sc.r === 'bad' ? r !== 'ok' : r === sc.r); }).filter(function (s) { return !sc.q || hasTxt([s.o, s.p, s.n, s.s, s.r, s.c].join(' '), sc.q); });
+  rows.sort(function (a, b) { return String(a.d).localeCompare(String(b.d)) || String(a.p).localeCompare(String(b.p)); });
+  var tabs = [['bad', '빠지거나 바뀐 줄', all.length - (cnt.ok || 0)], ['all', '전체', all.length]].concat(Object.keys(SC_WHY).filter(function (k) { return cnt[k]; }).map(function (k) { return [k, SC_WHY[k], cnt[k]]; }));
+  var h = '<div class="sc-bar"><b>출고 대조</b> <input type="month" id="scM" value="' + sc.m + '"> ' + tabs.map(function (t) { return '<button type="button" data-sr="' + t[0] + '" class="' + (sc.r === t[0] ? 'on' : '') + '">' + esc(t[1]) + ' <small>' + t[2].toLocaleString() + '</small></button>'; }).join('') + ' <input id="scQ" placeholder="주문번호·품번·품명·비고" value="' + esc(sc.q) + '"></div>';
+  h += '<div class="tbl-wrap sc-wrap"><table class="grid small"><thead><tr><th>출고일자</th><th>주문번호</th><th>고객</th><th>품번</th><th>품명</th><th>규격</th><th>비고</th><th class="num">수량</th><th>수불관리 품목</th><th>결과</th></tr></thead><tbody>' +
+    (rows.slice(0, 500).map(function (s) {
+      var it = s._i && store.items.get(s._i), r = s._r || 'ok', extra = '';
+      if (r === 'manual' && it) { var op = SU.outProc(it), mm = op && store.manual(it.id, op.id, SU.ymd(s.d)); extra = ' (직접 ' + fmt(SU.num(mm && mm.g)) + ')'; }
+      return '<tr><td>' + esc(String(s.d || '')) + '</td><td>' + esc(s.o || '') + '</td><td>' + esc(s.c || '') + '</td><td>' + esc(s.p || '') + '</td><td>' + esc(s.n || '') + '</td><td>' + esc(s.s || '') + '</td><td>' + esc(s.r || '') + '</td><td class="num">' + esc(String(s.q || '')) + '</td><td>' + (it ? '<span class="link" data-open="' + it.id + '">' + esc(it.p || it.n) + ' ' + esc(prodCode(it)) + '</span>' + (it._v ? ' <span class="erp-tag">ERP</span>' : '') : '') + '</td><td class="' + (r === 'ok' ? 'ok' : r === 'manual' ? '' : 'neg') + '">' + esc(SC_WHY[r] || r) + extra + '</td></tr>';
+    }).join('') || '<tr><td colspan="10" class="muted">해당 줄 없음</td></tr>') + '</tbody></table></div>' +
+    (rows.length > 500 ? '<div class="muted small">앞 500줄만 표시 (' + rows.length.toLocaleString() + '줄)</div>' : '');
+  box.innerHTML = h;
+  $$('#shipChkBox [data-sr]').forEach(function (b) { b.onclick = function () { sc.r = b.dataset.sr; shipCheck(); }; });
+  $('#scM').onchange = function () { sc.m = this.value; shipCheck(); };
+  var t = null; $('#scQ').oninput = function () { var v = this.value; clearTimeout(t); t = setTimeout(function () { sc.q = v.trim(); shipCheck(); var q = $('#scQ'); q.focus(); q.setSelectionRange(q.value.length, q.value.length); }, 300); };
+  box.onclick = function (ev) { var o = ev.target.closest('[data-open]'); if (o) openItem(o.dataset.open); };
 }
 
 /* 품목에 공정 추가 (월 현황 ＋) : 목록에서 고르거나 직접 입력 → 출고 앞에 넣고 저장 */
@@ -1982,7 +2012,7 @@ function renderSettings() {
     '<div class="note">품목 찾는 순서: ① 비고·규격의 제품번호 (내부보강 B·레이저 D) ② 품번 (부자재·유통/OEM) ③ 품번+규격 (번호 없는 내부보강·레이저). 못 찾으면 «ERP 품목»을 자동으로 만듦 (구분 기본 공정). 그날 출고 칸에 사람이 직접 넣으면 그 값이 ERP 보다 우선.</div>' +
     ((inf.shipNoOrder || []).length ? '<div class="lbl">수주 없이 출고된 줄 (수주현황을 아직 안 올렸거나 반영 시작일 전 수주)</div><table class="grid small"><thead><tr><th>출고일</th><th>주문번호</th><th>고객</th><th>품번</th><th>품명</th><th>규격</th><th>비고</th><th class="num">수량</th></tr></thead><tbody>' + inf.shipNoOrder.slice(0, 30).map(function (r) { return '<tr><td>' + esc(r.d) + '</td><td>' + esc(r.o) + '</td><td>' + esc(r.c) + '</td><td>' + esc(r.p) + '</td><td>' + esc(r.n) + '</td><td>' + esc(r.s) + '</td><td>' + esc(r.r) + '</td><td class="num">' + fmt(SU.num(r.q)) + '</td></tr>'; }).join('') + '</tbody></table>' : '') +
     erpUpLine() +
-    '<div class="act"><a class="btn-link" href="' + CM_URL + '" target="_blank" rel="noopener">📤 출고매칭에 파일 올리러 가기</a><button type="button" id="erpNow">지금 받기</button></div></div>';
+    '<div class="act"><a class="btn-link" href="' + CM_URL + '" target="_blank" rel="noopener">📤 출고매칭에 파일 올리러 가기</a><button type="button" id="erpNow">지금 받기</button><button type="button" id="shipChk" class="primary">🔍 출고 대조</button></div><div id="shipChkBox"></div></div>';
   h += '<div class="card"><h3>구글시트에서 가져오기 <small class="muted">생산1·2·3파트 수불현황 → 품목·기초재고·생산·출고 (관리자)</small></h3>' +
     (adm ? '<div id="impBox"><button type="button" id="impList">시트 목록 불러오기</button></div>' : '<div class="muted small">관리자 계정만 가능</div>') + '</div>';
   h += '<div class="card"><h3>서버 · 이 PC</h3><div class="kv">화면 ' + SUB_VER + ' · 서버 ' + esc(S.sync.srv || '확인 전') + ' · 받은 기록 ' + S.sync.pos.toLocaleString() + '줄 · 품목 ' + store.items.size.toLocaleString() + ' · 입력 칸 ' + store.ent.size.toLocaleString() + ' · 보낼 것 ' + S.pending.size + '</div>' +
@@ -1997,6 +2027,8 @@ function renderSettings() {
   if ($('#impList')) $('#impList').onclick = impList;
   $('#diag').onclick = runDiag;
   $('#erpNow').onclick = async function () { await erpPull(true); renderSettings(); };
+  $('#shipChk').onclick = function () { S.ui.sc = S.ui.sc ? null : { r: 'bad', q: '', m: SU.monthStart(S.ui.date).slice(0, 7) }; shipCheck(); };
+  if (S.ui.sc) shipCheck();
   if ($('#erpFromSave')) $('#erpFromSave').onclick = function () { var v = $('#erpFrom').value; if (!v) return; setRec('c:erp', { from: v }); schedulePush(); toast('ERP 반영 시작일: ' + v); renderSettings(); };
   if ($('#compact')) $('#compact').onclick = async function () {
     if (!confirm('같은 칸의 옛 기록·지운 기록을 빼고 마지막 값만 남김.\n(정리 전 시트는 백업 복사) 모든 PC가 처음부터 다시 받음. 진행할까?')) return;
