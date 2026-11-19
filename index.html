@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v55">
+<meta name="su-ver" content="v56">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -194,6 +194,8 @@ textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-
 #bootSu{position:fixed;inset:0;z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:#f8fafc;transition:opacity .3s}#bootSu.out{opacity:0;pointer-events:none}html:has(#auGate) #bootSu{display:none}#bootSu .bs-ci{display:block;width:132px;height:132px;object-fit:contain;margin:0 auto 18px;filter:drop-shadow(0 6px 14px rgba(30,58,95,.16))}#bootSu .bs-pct{font-size:54px;line-height:1;font-weight:900;color:#1e3a5f;letter-spacing:-.03em;font-variant-numeric:tabular-nums}#bootSu .bs-pct span{font-size:30px}#bootSu .bs-bar{height:9px;width:260px;margin:16px auto 0;background:#e2e8f0;border-radius:6px;overflow:hidden}#bootSu .bs-bar>div{height:100%;width:0;background:linear-gradient(90deg,#1e3a5f,#3b82f6);border-radius:6px;transition:width .25s ease}#bootSu .bs-msg{margin-top:11px;font-size:13px;font-weight:700;color:#64748b}#bootSu .bs-steps{margin-top:14px;font-size:12px;color:#94a3b8;line-height:1.8;text-align:left}@media (max-width:640px){#bootSu .bs-ci{width:102px;height:102px}}
 :root{--c-frame:#b45309}.tabs .cat-frame.on{background:var(--c-frame);border-color:var(--c-frame)}.cb.cat-frame{background:var(--c-frame)}.topbar .top-tabs .cat-frame.on{background:var(--c-frame);border-color:var(--c-frame);color:#fff}.topbar .top-tabs .cat-frame.on small{color:#ffffffcc}
 .buyc{color:#15803d!important}.grid.month tr.buyrow input.mi,.grid.month tr.buyrow input.mi::placeholder{color:#15803d}.grid.month tr.buyrow b.buyc{color:#15803d}
+.outc{color:#dc2626}.grid.month tr.outrow td.num,.grid.month tr.outrow td.num b,.grid.month tr.outrow td.erpc,.grid.month tr.outrow b.erpc{color:#dc2626!important}.grid.month tr.buyrow input.mi,.grid.month tr.buyrow input.mi::placeholder,.grid.month tr.buyrow td.num b,.buyc{font-weight:400}
+.grid.month tr.buyrow b.buyc{font-weight:400}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -2245,7 +2247,7 @@ function renderMonth() {
   store.items.forEach(function (it) { if (u.cat !== 'all' && it.cat !== u.cat) return; (it.procs || []).forEach(function (p) { pall[p.n] = 1; }); });
   var pnames = store.procList().filter(function (n) { return pall[n] || pset[n]; });
   var h = '<div class="mbar"><b>' + ms.slice(0, 4) + '년 ' + Number(ms.slice(5, 7)) + '월</b> 공정: <button data-pf="" class="' + (!u.proc ? 'on' : '') + '">전체</button>' + pnames.map(function (n) { var c = pset[n] || 0; return '<button data-pf="' + esc(n) + '" class="' + (u.proc === n ? 'on' : '') + '"' + (c || u.proc === n ? '' : ' disabled') + ' title="' + (c ? c.toLocaleString() + '품목' : '지금 표에 이 공정 없음') + '">' + esc(n) + '</button>'; }).join('') +
-    '<span class="spacer"></span><span class="muted small">공정 줄 = 그날 끝 재고 · 매입·출고 줄 = 그날 수량 (<span class="erpc">파란 글씨</span> = ERP 출고 · <span class="buyc">초록 글씨</span> = 매입) · 머리글 누르면 정렬</span><button type="button" id="baseZero" class="bz" title="지금 표에 보이는 조건의 기초재고를 모두 0으로 (개별 칸은 기초 칸에서 직접 수정)">기초재고 모두 0</button></div>';
+    '<span class="spacer"></span><span class="muted small">공정 줄 = 그날 끝 재고 · 매입·출고 줄 = 그날 수량 (<span class="outc">빨간 글씨</span> = 출고 · <span class="buyc">초록 글씨</span> = 매입) · 머리글 누르면 정렬</span><button type="button" id="baseZero" class="bz" title="지금 표에 보이는 조건의 기초재고를 모두 0으로 (개별 칸은 기초 칸에서 직접 수정)">기초재고 모두 0</button></div>';
   h += '<div class="tbl-wrap"><table class="grid month"><thead><tr>' + sortTh('cat', 'c-cat', '구분') + sortTh('p', 'c-p', '품번') + sortTh('pc', 'c-pc', '제품번호') + sortTh('pn', 'c-n', '품명·규격') + sortTh('proc', 'c-proc', '공정') + sortTh('base', 'num', '기초') +
     days.map(function (dd) { var w = new Date(dd + 'T00:00:00').getDay(); return sortTh('d' + dd, 'num day' + (w === 0 ? ' sun' : w === 6 ? ' sat' : '') + (dd === td ? ' today' : ''), Number(dd.slice(8)) + '<span class="dgo" title="그날 입력 화면으로">↗</span>', ' data-d="' + dd + '"'); }).join('') + sortTh('tot', 'num', '합계') + '</tr></thead><tbody>';
   var before = SU.addDays(ms, -1);
@@ -2271,7 +2273,7 @@ function renderMonth() {
         else { var e = store.day(it.id, pr.id, dd) || {}; v = SU.num(e.g); tot += v; v = v || null; var er = e.erp; }
         if (buy) {   /* 매입 줄 : 바로 입력 (비우면 매입분석도구 값) */
           var man = store.manual(it.id, pr.id, dd), bq = (store.erpBuy.get(it.id) || new Map()).get(dd);
-          h += '<td class="num mcell' + (dd === td ? ' today' : '') + '"><input class="mi" data-k="e:' + it.id + '|' + pr.id + '|' + dd + '" inputmode="decimal" value="' + (man ? fmtIn(SU.num(man.g)) : '') + '" placeholder="' + (bq ? fmt(bq, false) : '') + '" title="' + esc(dd.slice(5).replace('-', '/') + ' 매입' + (bq ? '\n매입분석도구 ' + fmt(bq, false) + (bd[dd] || []).map(function (r) { return '\n' + (r.vendor || '') + ' · ' + fmt(SU.num(r.qty)) + (SU.num(r.price) ? ' × ' + fmt(SU.num(r.price)) : ''); }).join('') : '') + '\n숫자를 넣으면 그 값을 씀 · 지우면 매입분석도구 값') + '"></td>';
+          h += '<td class="num mcell' + (dd === td ? ' today' : '') + '"><input class="mi" data-k="e:' + it.id + '|' + pr.id + '|' + dd + '" inputmode="decimal" value="' + (man ? fmtIn(SU.num(man.g)) : '') + '" placeholder="' + (bq ? fmt(bq, false) : '') + '"' + (function () { var L = Math.max(String(man ? fmtIn(SU.num(man.g)) : '').length, String(bq ? fmt(bq, false) : '').length); return L > 4 ? ' style="min-width:' + (L * 8 + 12) + 'px"' : ''; })() + ' title="' + esc(dd.slice(5).replace('-', '/') + ' 매입' + (bq ? '\n매입분석도구 ' + fmt(bq, false) + (bd[dd] || []).map(function (r) { return '\n' + (r.vendor || '') + ' · ' + fmt(SU.num(r.qty)) + (SU.num(r.price) ? ' × ' + fmt(SU.num(r.price)) : ''); }).join('') : '') + '\n숫자를 넣으면 그 값을 씀 · 지우면 매입분석도구 값') + '"></td>';
           return;
         }
         h += '<td class="num' + (v < 0 ? ' neg' : '') + (dd === td ? ' today' : '') + (er && v ? ' erpc' : '') + '"' + (er && v && buy ? ' title="' + esc('매입분석도구 매입현황' + (bd[dd] || []).map(function (r) { return '\n' + (r.vendor || '') + ' · ' + fmt(SU.num(r.qty)) + (SU.num(r.price) ? ' × ' + fmt(SU.num(r.price)) : ''); }).join('')) + '"' : er && v ? ' title="' + esc('ERP 출고현황' + (sd[dd] || []).map(function (s) { return '\n' + scode(s) + (s._lc ? ' (다시 매칭, 출고매칭 ' + (s.code || s.ac || '') + ')' : '') + ' · ' + (s.o || '') + ' · ' + fmt(SU.num(s.q)); }).join('')) + '"' : '') + '>' + (v == null ? '' : fmt(v)) + (ngd && ngd[dd] ? '<span class="negmk" title="' + esc('반품·차감 (재고 제외)' + ngd[dd].map(function (s) { return '\n' + (s.o || '') + ' · ' + fmt(SU.num(s.q)) + (s.r ? ' · ' + s.r : ''); }).join('')) + '">' + fmt(ngd[dd].reduce(function (a, s) { return a + SU.num(s.q); }, 0)) + '</span>' : '') + '</td>'; er = false;
