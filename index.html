@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v44">
+<meta name="su-ver" content="v45">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -185,6 +185,7 @@ textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-
 .pname.drag{cursor:grab}.pname.drag::before{content:'⋮⋮';color:#94a3b8;font-size:10px;margin-right:3px;letter-spacing:-2px}tr.dragging{opacity:.45}tr.drop-before>td{box-shadow:inset 0 3px 0 #2563eb}tr.drop-after>td{box-shadow:inset 0 -3px 0 #2563eb}tr.addrow>td{background:#eff6ff}tr.addrow input.pnew{width:120px;height:26px;border:1px solid #2f6ac6;border-radius:6px;padding:0 6px;font-weight:700}tr.addrow input.pnew.err{border-color:#dc2626}.addrow-hint{text-align:left!important}.grid.procs .dh{display:inline-block;cursor:grab;color:#94a3b8;padding:0 6px;font-weight:900;letter-spacing:-2px;user-select:none}.grid.procs .dh.off{cursor:default;opacity:.3}.grid.procs input.pnew{border-color:#2f6ac6;background:#eff6ff}.nowrap{white-space:nowrap}.chip.drag{cursor:grab}.chip .cg{font-style:normal;color:#94a3b8;margin-right:3px;letter-spacing:-2px;font-size:10px}.chip.drop-before{box-shadow:-3px 0 0 #2563eb}.chip.drop-after{box-shadow:3px 0 0 #2563eb}.addp-w input.addp{height:28px;width:150px;border:1px dashed #94a3b8;border-radius:999px;padding:0 10px;font-weight:700;background:#fff}.addp-w input.addp:focus{border-style:solid;border-color:#2f6ac6;outline:none}
 .card-h{display:flex;align-items:center;gap:6px}.card-h small{flex:1}.card-more{margin-left:auto;height:26px;padding:0 10px;border:1px solid #cbd5e1;background:#fff;border-radius:999px;font-size:12px;font-weight:800;color:#2f6ac6;cursor:pointer;white-space:nowrap}.card-more:hover{background:#2f6ac6;border-color:#2f6ac6;color:#fff}.al-h{display:flex;align-items:center;gap:6px}.al-h .card-more{height:22px;font-size:11.5px;padding:0 8px}.pg-per{display:inline-flex;gap:4px}.pg-per button{height:30px;border:1px solid #cbd5e1;background:#fff;border-radius:7px;padding:0 10px;font-weight:700}.pg-per button.on{background:#2f6ac6;border-color:#2f6ac6;color:#fff}.pg-sum{margin:0 0 8px;font-size:13px;color:#475569}.pg-sum b{color:var(--navy)}.pg-tbl tr.pg-row{cursor:pointer}.pg-tbl tr.pg-row:hover td{background:#f1f5fb}.pg-tbl tr.pg-row.open td{background:#e8f0fd}.pg-tbl tr.pg-detail>td{background:#f8fafc;padding:8px 12px}.pbar{display:inline-block;width:70px;height:7px;background:#e2e8f0;border-radius:4px;margin-right:6px;vertical-align:middle;overflow:hidden}.pbar i{display:block;height:100%;background:#2f6ac6}.idle-tag{font-size:11px;font-weight:700;color:#64748b;background:#f1f5f9;border-radius:999px;padding:1px 7px;white-space:nowrap}.pg-tbl th.sortable{cursor:pointer}.pg-tbl .sa{margin-left:3px;font-size:10px}
 .pg-dt th.sortable{cursor:pointer}.pg-dt th.sortable:hover{background:#3b4a63}.pg-dt td.c-memo{max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pg-dt td.c-s{white-space:nowrap}
+.neg-tbl th.sortable{cursor:pointer;white-space:nowrap}.neg-tbl th.sortable:hover{background:#3b4a63}.neg-tbl .sa{margin-left:3px;font-size:10px}.neg-tbl td.c-s,.pg-tbl td.c-s{white-space:nowrap}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -1680,7 +1681,7 @@ function renderTopPage() {
   var tot = all.reduce(function (s, x) { return s + x.st; }, 0);
   var rows = all.filter(function (x) { return !q || (itemText(x.it) + ' ' + prodCode(x.it).toLowerCase()).indexOf(q) >= 0; });
   rows.sort(function (a, b) { return b.st - a.st; });
-  var cols = [{ k: 'cat', t: '구분', v: function (x) { return x.it.cat; } }, { k: 'p', t: '품번', v: function (x) { return x.it.p || x.it.n; } }, { k: 'pc', t: '제품번호', v: function (x) { return prodCode(x.it); } }, { k: 'n', t: '품명·규격', v: function (x) { return [x.it.it || x.it.n, x.it.s].join(' '); } }, { k: 'cust', t: '고객사', v: function (x) { return x.it.cust || ''; } },
+  var cols = [{ k: 'cat', t: '구분', v: function (x) { return x.it.cat; } }, { k: 'p', t: '품번', v: function (x) { return x.it.p || x.it.n; } }, { k: 'pc', t: '제품번호', v: function (x) { return prodCode(x.it); } }, { k: 'n', t: '품명', v: function (x) { return x.it.it || x.it.n || ''; } }, { k: 's', t: '규격', v: function (x) { return x.it.s || ''; } }, { k: 'cust', t: '고객사', v: function (x) { return x.it.cust || ''; } },
     { k: 'fin', t: '완성 공정', v: function (x) { return x.fin; } }, { k: 'st', t: '완제품 재고', num: 1, v: function (x) { return x.st; } }, { k: 'oq', t: '수주', num: 1, v: function (x) { return x.oq == null ? -1e15 : x.oq; } }, { k: 'rem', t: '수주 잔량', num: 1, v: function (x) { return x.rem == null ? -1e15 : x.rem; } }, { k: 'lp', t: '마지막 생산', v: function (x) { return x.lp; } }, { k: 'lo', t: '마지막 출고', v: function (x) { return x.lo; } }, { k: 'idle', t: '상태', v: function (x) { return x.idle ? 1 : 0; } }];
   rows = pgSort(rows, cols);
   var shown = rows.slice(0, (P.page || 1) * 300);
@@ -1688,8 +1689,8 @@ function renderTopPage() {
   var h = pgHead('완제품 재고 <b>' + all.length.toLocaleString() + '</b>품목', R.sd.replace(/-/g, '.') + ' 기준 · 완성 공정(출고 바로 앞) 재고 · 위 구분 탭으로 구분별 · 품번 누르면 품목 창', false) +
     '<div class="pg-sum">완제품 재고 합계 <b>' + fmt(tot, false) + '</b> · 💤 30일 움직임 없음 <b>' + Object.keys(idle).length + '</b>품목' + (q ? ' · 검색 결과 ' + rows.length + '품목' : '') + '</div>' +
     '<div class="tbl-wrap"><table class="grid pg-tbl"><thead><tr><th class="num">#</th>' + pgTh(cols) + '</tr></thead><tbody>' +
-    shown.map(function (x, i) { var it = x.it; return '<tr><td class="num muted">' + (i + 1) + '</td><td><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span></td><td class="link" data-open="' + it.id + '">' + esc(it.p || it.n) + '</td><td class="c-pc" title="' + esc(prodTitle(it)) + '">' + prodCell(it) + '</td><td class="c-n">' + esc([it.it || it.n, it.s].filter(Boolean).join(' · ')) + '</td><td class="c-cust">' + esc(it.cust || '') + '</td><td>' + esc(x.fin) + '</td><td class="num"><b>' + fmt(x.st) + '</b></td><td class="num">' + (x.oq == null ? '' : fmt(x.oq, false)) + '</td><td class="num' + (x.rem < 0 ? ' neg' : '') + '">' + (x.rem == null ? '' : fmt(x.rem, false)) + '</td><td>' + md(x.lp) + '</td><td>' + md(x.lo) + '</td><td>' + (x.idle ? '<span class="idle-tag" title="30일 동안 생산·출고 없이 재고만 있음">💤 30일 움직임 없음</span>' : '') + '</td></tr>'; }).join('') +
-    (rows.length ? '' : '<tr><td colspan="13" class="empty">' + (all.length ? '조건에 맞는 품목 없음' : '완제품 재고 없음') + '</td></tr>') + '</tbody></table></div>' +
+    shown.map(function (x, i) { var it = x.it; return '<tr><td class="num muted">' + (i + 1) + '</td><td><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span></td><td class="link" data-open="' + it.id + '">' + esc(it.p || it.n) + '</td><td class="c-pc" title="' + esc(prodTitle(it)) + '">' + prodCell(it) + '</td><td class="c-n">' + esc(it.it || it.n || '') + '</td><td class="c-s">' + esc(it.s || '') + '</td><td class="c-cust">' + esc(it.cust || '') + '</td><td>' + esc(x.fin) + '</td><td class="num"><b>' + fmt(x.st) + '</b></td><td class="num">' + (x.oq == null ? '' : fmt(x.oq, false)) + '</td><td class="num' + (x.rem < 0 ? ' neg' : '') + '">' + (x.rem == null ? '' : fmt(x.rem, false)) + '</td><td>' + md(x.lp) + '</td><td>' + md(x.lo) + '</td><td>' + (x.idle ? '<span class="idle-tag" title="30일 동안 생산·출고 없이 재고만 있음">💤 30일 움직임 없음</span>' : '') + '</td></tr>'; }).join('') +
+    (rows.length ? '' : '<tr><td colspan="14" class="empty">' + (all.length ? '조건에 맞는 품목 없음' : '완제품 재고 없음') + '</td></tr>') + '</tbody></table></div>' +
     (rows.length > shown.length ? '<div class="more"><button id="pgMore">더 보기 (' + shown.length.toLocaleString() + ' / ' + rows.length.toLocaleString() + ')</button></div>' : '');
   $('#view').innerHTML = h;
   pgBind(renderTopPage);
@@ -1699,6 +1700,11 @@ function renderTopPage() {
 
 /* ───────── ⛔ 마이너스 재고 페이지 : 목록 + 줄 누르면 왜 마이너스인지 계산 풀이 ───────── */
 S.neg = null;
+var NEG_COLS = [
+  { k: 'cat', t: '구분', v: function (r) { return SU.CAT_NAME[r.it.cat] || ''; } }, { k: 'p', t: '품번', v: function (r) { return r.it.p || ''; } }, { k: 'pc', t: '제품번호', v: function (r) { return prodCode(r.it); } },
+  { k: 'n', t: '품명', v: function (r) { return r.it.it || r.it.n || ''; } }, { k: 's', t: '규격', v: function (r) { return r.it.s || ''; } }, { k: 'cust', t: '고객사', v: function (r) { return r.it.cust || ''; } }, { k: 'proc', t: '공정', v: function (r) { return r.pr.n; } },
+  { k: 'o0', t: '기초재고', num: 1, v: function (r) { return r.x.o0 || 0; } }, { k: 'g', t: '+ 양품', num: 1, v: function (r) { return r.x.g || 0; } }, { k: 'a', t: '± 조정', num: 1, v: function (r) { return r.x.a || 0; } },
+  { k: 'nx', t: '− 다음 공정·출고', num: 1, v: function (r) { return r.x.nxP || 0; } }, { k: 'link', t: '− 조립 연결', num: 1, v: function (r) { return r.x.link || 0; } }, { k: 'st', t: '= 재고', num: 1, v: function (r) { return r.st; } }, { k: 'why', t: '원인', v: function (r) { return NEG_WHY[r.x.why] ? NEG_WHY[r.x.why][0] : ''; } }];
 var NEG_WHY = {
   noin: ['생산 입력 없음', '다음 공정·출고는 있는데 이 공정 양품 입력이 하나도 없음 → 이 공정 작업일보 입력 빠짐 (또는 기초재고 누락)'],
   short: ['생산보다 많이 씀', '양품 입력은 있지만 다음 공정·출고가 더 많음 → 일부 날짜 입력 빠짐 또는 수량 오타'],
@@ -1732,6 +1738,8 @@ function renderNeg() {
   var q = (N.q || '').toLowerCase();
   var rows = all.filter(function (x) { return (!N.r || x.x.why === N.r) && (!q || (itemText(x.it) + ' ' + prodCode(x.it).toLowerCase() + ' ' + x.pr.n).indexOf(q) >= 0); });
   rows.sort(function (a, b) { return a.st - b.st; });
+  var sc = NEG_COLS.filter(function (c) { return c.k === N.sk; })[0];
+  if (sc && N.sd) rows.sort(function (a, b) { var u = sc.v(a), w = sc.v(b); return N.sd * (typeof u === 'number' && typeof w === 'number' ? u - w : String(u == null ? '' : u).localeCompare(String(w == null ? '' : w), 'ko')) || a.st - b.st; });
   var shown = rows.slice(0, N.page * 200);
   var h = '<div class="neg-head"><button type="button" class="neg-back" id="negBack">‹ 현황판</button><h2>⛔ 마이너스 재고 <b>' + all.length.toLocaleString() + '</b>건</h2>' +
     '<label class="muted small">기준일 <input type="date" id="negD" value="' + d + '"></label>' +
@@ -1740,14 +1748,14 @@ function renderNeg() {
   h += '<div class="neg-why"><button type="button" data-nr="" class="' + (!N.r ? 'on' : '') + '">전체 <small>' + all.length.toLocaleString() + '</small></button>' +
     Object.keys(NEG_WHY).map(function (k) { return '<button type="button" data-nr="' + k + '" class="' + (N.r === k ? 'on' : '') + '"' + (cnt[k] ? '' : ' disabled') + ' title="' + esc(NEG_WHY[k][1]) + '">' + NEG_WHY[k][0] + ' <small>' + (cnt[k] || 0).toLocaleString() + '</small></button>'; }).join('') +
     (N.r ? '<span class="neg-hint">' + esc(NEG_WHY[N.r][1]) + '</span>' : '') + '</div>';
-  h += '<div class="tbl-wrap"><table class="grid neg-tbl"><thead><tr><th>구분</th><th>품번</th><th>제품번호</th><th>품명·규격</th><th>고객사</th><th>공정</th><th class="num">기초재고</th><th class="num">+ 양품</th><th class="num">± 조정</th><th class="num">− 다음 공정·출고</th><th class="num">− 조립 연결</th><th class="num">= 재고</th><th>원인</th></tr></thead><tbody>';
+  h += '<div class="tbl-wrap"><table class="grid neg-tbl"><thead><tr>' + NEG_COLS.map(function (c) { var on = N.sk === c.k && N.sd; return '<th class="' + (c.num ? 'num ' : '') + 'sortable' + (on ? ' sorted' : '') + '" data-sk="' + c.k + '" title="눌러서 정렬 (한 번 더 = 반대 · 세 번 = 원래)">' + c.t + (on ? '<span class="sa">' + (N.sd > 0 ? '▲' : '▼') + '</span>' : '') + '</th>'; }).join('') + '</tr></thead><tbody>';
   shown.forEach(function (r) {
     var it = r.it, x = r.x, key = it.id + '|' + r.pi, op = N.open === key;
-    h += '<tr class="neg-row' + (op ? ' open' : '') + '" data-nk="' + key + '"><td><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span></td><td class="c-p">' + esc(it.p) + '</td><td class="c-pc">' + prodCell(it) + '</td><td class="c-n">' + esc([it.it || it.n, it.s].filter(Boolean).join(' · ')) + '</td><td class="c-cust">' + esc(it.cust || '') + '</td><td class="c-proc">' + esc(r.pr.n) + '</td>' +
+    h += '<tr class="neg-row' + (op ? ' open' : '') + '" data-nk="' + key + '"><td><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span></td><td class="c-p">' + esc(it.p) + '</td><td class="c-pc">' + prodCell(it) + '</td><td class="c-n">' + esc(it.it || it.n || '') + '</td><td class="c-s">' + esc(it.s || '') + '</td><td class="c-cust">' + esc(it.cust || '') + '</td><td class="c-proc">' + esc(r.pr.n) + '</td>' +
       '<td class="num">' + fmt(x.o0, false) + '</td><td class="num">' + (x.g ? fmt(x.g, false) : '<span class="neg">0</span>') + '</td><td class="num">' + (x.a ? fmt(x.a, false) : '-') + '</td><td class="num">' + (x.nxP ? fmt(x.nxP, false) + ' <small class="muted">' + esc(x.nxN) + '</small>' : '-') + '</td><td class="num">' + (x.link ? fmt(x.link, false) : '-') + '</td><td class="num neg"><b>' + fmt(r.st, false) + '</b></td><td><span class="nw nw-' + x.why + '">' + NEG_WHY[x.why][0] + '</span></td></tr>';
-    if (op) h += '<tr class="neg-detail"><td colspan="13">' + negDetail(it, r.pi, d, x) + '</td></tr>';
+    if (op) h += '<tr class="neg-detail"><td colspan="14">' + negDetail(it, r.pi, d, x) + '</td></tr>';
   });
-  if (!shown.length) h += '<tr><td colspan="13" class="empty">' + (all.length ? '조건에 맞는 줄 없음' : '마이너스 재고 없음 👍') + '</td></tr>';
+  if (!shown.length) h += '<tr><td colspan="14" class="empty">' + (all.length ? '조건에 맞는 줄 없음' : '마이너스 재고 없음 👍') + '</td></tr>';
   h += '</tbody></table></div>';
   if (rows.length > shown.length) h += '<div class="more"><button id="negMore">더 보기 (' + shown.length.toLocaleString() + ' / ' + rows.length.toLocaleString() + ')</button></div>';
   $('#view').innerHTML = h;
@@ -1766,6 +1774,7 @@ function renderNeg() {
       else if (a.dataset.act === 'day') { S.ui.q = it.p || ''; S.ui.cat = it.cat; S.ui.scope = 'all'; S.ui.date = a.dataset.d || N.d; S.ui.view = 'day'; S.ui.page = 1; if ($('#q')) $('#q').value = S.ui.q; render(); scrollTo(0, 0); }
       return;
     }
+    var th = ev.target.closest('th[data-sk]'); if (th) { var k = th.dataset.sk, d0 = th.classList.contains('num') ? -1 : 1; if (N.sk !== k) { N.sk = k; N.sd = d0; } else if (N.sd === d0) N.sd = -d0; else { N.sk = ''; N.sd = 0; } N.page = 1; renderNeg(); return; }
     var r = ev.target.closest('tr.neg-row'); if (r) { N.open = N.open === r.dataset.nk ? '' : r.dataset.nk; renderNeg(); var o = $('tr.neg-row.open'); if (o) o.scrollIntoView({ block: 'nearest' }); }
   };
 }
