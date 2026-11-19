@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v32">
+<meta name="su-ver" content="v33">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -2219,7 +2219,7 @@ function openItem(id) {
     }
     return '<div class="lbl">수주 · 출고 (ERP 자동) ' + (bal ? '<small>수주 ' + fmt(bal.oq, false) + ' · 출고 누계 ' + fmt(bal.out, false) + ' · <b class="' + (bal.rem < 0 ? 'neg' : '') + '">잔량 ' + fmt(bal.rem, false) + '</b></small>' : '') + '</div>' + (function () { var L = shipCodes(src); return L.length ? '<div class="pc-list"><b>제품번호 ' + L.length + '개</b> <small class="muted">(출고 줄마다 · 출고일 순)</small> ' + L.map(function (c) { return '<span class="pc-chip">' + esc(c) + '</span>'; }).join('') + '</div>' : ''; })() + '<div class="two">' +
       '<div class="tw"><table class="grid small"><thead><tr><th>수주일</th><th>주문번호</th><th>제품번호</th><th>고객</th><th>비고</th><th class="num">수량</th></tr></thead><tbody>' + (ol.slice(0, 300).map(function (o) { return '<tr><td>' + esc(o.od) + '</td><td>' + esc(o.o) + '</td><td class="c-pc">' + (function () { var L = ordCodes(o); return L.length ? '<b>' + esc(L.join(', ')) + '</b>' : '<span class="pc-wait">출고 전</span>'; })() + '</td><td class="c-cust">' + esc(o.c) + '</td><td class="c-memo">' + esc(o.r || o.s) + '</td><td class="num">' + fmt(SU.num(o.q)) + '</td></tr>'; }).join('') || '<tr><td colspan="6" class="muted">ERP 수주 없음</td></tr>') + '</tbody></table></div>' +
-      '<div class="tw"><table class="grid small"><thead><tr><th>출고일</th><th>주문번호</th><th>제품번호</th><th>고객</th><th>납품처</th><th class="num">수량</th><th class="num">공급가</th></tr></thead><tbody>' + (sl.slice(0, 300).map(function (r) { return '<tr><td>' + esc(r.d) + '</td><td>' + esc(r.o) + '</td><td class="c-pc"><b>' + esc(String(r.code || r.ac || '').toUpperCase()) + '</b></td><td class="c-cust">' + esc(r.c) + '</td><td class="c-cust">' + esc(r.dl) + '</td><td class="num">' + fmt(SU.num(r.q)) + '</td><td class="num">' + fmt(SU.num(r.a)) + '</td></tr>'; }).join('') || '<tr><td colspan="7" class="muted">ERP 출고 없음</td></tr>') + '</tbody></table></div></div>' + (ol.length > 300 || sl.length > 300 ? '<div class="muted small">최근 300줄만 표시 (수주 ' + ol.length + '줄 · 출고 ' + sl.length + '줄)</div>' : '');
+      '<div class="tw"><table class="grid small"><thead><tr><th>출고일</th><th>주문번호</th><th>제품번호</th><th>고객</th><th>납품처</th><th class="num">수량</th><th class="num">단가</th><th class="num">공급가</th></tr></thead><tbody>' + (sl.slice(0, 300).map(function (r) { return '<tr><td>' + esc(r.d) + '</td><td>' + esc(r.o) + '</td><td class="c-pc"><b>' + esc(String(r.code || r.ac || '').toUpperCase()) + '</b></td><td class="c-cust">' + esc(r.c) + '</td><td class="c-cust">' + esc(r.dl) + '</td><td class="num">' + fmt(SU.num(r.q)) + '</td><td class="num">' + fmt(SU.num(r.up)) + '</td><td class="num">' + fmt(SU.num(r.a)) + '</td></tr>'; }).join('') || '<tr><td colspan="8" class="muted">ERP 출고 없음</td></tr>') + '</tbody></table></div></div>' + (ol.length > 300 || sl.length > 300 ? '<div class="muted small">최근 300줄만 표시 (수주 ' + ol.length + '줄 · 출고 ' + sl.length + '줄)</div>' : '');
   }
   function draw() {
     var feeders = store.feeders(id);
