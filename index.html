@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v50">
+<meta name="su-ver" content="v51">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -192,6 +192,7 @@ textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px;font-
 .pg-tbl tr.pg-row.open>td{position:sticky;top:var(--h1,30px);z-index:4;background:#dbe7fb;box-shadow:0 1px 0 #b9cdf0}.pg-tbl .pg-dt th{top:calc(var(--h1,30px) + var(--h2,22px));z-index:3}
 .pg-tbl .pg-dt th{position:sticky!important}
 #bootSu{position:fixed;inset:0;z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:#f8fafc;transition:opacity .3s}#bootSu.out{opacity:0;pointer-events:none}html:has(#auGate) #bootSu{display:none}#bootSu .bs-ci{display:block;width:132px;height:132px;object-fit:contain;margin:0 auto 18px;filter:drop-shadow(0 6px 14px rgba(30,58,95,.16))}#bootSu .bs-pct{font-size:54px;line-height:1;font-weight:900;color:#1e3a5f;letter-spacing:-.03em;font-variant-numeric:tabular-nums}#bootSu .bs-pct span{font-size:30px}#bootSu .bs-bar{height:9px;width:260px;margin:16px auto 0;background:#e2e8f0;border-radius:6px;overflow:hidden}#bootSu .bs-bar>div{height:100%;width:0;background:linear-gradient(90deg,#1e3a5f,#3b82f6);border-radius:6px;transition:width .25s ease}#bootSu .bs-msg{margin-top:11px;font-size:13px;font-weight:700;color:#64748b}#bootSu .bs-steps{margin-top:14px;font-size:12px;color:#94a3b8;line-height:1.8;text-align:left}@media (max-width:640px){#bootSu .bs-ci{width:102px;height:102px}}
+:root{--c-frame:#b45309}.tabs .cat-frame.on{background:var(--c-frame);border-color:var(--c-frame)}.cb.cat-frame{background:var(--c-frame)}.topbar .top-tabs .cat-frame.on{background:var(--c-frame);border-color:var(--c-frame);color:#fff}.topbar .top-tabs .cat-frame.on small{color:#ffffffcc}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -279,6 +280,7 @@ var SU = (function () {
     { id: 'inner', name: '내부보강' },
     { id: 'laser', name: '레이저' },
     { id: 'part',  name: '부자재' },
+    { id: 'frame', name: '문틀' },
     { id: 'oem',   name: '유통/OEM' }
   ];
   var CAT_NAME = {}; CATS.forEach(function (c) { CAT_NAME[c.id] = c.name; });
@@ -287,6 +289,7 @@ var SU = (function () {
     inner: ['포밍', '타공', '탭핑', '포장', OUT],
     laser: ['레이저', '절곡', '포장', OUT],
     part:  ['블랭킹', '탭핑', '조립/포장', OUT],
+    frame: ['절단', '절곡', '용접', '포장', OUT],   // 문틀 (설정 → 구분별 기본 공정에서 바꿀 수 있음)
     oem:   ['매입', OUT]  // 유통/OEM : 매입(매입분석도구 자동) → 출고(ERP 자동)
   };
   /* 공정 이름 표기 통일 (지금 시트에서 섞여 쓰인 것) */
@@ -2952,6 +2955,7 @@ if(onPages()){
 })();
 </script>
 
+<!-- 업무분석도구 공통 메뉴(왼쪽 위 삼선, 홈페이지 도구 목록 자동) — build.py 가 </body> 앞에 넣음 -->
 <style id="dbf-menu-v1-style">
 .dbfm-btn{position:fixed;top:14px;left:14px;z-index:2147481999;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;padding:0;margin:0;
   background:#fff;border:1px solid #e2e8f0;border-radius:9px;color:#334155;cursor:pointer;box-shadow:0 1px 2px rgba(15,23,42,.05);transition:background .15s,border-color .15s}
