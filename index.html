@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v66">
+<meta name="su-ver" content="v67">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -217,6 +217,7 @@ html body #qiClr:hover{background:#dc2626;color:#fff;opacity:1}
 #qiFill{position:fixed;width:7px;height:7px;background:#1d4ed8;border:1px solid #fff;box-shadow:0 0 0 1px #1d4ed8;cursor:crosshair;z-index:50;display:none}
 #view input.qi.qi-fillr{outline:2px dashed #1d4ed8!important;outline-offset:-2px;background:#eff6ff!important}
 body.qi-filling,body.qi-filling *{cursor:crosshair!important;user-select:none!important}
+.vsep{display:inline-block;align-self:center;width:1px;height:24px;background:#cbd5e1;margin:0 4px;flex:none}.vsep.tsep{background:#ffffff40;height:22px}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -1399,7 +1400,7 @@ function renderShell() {
       '<div class="views" id="views">' +
         '<button data-v="dash">📊 현황판</button><button data-v="month">📅 월 현황</button><button data-v="day">📝 일일 입력</button><button data-v="order">➕ 수주 입력</button>' +
       '</div>' +
-      '<button type="button" id="nsBtn" class="ns-btn" title="출고가 한 번도 없는 제품만 보기 (ERP 출고·직접 입력 출고 모두 없음) · 한 번 더 누르면 해제">출고 전 제품 <small id="nsCnt"></small></button>' +
+      '<span class="vsep"></span><button type="button" id="nsBtn" class="ns-btn" title="출고가 한 번도 없는 제품만 보기 (ERP 출고·직접 입력 출고 모두 없음) · 한 번 더 누르면 해제">출고 전 제품 <small id="nsCnt"></small></button>' +
       '<button type="button" id="nmBtn" class="nm-btn" title="출고됐는데 제품번호가 없는 제품만 보기 (출고 전 «번호 대기»는 뺌) · 누르면 먼저 출고매칭 자료를 다시 받아 번호를 다시 매칭함 · 한 번 더 누르면 해제">제품번호 없음 <small id="nmCnt"></small></button>' +
 
       '<span class="spacer"></span>' +
@@ -1466,7 +1467,7 @@ function renderTabs(list) {
   SU.CATS.forEach(function (c) { cnt[c.id] = 0; });
   var listView = u.view === 'day' || u.view === 'month';   // 수주 입력·설정 화면에서는 검색·진행 중 조건 없이 전체 수
   sortedItems().forEach(function (it) { if (listView) { if (!matchQ(it, u.q)) return; if (u.scope === 'active' && !isActive(it, u.date)) return; if (!scopeOk(it, u.scope, u.date)) return; } cnt.all++; cnt[it.cat] = (cnt[it.cat] || 0) + 1; });
-  var h = '<button data-c="all" class="' + (u.cat === 'all' ? 'on' : '') + '">전체<small>' + cnt.all.toLocaleString() + '</small></button>';
+  var h = '<button data-c="all" class="' + (u.cat === 'all' ? 'on' : '') + '">전체<small>' + cnt.all.toLocaleString() + '</small></button><span class="vsep tsep"></span>';
   SU.CATS.forEach(function (c) { h += '<button data-c="' + c.id + '" class="cat-' + c.id + (u.cat === c.id ? ' on' : '') + '">' + c.name + '<small>' + (cnt[c.id] || 0).toLocaleString() + '</small></button>'; });
   $('#catTabs').innerHTML = h;
   $$('#catTabs button').forEach(function (b) { b.onclick = function () { S.ui.cat = b.dataset.c; S.ui.page = 1; render(); }; });
@@ -2271,7 +2272,7 @@ function renderMonth() {
   base.forEach(function (it) { (it.procs || []).forEach(function (p) { pset[p.n] = (pset[p.n] || 0) + 1; }); });
   store.items.forEach(function (it) { if (u.cat !== 'all' && it.cat !== u.cat) return; (it.procs || []).forEach(function (p) { pall[p.n] = 1; }); });
   var pnames = store.procList().filter(function (n) { return pall[n] || pset[n]; });
-  var h = '<div class="mbar"><b>' + ms.slice(0, 4) + '년 ' + Number(ms.slice(5, 7)) + '월</b> 공정: <button data-pf="" class="' + (!u.proc ? 'on' : '') + '">전체</button>' + pnames.map(function (n) { var c = pset[n] || 0; return '<button data-pf="' + esc(n) + '" class="' + (u.proc === n ? 'on' : '') + '"' + (c || u.proc === n ? '' : ' disabled') + ' title="' + (c ? c.toLocaleString() + '품목' : '지금 표에 이 공정 없음') + '">' + esc(n) + '</button>'; }).join('') +
+  var h = '<div class="mbar"><b>' + ms.slice(0, 4) + '년 ' + Number(ms.slice(5, 7)) + '월</b> 공정: <button data-pf="" class="' + (!u.proc ? 'on' : '') + '">전체</button><span class="vsep"></span>' + pnames.map(function (n) { var c = pset[n] || 0; return '<button data-pf="' + esc(n) + '" class="' + (u.proc === n ? 'on' : '') + '"' + (c || u.proc === n ? '' : ' disabled') + ' title="' + (c ? c.toLocaleString() + '품목' : '지금 표에 이 공정 없음') + '">' + esc(n) + '</button>'; }).join('') +
     '<span class="spacer"></span>' + sortResetBtn() + '<button type="button" id="baseZero" class="bz" title="지금 표에 보이는 조건의 기초재고를 모두 0으로 (개별 칸은 기초 칸에서 직접 수정)">기초재고 모두 0</button></div>';
   h += '<div class="tbl-wrap"><table class="grid month"><thead><tr>' + sortTh('cat', 'c-cat', '구분') + sortTh('p', 'c-p', '품번') + sortTh('pc', 'c-pc', '제품번호') + sortTh('pn', 'c-n', '품명·규격') + sortTh('proc', 'c-proc', '공정') + sortTh('base', 'num', '기초') +
     days.map(function (dd) { var w = new Date(dd + 'T00:00:00').getDay(); return sortTh('d' + dd, 'num day' + (w === 0 ? ' sun' : w === 6 ? ' sat' : '') + (dd === td ? ' today' : ''), Number(dd.slice(8)) + '<span class="dgo" title="그날 입력 화면으로">↗</span>', ' data-d="' + dd + '"'); }).join('') + sortTh('tot', 'num', '합계') + '</tr></thead><tbody>';
