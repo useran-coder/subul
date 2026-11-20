@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v69">
+<meta name="su-ver" content="v70">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -219,6 +219,7 @@ html body #qiClr:hover{background:#dc2626;color:#fff;opacity:1}
 body.qi-filling,body.qi-filling *{cursor:crosshair!important;user-select:none!important}
 .vsep{display:inline-block;align-self:center;width:1px;height:24px;background:#cbd5e1;margin:0 4px;flex:none}.vsep.tsep{background:#ffffff40;height:22px}
 .au-sum{margin:0 0 8px;font-size:13px;color:#334155}.au-tbl input.aui{width:90px;height:26px;border:1px solid #cbd5e1;border-radius:5px;text-align:right;padding:0 6px;font:inherit;font-weight:700;background:#fffbeb}.au-tbl input.aui:focus{outline:2px solid #3b82f6;border-color:#3b82f6;background:#fff}.au-tbl tr.au-dif td{background:#fff7ed}.pos{color:#15803d}.ok{color:#64748b;font-size:12px}.au-re{margin-left:4px;height:22px;padding:0 7px;border:1px solid #fca5a5;border-radius:5px;background:#fef2f2;color:#b91c1c;font-size:11px;font-weight:700;cursor:pointer}.au-tr,.au-go{height:24px;padding:0 8px;border:1px solid #cbd5e1;border-radius:5px;background:#fff;cursor:pointer;font-size:12px;white-space:nowrap}.tr-sum tr.on td{background:#eff6ff;font-weight:700}.tr-hint{margin-top:10px;padding:9px 12px;border-radius:8px;background:#fffbeb;border:1px solid #fcd34d;font-size:13px;color:#7c2d12;line-height:1.6}.tr-day tr.tr-0 td{color:#cbd5e1}.tr-day tr.tr-warn td{background:#fef2f2}.tr-day tr.tr-end td{box-shadow:inset 0 -2px 0 #1e3a5f}.tr-day td.tr-fl{font-size:12px;color:#b45309;white-space:normal;max-width:420px}
+.as-go{height:30px;padding:0 12px;border:1px solid #93c5fd;border-radius:7px;background:#eff6ff;color:#1e40af;font-weight:800;cursor:pointer}.as-bars{display:flex;flex-direction:column;gap:8px;margin-top:6px}.as-bar{display:grid;grid-template-columns:80px 1fr 110px;align-items:center;gap:10px;cursor:pointer;padding:3px 6px;border-radius:6px}.as-bar:hover,.as-bar.on{background:#eff6ff}.as-l{font-size:13px;font-weight:700;color:#334155}.as-t{height:16px;background:#f1f5f9;border-radius:5px;overflow:hidden}.as-t i{display:block;height:100%;border-radius:5px}.as-n{text-align:right;font-weight:800;font-variant-numeric:tabular-nums}.as-n small{font-weight:600;color:#94a3b8}.bk-0{background:#22c55e}.bk-5{background:#a3e635}.bk-10{background:#facc15}.bk-30{background:#fb923c}.bk-99{background:#ef4444}.as-rt{display:inline-block;min-width:52px;padding:1px 6px;border-radius:999px;color:#fff;font-size:11.5px;font-weight:800;text-align:center}.as-rt.bk-5,.as-rt.bk-10{color:#422006}.as-chip{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1px 8px;border-radius:999px;background:#eff6ff;color:#1e40af;font-size:12px}.as-chip button{border:0;background:none;cursor:pointer;color:#64748b;padding:0 2px}.card-h .search{margin-left:auto;height:28px;width:220px}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -1533,6 +1534,7 @@ function render() {
   else if (u.view === 'topst') renderTopPage();
   else if (u.view === 'audit') renderAudit();
   else if (u.view === 'trace') renderTrace();
+  else if (u.view === 'austat') renderAuStat();
   else renderSettings();
 }
 /* 다른 사람 입력이 들어왔을 때 : 입력 중인 칸은 그대로 두고 숫자만 새로 */
@@ -3128,7 +3130,7 @@ function renderAudit() {
   if (sc && A.sd) rows.sort(function (a, b) { var u = sc.v(a), w = sc.v(b); return A.sd * (typeof u === 'number' && typeof w === 'number' ? u - w : String(u).localeCompare(String(w), 'ko')); });
   var shown = rows.slice(0, A.page * 200), tPlus = 0, tMinus = 0;
   all.forEach(function (x) { if (x.diff > 0) tPlus += x.diff; else if (x.diff < 0) tMinus += x.diff; });
-  var h = '<div class="neg-head"><h2>📋 실사재고 <b>' + Number(A.m.slice(5)) + '월</b></h2>' +
+  var h = '<div class="neg-head"><h2>📋 실사재고 <b>' + Number(A.m.slice(5)) + '월</b></h2><button type="button" class="as-go" id="asGo" title="데이터 재고 vs 실사재고 오차 범위·틀린 제품 목록">📊 오차 통계</button>' +
     '<label class="muted small">월 <input type="month" id="auM" value="' + A.m + '"></label>' +
     '<label class="muted small">실사일 <input type="date" id="auD" value="' + A.d + '" min="' + A.m + '-01" max="' + SU.monthEnd(A.m + '-01') + '"></label>' +
     '<input type="search" id="auQ" class="search" placeholder="품번·제품번호·품명·고객사" value="' + esc(A.q || '') + '" autocomplete="off">' +
@@ -3161,6 +3163,7 @@ function renderAudit() {
     if (ev.target.closest('.au-re') && it) { var r = auRec(it.id, it.procs[pi].id, A.m); if (r) { var msg = auSave(it, pi, String(r.q), r.d); schedulePush(); toast(msg + ' (Ctrl+Z 취소)'); renderAudit(); } return; }
     var o = ev.target.closest('[data-open]'); if (o) openItem(o.dataset.open);
   };
+  $('#asGo').onclick = function () { S.ui.view = 'austat'; render(); scrollTo(0, 0); };
   $('#auM').onchange = function () { if (this.value) { A.m = this.value; A.d = auDay(A.m); A.page = 1; renderAudit(); } };
   $('#auD').onchange = function () { if (this.value && this.value.slice(0, 7) === A.m) { A.d = this.value; renderAudit(); } };
   var tm = null; $('#auQ').oninput = function () { var v = this.value; clearTimeout(tm); tm = setTimeout(function () { A.q = v.trim(); A.page = 1; renderAudit(); var e = $('#auQ'); e.focus(); e.setSelectionRange(e.value.length, e.value.length); }, 300); };
@@ -3188,7 +3191,7 @@ function renderTrace() {
   if (!it || !it.procs[T.pi]) { S.ui.view = 'audit'; renderAudit(); return; }
   var pi = T.pi, pr = it.procs[pi], m = T.m, ms = m + '-01', me_ = SU.monthEnd(ms), prev = SU.addDays(ms, -1), r = auRec(it.id, pr.id, m), dEnd = r ? r.d : auDay(m), td = SU.today();
   var nx = it.procs[pi + 1], nxN = pr.nx !== false && nx ? nx.n : '';
-  var h = '<div class="neg-head"><button type="button" class="neg-back" id="trBack">‹ 실사재고</button><h2>🔍 역추적 <b>' + esc(it.p || it.n) + '</b> · ' + esc(pr.n) + ' · ' + Number(m.slice(5)) + '월</h2>' +
+  var h = '<div class="neg-head"><button type="button" class="neg-back" id="trBack">‹ ' + (T.from === 'austat' ? '오차 통계' : '실사재고') + '</button><h2>🔍 역추적 <b>' + esc(it.p || it.n) + '</b> · ' + esc(pr.n) + ' · ' + Number(m.slice(5)) + '월</h2>' +
     '<span class="muted small">' + esc([it.it || it.n, it.s, it.cust].filter(Boolean).join(' · ')) + ' · 제품번호 ' + esc(prodCode(it) || '-') + '</span></div>';
   /* 1) 공정 사슬 요약 */
   h += '<div class="card"><h3>공정 흐름 요약 <small class="muted">' + Number(m.slice(5)) + '월 1일 ~ ' + dEnd.slice(5).replace('-', '/') + ' · 공정 이름 누르면 그 공정 추적</small></h3><table class="grid small tr-sum"><thead><tr><th>공정</th><th class="num">월초 재고</th><th class="num">+ 양품</th><th class="num">불량</th><th class="num">− 다음 공정·출고</th><th class="num">− 조립 연결</th><th class="num">± 조정</th><th class="num">= 데이터 재고</th><th class="num">실사</th><th class="num">차이</th></tr></thead><tbody>';
@@ -3223,10 +3226,96 @@ function renderTrace() {
   h += '<div class="card"><h3>날짜별 흐름 <small class="muted">' + esc(pr.n) + ' · 재고 = 전일 재고 + 양품 + 조정 − 다음 공정 생산(양품+불량) − 조립 연결 · 빈 날은 흐리게</small></h3><div class="tbl-wrap"><table class="grid small tr-day"><thead>' + hdr + '</thead><tbody>' + rows + '</tbody></table></div></div>';
   $('#view').innerHTML = h;
   var V = $('#view'); V.onchange = null; V.onkeydown = null;
-  $('#trBack').onclick = function () { S.ui.view = 'audit'; render(); };
+  $('#trBack').onclick = function () { S.ui.view = T.from || 'audit'; render(); };
   V.onclick = function (ev) {
     var a = ev.target.closest('[data-tp]'); if (a) { S.tr.pi = Number(a.dataset.tp); renderTrace(); return; }
     var g = ev.target.closest('[data-gd]'); if (g) { S.ui.date = g.dataset.gd; S.ui.view = 'day'; S.ui.q = it.p || ''; S.ui.cat = it.cat; S.ui.scope = 'all'; S.ui.page = 1; var qi = $('#q'); if (qi) qi.value = S.ui.q; render(); scrollTo(0, 0); }
+  };
+}
+
+/* ───────── v70 : 실사 오차 통계 (데이터 재고 vs 실사재고) + 틀린 제품 목록 ─────────
+   오차율 = |실사 − 데이터| ÷ |실사| (실사 0 이면 |데이터| 기준 → 100%) */
+var AS_BK = [['0', '일치', 0, 0], ['5', '5% 이하', 0, 5], ['10', '5~10%', 5, 10], ['30', '10~30%', 10, 30], ['99', '30% 넘음', 30, 1e9]];
+function asRows(m) {
+  var out = [];
+  store.recs.forEach(function (rec, k) {
+    if (k.charAt(0) !== 'r' || !rec.v) return; var a = k.slice(2).split('|'); if (a[2] !== m) return;
+    var it = store.items.get(a[0]); if (!it) return; var pi = it.procs.findIndex(function (p) { return p.id === a[1]; }); if (pi < 0) return;
+    var v = rec.v, q = SU.num(v.q), d = SU.num(v.data0), df = Math.round((q - d) * 1000) / 1000, base = Math.abs(q) || Math.abs(d), rate = df ? (base ? Math.abs(df) / base * 100 : 100) : 0;
+    var bk = !df ? '0' : rate <= 5 ? '5' : rate <= 10 ? '10' : rate <= 30 ? '30' : '99';
+    out.push({ it: it, pi: pi, pr: it.procs[pi], q: q, data: d, diff: df, rate: rate, bk: bk, by: v.by || rec.by || '', d: v.d });
+  });
+  return out;
+}
+function asAgg(L) {
+  var x = { n: L.length, ok: 0, bad: 0, data: 0, q: 0, plus: 0, minus: 0, abs: 0 };
+  L.forEach(function (r) { x.data += r.data; x.q += r.q; x.abs += Math.abs(r.diff); if (!r.diff) x.ok++; else { x.bad++; if (r.diff > 0) x.plus += r.diff; else x.minus += r.diff; } });
+  x.acc = x.n ? x.ok / x.n * 100 : 0; x.erate = x.q || x.data ? x.abs / Math.max(Math.abs(x.q), Math.abs(x.data), 1) * 100 : 0;
+  return x;
+}
+function pct1(v) { return (Math.round(v * 10) / 10).toFixed(1) + '%'; }
+function renderAuStat() {
+  var A = S.au || (S.au = { m: SU.today().slice(0, 7), d: '', q: '', f: 'stock', page: 1 }), m = A.m, u = S.ui;
+  var ST = S.as || (S.as = { bk: '', sk: 'abs', sd: -1, page: 1, q: '' });
+  var all = asRows(m).filter(function (r) { return u.cat === 'all' || r.it.cat === u.cat; }), T = asAgg(all);
+  var h = '<div class="neg-head"><button type="button" class="neg-back" id="asBack">‹ 실사재고</button><h2>📊 실사 오차 통계 <b>' + Number(m.slice(5)) + '월</b></h2>' +
+    '<label class="muted small">월 <input type="month" id="asM" value="' + m + '"></label><span class="muted small">오차율 = |실사 − 데이터| ÷ 실사 · 위 구분 탭으로 구분별 보기</span></div>';
+  if (!all.length) { $('#view').innerHTML = h + '<div class="card empty">' + Number(m.slice(5)) + '월 실사 기록 없음 — 실사재고 화면에서 실사 수량을 넣으면 여기에 통계가 나옴</div>'; asBind(); return; }
+  function kpi(l, v, s, c) { return '<div class="kpi' + (c ? ' ' + c : '') + '"><div class="k-l">' + l + '</div><div class="k-v">' + v + '</div><div class="k-s">' + (s || '') + '</div></div>'; }
+  h += '<div class="kpis">' +
+    kpi('실사한 줄', T.n.toLocaleString() + '<small class="k-u">줄</small>', '품목·공정 기준') +
+    kpi('일치율', pct1(T.acc), '일치 ' + T.ok.toLocaleString() + ' · 틀림 ' + T.bad.toLocaleString(), T.acc < 90 ? 'warn' : '') +
+    kpi('데이터 재고 합', fmt(T.data, false) + '<small class="k-u">개</small>', '실사 전 프로그램 재고') +
+    kpi('실사 재고 합', fmt(T.q, false) + '<small class="k-u">개</small>', '현장 실사') +
+    kpi('차이 합', (T.q - T.data > 0 ? '+' : '') + fmt(T.q - T.data, false) + '<small class="k-u">개</small>', '많음 +' + fmt(T.plus, false) + ' · 적음 ' + fmt(T.minus, false), T.q - T.data ? 'bad' : '') +
+    kpi('전체 오차율', pct1(T.erate), '|차이| 합 ' + fmt(T.abs, false) + ' ÷ 실사 합') + '</div>';
+  /* 오차 범위 분포 */
+  var bc = {}; all.forEach(function (r) { bc[r.bk] = (bc[r.bk] || 0) + 1; });
+  var mx = Math.max.apply(null, AS_BK.map(function (b) { return bc[b[0]] || 0; }).concat([1]));
+  h += '<div class="dash-grid"><div class="card"><h3>오차 범위 분포 <small class="muted">막대 누르면 아래 목록이 그 범위만</small></h3><div class="as-bars">' +
+    AS_BK.map(function (b) { var n = bc[b[0]] || 0; return '<div class="as-bar' + (ST.bk === b[0] ? ' on' : '') + '" data-bk="' + b[0] + '"><span class="as-l">' + b[1] + '</span><span class="as-t"><i class="bk-' + b[0] + '" style="width:' + (n / mx * 100) + '%"></i></span><span class="as-n">' + n.toLocaleString() + '<small> (' + pct1(n / T.n * 100) + ')</small></span></div>'; }).join('') + '</div></div>';
+  /* 구분별 · 공정별 */
+  function grp(key, name) { var g = {}; all.forEach(function (r) { var k = key(r); (g[k] = g[k] || []).push(r); });
+    return Object.keys(g).map(function (k) { var x = asAgg(g[k]); x.k = name(k); return x; }).sort(function (a, b) { return b.abs - a.abs; }); }
+  function gtbl(t, L) { return '<div class="card"><h3>' + t + '</h3><table class="grid small"><thead><tr><th></th><th class="num">실사</th><th class="num">일치율</th><th class="num">데이터 합</th><th class="num">실사 합</th><th class="num">차이</th><th class="num">오차율</th></tr></thead><tbody>' +
+    L.map(function (x) { var d = x.q - x.data; return '<tr><td>' + x.k + '</td><td class="num">' + x.n + '</td><td class="num' + (x.acc < 90 ? ' neg' : '') + '">' + pct1(x.acc) + '</td><td class="num">' + fmt(x.data, false) + '</td><td class="num">' + fmt(x.q, false) + '</td><td class="num"><b class="' + (d < 0 ? 'neg' : d > 0 ? 'pos' : '') + '">' + (d > 0 ? '+' : '') + fmt(d, false) + '</b></td><td class="num">' + pct1(x.erate) + '</td></tr>'; }).join('') + '</tbody></table></div>'; }
+  h += gtbl('구분별', grp(function (r) { return r.it.cat; }, function (k) { return '<span class="cb cat-' + k + '">' + esc(SU.CAT_NAME[k] || k) + '</span>'; }));
+  h += gtbl('공정별', grp(function (r) { return r.pr.n; }, function (k) { return esc(k); }));
+  /* 월별 추이 (최근 6달) */
+  var tm = [], t = new Date(m + '-01T00:00:00');
+  for (var i = 5; i >= 0; i--) { var dd = new Date(t.getFullYear(), t.getMonth() - i, 1), mm = dd.getFullYear() + '-' + String(dd.getMonth() + 1).padStart(2, '0'); var L = asRows(mm).filter(function (r) { return u.cat === 'all' || r.it.cat === u.cat; }); tm.push([mm, asAgg(L)]); }
+  h += '<div class="card"><h3>월별 추이 <small class="muted">최근 6달</small></h3><table class="grid small"><thead><tr><th>월</th><th class="num">실사</th><th class="num">틀림</th><th class="num">일치율</th><th class="num">차이 합</th><th class="num">오차율</th></tr></thead><tbody>' +
+    tm.map(function (z) { var x = z[1], d = x.q - x.data; return '<tr' + (z[0] === m ? ' class="on"' : '') + '><td>' + z[0].replace('-', '.') + '</td><td class="num">' + (x.n || '-') + '</td><td class="num">' + (x.n ? x.bad : '-') + '</td><td class="num">' + (x.n ? pct1(x.acc) : '-') + '</td><td class="num">' + (x.n ? (d > 0 ? '+' : '') + fmt(d, false) : '-') + '</td><td class="num">' + (x.n ? pct1(x.erate) : '-') + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
+  /* 틀린 제품 목록 */
+  var q = (ST.q || '').toLowerCase();
+  var bad = all.filter(function (r) { return r.diff && (!ST.bk || r.bk === ST.bk) && (!q || (itemText(r.it) + ' ' + prodCode(r.it).toLowerCase() + ' ' + r.pr.n).indexOf(q) >= 0); });
+  if (ST.bk === '0') bad = all.filter(function (r) { return !r.diff; });
+  var cols = [{ k: 'cat', t: '구분', v: function (r) { return SU.CAT_NAME[r.it.cat] || ''; } }, { k: 'p', t: '품번', v: function (r) { return r.it.p || ''; } }, { k: 'pc', t: '제품번호', v: function (r) { return prodCode(r.it); } },
+    { k: 'n', t: '품명', v: function (r) { return r.it.it || r.it.n || ''; } }, { k: 's', t: '규격', v: function (r) { return r.it.s || ''; } }, { k: 'cust', t: '고객사', v: function (r) { return r.it.cust || ''; } }, { k: 'proc', t: '공정', v: function (r) { return r.pr.n; } },
+    { k: 'data', t: '데이터', num: 1, v: function (r) { return r.data; } }, { k: 'q', t: '실사', num: 1, v: function (r) { return r.q; } }, { k: 'diff', t: '차이', num: 1, v: function (r) { return r.diff; } }, { k: 'abs', t: '|차이|', num: 1, v: function (r) { return Math.abs(r.diff); } }, { k: 'rate', t: '오차율', num: 1, v: function (r) { return r.rate; } }, { k: 'by', t: '실사자', v: function (r) { return r.by; } }];
+  var sc = cols.filter(function (c) { return c.k === ST.sk; })[0];
+  if (sc && ST.sd) bad.sort(function (a, b) { var x = sc.v(a), y = sc.v(b); return ST.sd * (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), 'ko')); });
+  var shown = bad.slice(0, ST.page * 200);
+  h += '<div class="card"><h3 class="card-h">' + (ST.bk === '0' ? '일치한 제품' : '틀린 제품') + ' <b>' + bad.length.toLocaleString() + '</b>' + (ST.bk ? ' <span class="as-chip">' + AS_BK.filter(function (b) { return b[0] === ST.bk; })[0][1] + ' <button type="button" id="asBkX" title="범위 조건 풀기">×</button></span>' : '') +
+    ' <input type="search" id="asQ" class="search" placeholder="품번·제품번호·품명·공정" value="' + esc(ST.q || '') + '" autocomplete="off"></h3>' +
+    '<div class="tbl-wrap"><table class="grid neg-tbl"><thead><tr>' + cols.map(function (c) { var on = ST.sk === c.k && ST.sd; return '<th class="' + (c.num ? 'num ' : '') + 'sortable' + (on ? ' sorted' : '') + '" data-sk="' + c.k + '">' + c.t + (on ? '<span class="sa">' + (ST.sd > 0 ? '▲' : '▼') + '</span>' : '') + '</th>'; }).join('') + '<th>역추적</th></tr></thead><tbody>' +
+    shown.map(function (r) { var it = r.it; return '<tr data-ai="' + it.id + '" data-ap="' + r.pi + '"><td><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span></td><td class="c-p link" data-open="' + it.id + '">' + esc(it.p) + '</td><td class="c-pc">' + prodCell(it) + '</td><td class="c-n">' + esc(it.it || it.n || '') + '</td><td class="c-s">' + esc(it.s || '') + '</td><td class="c-cust">' + esc(it.cust || '') + '</td><td class="c-proc">' + esc(r.pr.n) + '</td><td class="num">' + fmt(r.data, false) + '</td><td class="num">' + fmt(r.q, false) + '</td><td class="num"><b class="' + (r.diff < 0 ? 'neg' : r.diff > 0 ? 'pos' : '') + '">' + (r.diff > 0 ? '+' : '') + fmt(r.diff, false) + '</b></td><td class="num">' + fmt(Math.abs(r.diff), false) + '</td><td class="num"><span class="as-rt bk-' + r.bk + '">' + pct1(r.rate) + '</span></td><td>' + esc(r.by) + '</td><td><button type="button" class="au-tr">🔍</button></td></tr>'; }).join('') +
+    (shown.length ? '' : '<tr><td colspan="14" class="empty">' + (ST.bk === '0' ? '일치한 제품 없음' : '틀린 제품 없음 👍') + '</td></tr>') + '</tbody></table></div>' +
+    (bad.length > shown.length ? '<div class="more"><button id="asMore">더 보기 (' + shown.length + ' / ' + bad.length + ')</button></div>' : '') + '</div>';
+  $('#view').innerHTML = h; asBind(cols);
+}
+function asBind() {
+  var A = S.au, ST = S.as, V = $('#view'); V.onchange = null; V.onkeydown = null;
+  $('#asBack').onclick = function () { S.ui.view = 'audit'; render(); };
+  $('#asM').onchange = function () { if (this.value) { A.m = this.value; A.d = auDay(A.m); ST.page = 1; renderAuStat(); } };
+  var x = $('#asBkX'); if (x) x.onclick = function (ev) { ev.stopPropagation(); ST.bk = ''; ST.page = 1; renderAuStat(); };
+  var mo = $('#asMore'); if (mo) mo.onclick = function () { ST.page++; renderAuStat(); };
+  var tq = null, qi = $('#asQ'); if (qi) qi.oninput = function () { var v = this.value; clearTimeout(tq); tq = setTimeout(function () { ST.q = v.trim(); ST.page = 1; renderAuStat(); var e = $('#asQ'); if (e) { e.focus(); e.setSelectionRange(e.value.length, e.value.length); } }, 300); };
+  V.onclick = function (ev) {
+    var b = ev.target.closest('[data-bk]'); if (b) { ST.bk = ST.bk === b.dataset.bk ? '' : b.dataset.bk; ST.page = 1; renderAuStat(); return; }
+    var th = ev.target.closest('th[data-sk]'); if (th) { var k = th.dataset.sk, d0 = th.classList.contains('num') ? -1 : 1; if (ST.sk !== k) { ST.sk = k; ST.sd = d0; } else if (ST.sd === d0) ST.sd = -d0; else { ST.sk = ''; ST.sd = 0; } renderAuStat(); return; }
+    var tr = ev.target.closest('tr[data-ai]'); if (tr && ev.target.closest('.au-tr')) { S.tr = { id: tr.dataset.ai, pi: Number(tr.dataset.ap), m: A.m, from: 'austat' }; S.ui.view = 'trace'; render(); scrollTo(0, 0); return; }
+    var o = ev.target.closest('[data-open]'); if (o) openItem(o.dataset.open);
   };
 }
 
