@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v71">
+<meta name="su-ver" content="v72">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -1958,7 +1958,15 @@ function prodCode(it) {
   var m = String((it.memo || '') + ' ' + (it.s || '')).toUpperCase().match(/(?:^|[^A-Z0-9])(B\d{4,5}|D\d{4}|S\d{5}|\d{6})(?=$|[^A-Z0-9])/);
   if (m) return m[1];
   /* 부자재·유통 : 품목에 번호가 없음 → 출고매칭이 출고 줄마다 붙인 제품번호(S00001…) */
-  var L = shipCodes(it); return L.length ? L[L.length - 1] + (L.length > 1 ? ' 외 ' + (L.length - 1) : '') : '';
+  var L = shipCodes(it); if (L.length) return L[L.length - 1] + (L.length > 1 ? ' 외 ' + (L.length - 1) : '');
+  /* v72 : 출고 전이면 출고매칭(v35·sm-v5)이 주문 줄에 미리 붙인 번호 (order.code, cs 'new' = 새 S번호 · 'ship' = 출고 줄 번호 복사) */
+  var O = ordCodes(it); return O.length ? O[O.length - 1] + (O.length > 1 ? ' 외 ' + (O.length - 1) : '') : '';
+}
+function ordCodes(it) {
+  var ol = store.erpOrd && store.erpOrd.get(it.id); if (!ol || !ol.length) return [];
+  var seen = {}, out = [];
+  ol.slice().sort(function (a, b) { return String(a.od || '').localeCompare(String(b.od || '')); }).forEach(function (o) { var c = String(o.code || '').trim().toUpperCase(); if (/^[SBD]\d/.test(c) && !seen[c]) { seen[c] = 1; out.push(c); } });
+  return out;
 }
 /* 제품번호 넣기 : «번호 없음» 누르면 창 → 출고매칭 서버 수주 줄 비고 끝에 « / 번호» + code 저장 (smPush order upd)
    → 출고매칭은 다음 동기화 때 그 번호로 출고 줄을 다시 매칭, 수불관리는 바로 다시 받아 반영 */
@@ -2059,8 +2067,10 @@ function prodCell(it) {
   return '';
 }
 function prodTitle(it) {
-  var c = prodCode(it); if (!c || c.indexOf(' 외 ') < 0) return c;
-  return '출고매칭 제품번호 (출고 줄마다)\n' + shipCodes(it).join(', ');
+  var c = prodCode(it); if (!c) return c;
+  var sc = shipCodes(it); if (!sc.length && !it.code && ordCodes(it).length) return '출고 전 · 출고매칭이 주문 줄에 미리 붙인 번호\n' + ordCodes(it).join(', ');
+  if (c.indexOf(' 외 ') < 0) return c;
+  return '출고매칭 제품번호 (출고 줄마다)\n' + sc.join(', ');
 }
 function colVal(it, k) { return k === 'pc' ? prodCode(it) : it[k]; }
 function usedCols(items) { return DAY_COLS.filter(function (c) { return c.k === 'pc' || items.some(function (it) { return colVal(it, c.k); }); }); }
