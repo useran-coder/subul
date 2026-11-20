@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v72">
+<meta name="su-ver" content="v73">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -1591,7 +1591,7 @@ function dashData() {
         var st = store.stock(it, pi, R.sd) || 0; P.st += st; if (st) P.n++;
         if (st < 0) T.neg.push({ it: it, pr: pr, st: st });
         if (st > 0) anyStock = true;
-        if (pi === fi && it.cat === 'oem' && SU.isBuy(pr.n)) { stF = st; if (st > 0) { T.stF += st; C.stF += st; } }
+        if (pi === fi && it.cat === 'oem' && SU.isBuy(pr.n)) { C.fin += s.g; stF = st; if (st > 0) { T.stF += st; C.stF += st; } }
         else if (pi === fi) { T.fin += s.g; C.fin += s.g; addSer(it.id, pr.id, 'fin'); stF = st; if (st > 0) { T.stF += st; C.stF += st; } }
         else if (st > 0) { T.stW += st; C.stW += st; }
       }
@@ -1634,7 +1634,7 @@ function renderDash() {
   /* 구분별 표는 항상 모든 구분 (고른 구분은 강조만) */
   var DC = u.cat === 'all' ? D : (function () { var k = u.cat; u.cat = 'all'; try { return dashData(); } finally { u.cat = k; } })();
   var cr = SU.CATS.filter(function (c) { return DC.byCat[c.id] && DC.byCat[c.id].n; }).map(function (c) { var X = DC.byCat[c.id]; return '<tr class="go' + (u.cat === c.id ? ' sel' : '') + '" data-cat="' + c.id + '" title="' + (u.cat === c.id ? '한 번 더 누르면 전체' : '누르면 이 구분만 반영') + '"><td><span class="cb cat-' + c.id + '">' + c.name + '</span></td><td class="num">' + X.n.toLocaleString() + '</td><td class="num">' + fmt(X.ordQ) + '</td><td class="num">' + fmt(X.fin) + '</td><td class="num">' + pct(X.b, X.p) + '</td><td class="num">' + (X.ns ? '<span class="ns-go" data-ns="' + c.id + '" title="수주 ' + fmt(X.nsQ || 0, false) + ' · 누르면 출고 전 제품만">' + X.ns.toLocaleString() + '<small>품목</small></span>' : '-') + '</td><td class="num">' + fmt(X.out) + '</td><td class="num">' + fmt(X.stF) + '</td><td class="num">' + fmt(X.stW) + '</td><td class="num">' + fmt(X.rem) + '</td></tr>'; }).join('');
-  h += '<div class="dash-grid"><div class="card"><h3>구분별 <small class="muted">누르면 그 구분만 반영 · 한 번 더 누르면 전체</small></h3><table class="grid small"><thead><tr><th>구분</th><th class="num">품목</th><th class="num">수주</th><th class="num">완성 생산</th><th class="num">불량률</th><th class="num" title="출고가 한 번도 없는 제품 수 · 누르면 그 구분 출고 전 제품만">출고 전</th><th class="num">출고</th><th class="num">완제품 재고</th><th class="num">재공</th><th class="num">수주 잔량</th></tr></thead><tbody>' + (cr || '<tr><td colspan="10" class="muted">자료 없음</td></tr>') + '</tbody></table></div>';
+  h += '<div class="dash-grid"><div class="card"><h3>구분별 <small class="muted">누르면 그 구분만 반영 · 한 번 더 누르면 전체</small></h3><table class="grid small"><thead><tr><th>구분</th><th class="num">품목</th><th class="num">수주</th><th class="num" title="생산 구분 = 출고 앞 공정 양품 · 유통/OEM = 매입 수량">완성생산/매입</th><th class="num">불량률</th><th class="num" title="출고가 한 번도 없는 제품 수 · 누르면 그 구분 출고 전 제품만">출고 전</th><th class="num">출고</th><th class="num">완제품 재고</th><th class="num">재공</th><th class="num">수주 잔량</th></tr></thead><tbody>' + (cr || '<tr><td colspan="10" class="muted">자료 없음</td></tr>') + '</tbody></table></div>';
   /* 공정별 */
   var pr = Object.keys(D.byProc).map(function (k) { return [k, D.byProc[k]]; }).filter(function (x) { return x[1].p || x[1].st; }).sort(function (a, b) { return b[1].p - a[1].p; });
   var maxP = pr.length ? pr[0][1].p : 0;
