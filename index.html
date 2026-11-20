@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v73">
+<meta name="su-ver" content="v74">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -221,6 +221,7 @@ body.qi-filling,body.qi-filling *{cursor:crosshair!important;user-select:none!im
 .au-sum{margin:0 0 8px;font-size:13px;color:#334155}.au-tbl input.aui{width:90px;height:26px;border:1px solid #cbd5e1;border-radius:5px;text-align:right;padding:0 6px;font:inherit;font-weight:700;background:#fffbeb}.au-tbl input.aui:focus{outline:2px solid #3b82f6;border-color:#3b82f6;background:#fff}.au-tbl tr.au-dif td{background:#fff7ed}.pos{color:#15803d}.ok{color:#64748b;font-size:12px}.au-re{margin-left:4px;height:22px;padding:0 7px;border:1px solid #fca5a5;border-radius:5px;background:#fef2f2;color:#b91c1c;font-size:11px;font-weight:700;cursor:pointer}.au-tr,.au-go{height:24px;padding:0 8px;border:1px solid #cbd5e1;border-radius:5px;background:#fff;cursor:pointer;font-size:12px;white-space:nowrap}.tr-sum tr.on td{background:#eff6ff;font-weight:700}.tr-hint{margin-top:10px;padding:9px 12px;border-radius:8px;background:#fffbeb;border:1px solid #fcd34d;font-size:13px;color:#7c2d12;line-height:1.6}.tr-day tr.tr-0 td{color:#cbd5e1}.tr-day tr.tr-warn td{background:#fef2f2}.tr-day tr.tr-end td{box-shadow:inset 0 -2px 0 #1e3a5f}.tr-day td.tr-fl{font-size:12px;color:#b45309;white-space:normal;max-width:420px}
 .as-go{height:30px;padding:0 12px;border:1px solid #93c5fd;border-radius:7px;background:#eff6ff;color:#1e40af;font-weight:800;cursor:pointer}.as-bars{display:flex;flex-direction:column;gap:8px;margin-top:6px}.as-bar{display:grid;grid-template-columns:80px 1fr 110px;align-items:center;gap:10px;cursor:pointer;padding:3px 6px;border-radius:6px}.as-bar:hover,.as-bar.on{background:#eff6ff}.as-l{font-size:13px;font-weight:700;color:#334155}.as-t{height:16px;background:#f1f5f9;border-radius:5px;overflow:hidden}.as-t i{display:block;height:100%;border-radius:5px}.as-n{text-align:right;font-weight:800;font-variant-numeric:tabular-nums}.as-n small{font-weight:600;color:#94a3b8}.bk-0{background:#22c55e}.bk-5{background:#a3e635}.bk-10{background:#facc15}.bk-30{background:#fb923c}.bk-99{background:#ef4444}.as-rt{display:inline-block;min-width:52px;padding:1px 6px;border-radius:999px;color:#fff;font-size:11.5px;font-weight:800;text-align:center}.as-rt.bk-5,.as-rt.bk-10{color:#422006}.as-chip{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1px 8px;border-radius:999px;background:#eff6ff;color:#1e40af;font-size:12px}.as-chip button{border:0;background:none;cursor:pointer;color:#64748b;padding:0 2px}.card-h .search{margin-left:auto;height:28px;width:220px}
 .au-months,.au-bk{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 8px}.au-months .muted,.au-bk .muted{margin-right:4px}.au-mon{height:28px;padding:0 10px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;font-size:12px;color:#334155;cursor:pointer}.au-mon b{color:#1e3a5f}.au-mon.on{background:#1e3a5f;border-color:#1e3a5f;color:#fff}.au-mon.on b{color:#fff}.au-bkb{height:26px;padding:0 9px;border:1px solid #e2e8f0;border-radius:999px;background:#fff;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px}.au-bkb i{width:9px;height:9px;border-radius:50%;display:inline-block}.au-bkb.on{border-color:#1e3a5f;box-shadow:0 0 0 1px #1e3a5f}.au-bkb:disabled{opacity:.4;cursor:default}
+td.yr{color:#1e40af;font-weight:700}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -1111,6 +1112,38 @@ async function buyPull(loud) {
   finally { S.buy.busy = false; }
 }
 
+/* ───────── 올해 고객사별 매출액 (매출분석도구가 서버에 올린 매출 자료) ─────────
+   올해 달만 받음 · 달별 hash 같으면 다시 받지 않음 · 고객사별 공급가 합만 보관 */
+S.yr = { busy: false, err: '', last: null, y: String(new Date().getFullYear()), months: {}, by: {} };
+function yrKey() { return 'yrsales:' + (AU.id || ''); }
+function yrNk(c) { return String(c || '').normalize('NFKC').replace(/\(주\)|㈜|주식회사|\(유\)|유한회사/g, '').replace(/\s+/g, '').toLowerCase(); }
+function yrApply() { var by = {}; Object.keys(S.yr.months).forEach(function (ym) { if (ym.slice(0, 4) !== S.yr.y) return; var m = S.yr.months[ym].by || {}; Object.keys(m).forEach(function (k) { by[k] = (by[k] || 0) + m[k]; }); }); S.yr.by = by; }
+function yrAmt(c) { if (!S.yr.last || !c || c.charAt(0) === '(') return null; var v = S.yr.by[yrNk(c)]; return v == null ? null : v; }
+async function loadYrCache() { try { var c = await idb.get(yrKey()); if (c && c.months && c.y === S.yr.y) { S.yr.months = c.months; S.yr.last = c.at ? new Date(c.at) : null; yrApply(); } } catch (e) {} }
+async function yrPull() {
+  if (S.yr.busy) return; S.yr.busy = true;
+  try {
+    S.yr.y = String(new Date().getFullYear());
+    var m = await auCall({ action: 'dsManifest', fresh: Date.now() }, 60000);
+    var mf = (m && m.manifest && m.manifest.months) || {}, got = 0, keep = {};
+    var yms = Object.keys(mf).filter(function (ym) { return String(ym).slice(0, 4) === S.yr.y; }).sort();
+    for (var i = 0; i < yms.length; i++) {
+      var ym = yms[i], info = mf[ym] || {}, old = S.yr.months[ym];
+      if (old && old.hash && info.hash && old.hash === info.hash) { keep[ym] = old; continue; }
+      var d = await auCall({ action: 'dsGet', ym: ym }, 120000);
+      if (!d || !d.data) continue;
+      var pk = await buyDecode(d.enc || 'gz', d.data), D = pk.dict || [], C = pk.cols || [], n = pk.n || ((C[0] || []).length), by = {};
+      for (var j = 0; j < n; j++) { var k = yrNk(D[(C[1] || [])[j]]); if (k) by[k] = (by[k] || 0) + (Number((C[8] || [])[j]) || 0); }
+      keep[ym] = { hash: info.hash || '', by: by }; got++;
+    }
+    var changed = got || Object.keys(keep).join() !== Object.keys(S.yr.months).join() || !S.yr.last;
+    S.yr.months = keep; S.yr.last = new Date(); S.yr.err = '';
+    if (changed) { yrApply(); idb.set(yrKey(), { at: new Date().toISOString(), y: S.yr.y, months: keep }).catch(function () {}); softRefresh(); }
+  } catch (e) { S.yr.err = e.message || String(e); }
+  finally { S.yr.busy = false; }
+}
+function yrCell(c) { var v = yrAmt(c); return '<td class="num yr"' + (S.yr.err && !S.yr.last ? ' title="매출 자료 받기 오류: ' + esc(S.yr.err) + '"' : '') + '>' + (v == null ? '-' : won(v)) + '</td>'; }
+
 /* ───────── 서버 ───────── */
 async function api(p, ms) {
   try { var d = await suCall(p, ms || 90000); if (d && d.su) S.sync.srv = d.su; return d; }
@@ -1642,8 +1675,8 @@ function renderDash() {
     (pr.slice(0, 14).map(function (x) { var P = x[1]; return '<tr class="go" data-proc="' + esc(x[0]) + '"><td>' + esc(x[0]) + '</td><td class="num">' + fmt(P.p) + '</td><td class="barc"><span class="hbar" style="width:' + (maxP ? Math.max(1, P.p / maxP * 100) : 0).toFixed(1) + '%"></span></td><td class="num">' + fmt(P.b) + '</td><td class="num' + (P.p && P.b / P.p > 0.02 ? ' neg' : '') + '">' + pct(P.b, P.p) + '</td><td class="num' + (P.st < 0 ? ' neg' : '') + '">' + fmt(P.st) + '</td></tr>'; }).join('') || '<tr><td colspan="6" class="muted">이 기간 생산 입력 없음</td></tr>') + '</tbody></table></div>';
   /* 고객사별 출고 */
   var cu = Object.keys(D.byCust).map(function (k) { return [k, D.byCust[k]]; }).sort(function (a, b) { return (a[0].charAt(0) === '(') - (b[0].charAt(0) === '(') || (b[1].a - a[1].a) || (b[1].q - a[1].q); });
-  h += '<div class="card"><h3 class="card-h">고객사별 출고 <small class="muted">TOP 10 · 금액은 ERP 출고현황 공급가</small><button type="button" class="card-more" data-more="cust" title="모든 고객사·고객사별 품목 자세히">더보기 ›</button></h3><table class="grid small"><thead><tr><th>고객사</th><th class="num">출고 수량</th><th class="num">금액</th><th class="num">건</th></tr></thead><tbody>' +
-    (cu.slice(0, 10).map(function (x) { return '<tr><td>' + esc(x[0]) + '</td><td class="num">' + fmt(x[1].q) + '</td><td class="num">' + money(x[1].a) + '</td><td class="num">' + x[1].n + '</td></tr>'; }).join('') || '<tr><td colspan="4" class="muted">이 기간 출고 없음</td></tr>') + '</tbody></table>' + (cu.length > 10 ? '<div class="muted small">외 ' + (cu.length - 10) + '곳</div>' : '') + '</div>';
+  h += '<div class="card"><h3 class="card-h">고객사별 출고 <small class="muted">TOP 10 · 매출액 = 기간 ERP 출고 공급가 · ' + S.yr.y + '년 매출액 = 매출분석 자료</small><button type="button" class="card-more" data-more="cust" title="모든 고객사·고객사별 품목 자세히">더보기 ›</button></h3><table class="grid small"><thead><tr><th>고객사</th><th class="num">출고 수량</th><th class="num">매출액</th><th class="num" title="매출분석도구 서버 매출 자료 · ' + S.yr.y + '년 1월부터 공급가 합">' + S.yr.y + '년 매출액</th><th class="num">건</th></tr></thead><tbody>' +
+    (cu.slice(0, 10).map(function (x) { return '<tr><td>' + esc(x[0]) + '</td><td class="num">' + fmt(x[1].q) + '</td><td class="num">' + won(x[1].a) + '</td>' + yrCell(x[0]) + '<td class="num">' + x[1].n + '</td></tr>'; }).join('') || '<tr><td colspan="5" class="muted">이 기간 출고 없음</td></tr>') + '</tbody></table>' + (cu.length > 10 ? '<div class="muted small">외 ' + (cu.length - 10) + '곳</div>' : '') + '</div>';
   /* 완제품 재고 많은 품목 */
   T.top.sort(function (a, b) { return b.st - a.st; });
   h += '<div class="card"><h3 class="card-h">완제품 재고 많은 품목 <small class="muted">TOP 12</small><button type="button" class="card-more" data-more="topst" title="완제품 재고 있는 품목 모두 자세히">더보기 ›</button></h3><table class="grid small"><thead><tr><th>구분</th><th>품번</th><th>품명·규격</th><th>고객사</th><th class="num">재고</th><th class="num">수주 잔량</th></tr></thead><tbody>' +
@@ -1725,15 +1758,15 @@ function renderCustPage() {
   var totA = D.list.reduce(function (s, x) { return s + x.a; }, 0), totQ = D.list.reduce(function (s, x) { return s + x.q; }, 0), totN = D.list.reduce(function (s, x) { return s + x.n; }, 0);
   var rows = D.list.filter(function (x) { return !q || x.c.toLowerCase().indexOf(q) >= 0 || x.items.some(function (I) { return (itemText(I.it) + ' ' + Object.keys(I.codes).join(' ').toLowerCase()).indexOf(q) >= 0; }); });
   rows.sort(function (a, b) { return (a.c.charAt(0) === '(') - (b.c.charAt(0) === '(') || (b.a - a.a) || (b.q - a.q); });
-  var cols = [{ k: 'c', t: '고객사', v: function (x) { return x.c; } }, { k: 'q', t: '출고 수량', num: 1, v: function (x) { return x.q; } }, { k: 'a', t: '금액', num: 1, v: function (x) { return x.a; } }, { k: 'r', t: '금액 비중', num: 1, v: function (x) { return x.a; } }, { k: 'n', t: '건', num: 1, v: function (x) { return x.n; } }, { k: 'ni', t: '품목 수', num: 1, v: function (x) { return x.ni; } }, { k: 'last', t: '마지막 출고', v: function (x) { return x.last; } }];
+  var cols = [{ k: 'c', t: '고객사', v: function (x) { return x.c; } }, { k: 'q', t: '출고 수량', num: 1, v: function (x) { return x.q; } }, { k: 'a', t: '매출액', num: 1, v: function (x) { return x.a; } }, { k: 'r', t: '매출액 비중', num: 1, v: function (x) { return x.a; } }, { k: 'y', t: S.yr.y + '년 매출액', num: 1, v: function (x) { var v = yrAmt(x.c); return v == null ? -1 : v; } }, { k: 'n', t: '건', num: 1, v: function (x) { return x.n; } }, { k: 'ni', t: '품목 수', num: 1, v: function (x) { return x.ni; } }, { k: 'last', t: '마지막 출고', v: function (x) { return x.last; } }];
   rows = pgSort(rows, cols);
   var maxA = D.list.reduce(function (m, x) { return Math.max(m, x.a); }, 0);
-  var h = pgHead('고객사별 출고 <b>' + D.list.length.toLocaleString() + '</b>곳', perLabel(D.R) + ' · 금액은 ERP 출고현황 공급가 · 위 구분 탭으로 구분별 · 줄 누르면 품목별', true) +
-    '<div class="pg-sum">출고 수량 <b>' + fmt(totQ, false) + '</b> · 금액 <b>' + won(totA) + '</b> · ' + totN.toLocaleString() + '건' + (q ? ' · 검색 결과 ' + rows.length + '곳' : '') + '</div>' +
+  var h = pgHead('고객사별 출고 <b>' + D.list.length.toLocaleString() + '</b>곳', perLabel(D.R) + ' · 매출액 = ERP 출고 공급가 · ' + S.yr.y + '년 매출액 = 매출분석 자료 · 위 구분 탭으로 구분별 · 줄 누르면 품목별', true) +
+    '<div class="pg-sum">출고 수량 <b>' + fmt(totQ, false) + '</b> · 매출액 <b>' + won(totA) + '</b> · ' + totN.toLocaleString() + '건' + (q ? ' · 검색 결과 ' + rows.length + '곳' : '') + '</div>' +
     '<div class="tbl-wrap"><table class="grid pg-tbl"><thead><tr><th class="num">#</th>' + pgTh(cols) + '</tr></thead><tbody>';
   rows.forEach(function (x, i) {
     var op = P.open === x.c;
-    h += '<tr class="pg-row' + (op ? ' open' : '') + '" data-pc="' + esc(x.c) + '"><td class="num muted">' + (i + 1) + '</td><td><b>' + esc(x.c) + '</b></td><td class="num">' + fmt(x.q) + '</td><td class="num">' + won(x.a) + '</td><td class="num"><span class="pbar"><i style="width:' + (maxA ? Math.max(0.5, x.a / maxA * 100) : 0).toFixed(1) + '%"></i></span>' + (totA ? (x.a / totA * 100).toFixed(1) + '%' : '-') + '</td><td class="num">' + x.n.toLocaleString() + '</td><td class="num">' + x.ni + '</td><td>' + esc(x.last ? x.last.slice(5).replace('-', '/') : '') + '</td></tr>';
+    h += '<tr class="pg-row' + (op ? ' open' : '') + '" data-pc="' + esc(x.c) + '"><td class="num muted">' + (i + 1) + '</td><td><b>' + esc(x.c) + '</b></td><td class="num">' + fmt(x.q) + '</td><td class="num">' + won(x.a) + '</td><td class="num"><span class="pbar"><i style="width:' + (maxA ? Math.max(0.5, x.a / maxA * 100) : 0).toFixed(1) + '%"></i></span>' + (totA ? (x.a / totA * 100).toFixed(1) + '%' : '-') + '</td>' + yrCell(x.c) + '<td class="num">' + x.n.toLocaleString() + '</td><td class="num">' + x.ni + '</td><td>' + esc(x.last ? x.last.slice(5).replace('-', '/') : '') + '</td></tr>';
     if (op) {
       var dc = [{ k: 'cat', t: '구분', v: function (l) { return l.it.cat; } }, { k: 'd', t: '출고일', v: function (l) { return l.d; } }, { k: 'p', t: '품번', v: function (l) { return l.it.p || l.it.n; } }, { k: 'pc', t: '제품번호', v: function (l) { return l.code || prodCode(l.it); } },
         { k: 'n', t: '품명', v: function (l) { return l.it.it || l.it.n || ''; } }, { k: 's', t: '규격', v: function (l) { return l.it.s || ''; } }, { k: 'r', t: '비고', v: function (l) { return l.r || ''; } },
@@ -1741,12 +1774,12 @@ function renderCustPage() {
       var L = x.lines.slice().sort(function (a, b) { return String(b.d).localeCompare(String(a.d)) || b.a - a.a; });
       var dk = dc.filter(function (c) { return c.k === P.dk; })[0];
       if (dk && P.dd) L.sort(function (a, b) { var u = dk.v(a), w = dk.v(b); return P.dd * (typeof u === 'number' && typeof w === 'number' ? u - w : String(u).localeCompare(String(w), 'ko')); });
-      h += '<tr class="pg-detail"><td colspan="8"><div class="muted small" style="margin-bottom:4px">출고 ' + L.length.toLocaleString() + '줄 · 품목 ' + x.ni + '개 · 머리글 누르면 정렬</div><table class="grid small pg-dt"><thead><tr>' +
+      h += '<tr class="pg-detail"><td colspan="9"><div class="muted small" style="margin-bottom:4px">출고 ' + L.length.toLocaleString() + '줄 · 품목 ' + x.ni + '개 · 머리글 누르면 정렬</div><table class="grid small pg-dt"><thead><tr>' +
         dc.map(function (c) { var on = P.dk === c.k && P.dd; return '<th class="' + (c.num ? 'num ' : '') + 'sortable' + (on ? ' sorted' : '') + '" data-dk="' + c.k + '" title="눌러서 정렬">' + c.t + (on ? '<span class="sa">' + (P.dd > 0 ? '▲' : '▼') + '</span>' : '') + '</th>'; }).join('') + '</tr></thead><tbody>' +
         L.map(function (l) { var it = l.it; return '<tr><td><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span></td><td class="nowrap">' + esc(l.d ? l.d.slice(2).replace(/-/g, '/') : '') + '</td><td class="link" data-open="' + it.id + '">' + esc(it.p || it.n) + '</td><td class="c-pc">' + esc(l.code || prodCode(it)) + '</td><td class="c-n">' + esc(it.it || it.n || '') + '</td><td class="c-s">' + esc(it.s || '') + '</td><td class="c-memo" title="' + esc((l.o ? '주문번호 ' + l.o + '\n' : '') + (l.r || '')) + '">' + esc(l.r || '') + '</td><td class="num">' + fmt(l.q) + '</td><td class="num">' + (l.up ? won(l.up) : '') + '</td><td class="num">' + (l.a ? won(l.a) : '') + '</td></tr>'; }).join('') + '</tbody></table></td></tr>';
     }
   });
-  if (!rows.length) h += '<tr><td colspan="8" class="empty">' + (D.list.length ? '조건에 맞는 고객사 없음' : '이 기간 출고 없음') + '</td></tr>';
+  if (!rows.length) h += '<tr><td colspan="9" class="empty">' + (D.list.length ? '조건에 맞는 고객사 없음' : '이 기간 출고 없음') + '</td></tr>';
   h += '</tbody></table></div>';
   $('#view').innerHTML = h;
   pgBind(renderCustPage);
@@ -2993,7 +3026,7 @@ async function appStart() {
   loadPending();
   var had = await loadCache();
   await loadErpCache();
-  await loadBuyCache();
+  await loadBuyCache(); await loadYrCache();
   S.pending.forEach(function (p) { store.set(p.k, p.v, { by: me() }); });
   B(30, had ? '서버에서 바뀐 수불 자료 받는 중' : '처음 받는 중 (자료가 많으면 30초쯤 걸릴 수 있음)', 1);
   if (had) render(); else $('#view').innerHTML = '<div class="empty">처음 받는 중… (자료가 많으면 30초쯤 걸릴 수 있음)</div>';
@@ -3003,8 +3036,8 @@ async function appStart() {
   B(90, '화면 그리는 중', 3);
   render();
   setTimeout(function () { B(100); }, 120);
-  buyPull();
-  setInterval(function () { if (document.visibilityState === 'visible') buyPull(); }, 300000);
+  buyPull(); yrPull();
+  setInterval(function () { if (document.visibilityState === 'visible') { buyPull(); yrPull(); } }, 300000);
   setInterval(function () { if (document.visibilityState === 'visible') erpPull(); }, 60000);
   setInterval(function () { if (document.visibilityState === 'visible' && !S.sync.busy) sync({ quiet: true }); }, 20000);
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') sync({ quiet: true }); });
