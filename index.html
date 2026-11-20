@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v75">
+<meta name="su-ver" content="v76">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -1675,7 +1675,7 @@ function renderDash() {
     (pr.slice(0, 14).map(function (x) { var P = x[1]; return '<tr class="go" data-proc="' + esc(x[0]) + '"><td>' + esc(x[0]) + '</td><td class="num">' + fmt(P.p) + '</td><td class="barc"><span class="hbar" style="width:' + (maxP ? Math.max(1, P.p / maxP * 100) : 0).toFixed(1) + '%"></span></td><td class="num">' + fmt(P.b) + '</td><td class="num' + (P.p && P.b / P.p > 0.02 ? ' neg' : '') + '">' + pct(P.b, P.p) + '</td><td class="num' + (P.st < 0 ? ' neg' : '') + '">' + fmt(P.st) + '</td></tr>'; }).join('') || '<tr><td colspan="6" class="muted">이 기간 생산 입력 없음</td></tr>') + '</tbody></table></div>';
   /* 고객사별 출고 */
   var cu = Object.keys(D.byCust).map(function (k) { return [k, D.byCust[k]]; }).sort(function (a, b) { return (a[0].charAt(0) === '(') - (b[0].charAt(0) === '(') || (b[1].a - a[1].a) || (b[1].q - a[1].q); });
-  h += '<div class="card"><h3 class="card-h">고객사별 출고 <small class="muted">TOP 10 · 매출액 = 기간 ERP 출고 공급가 · ' + S.yr.y + '년 매출액 = 매출분석 자료</small><button type="button" class="card-more" data-more="cust" title="모든 고객사·고객사별 품목 자세히">더보기 ›</button></h3><table class="grid small"><thead><tr><th>고객사</th><th class="num">출고 수량</th><th class="num">매출액</th><th class="num" title="매출분석도구 서버 매출 자료 · ' + S.yr.y + '년 1월부터 공급가 합">' + S.yr.y + '년 매출액</th><th class="num">건</th></tr></thead><tbody>' +
+  h += '<div class="card"><h3 class="card-h">고객사별 출고 <small class="muted">TOP 10 · ' + perLabel(D.R) + '</small><button type="button" class="card-more" data-more="cust" title="모든 고객사·고객사별 품목 자세히">더보기 ›</button></h3><table class="grid small"><thead><tr><th>고객사</th><th class="num">출고 수량</th><th class="num" title="기간 ERP 출고 공급가">매출액</th><th class="num" title="매출분석도구 서버 매출 자료 · ' + S.yr.y + '년 1월부터 공급가 합">' + S.yr.y + '년 매출액</th><th class="num">건</th></tr></thead><tbody>' +
     (cu.slice(0, 10).map(function (x) { return '<tr><td>' + esc(x[0]) + '</td><td class="num">' + fmt(x[1].q) + '</td><td class="num">' + won(x[1].a) + '</td>' + yrCell(x[0]) + '<td class="num">' + x[1].n + '</td></tr>'; }).join('') || '<tr><td colspan="5" class="muted">이 기간 출고 없음</td></tr>') + '</tbody></table>' + (cu.length > 10 ? '<div class="muted small">외 ' + (cu.length - 10) + '곳</div>' : '') + '</div>';
   /* 완제품 재고 많은 품목 */
   T.top.sort(function (a, b) { return b.st - a.st; });
