@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v70">
+<meta name="su-ver" content="v71">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -220,6 +220,7 @@ body.qi-filling,body.qi-filling *{cursor:crosshair!important;user-select:none!im
 .vsep{display:inline-block;align-self:center;width:1px;height:24px;background:#cbd5e1;margin:0 4px;flex:none}.vsep.tsep{background:#ffffff40;height:22px}
 .au-sum{margin:0 0 8px;font-size:13px;color:#334155}.au-tbl input.aui{width:90px;height:26px;border:1px solid #cbd5e1;border-radius:5px;text-align:right;padding:0 6px;font:inherit;font-weight:700;background:#fffbeb}.au-tbl input.aui:focus{outline:2px solid #3b82f6;border-color:#3b82f6;background:#fff}.au-tbl tr.au-dif td{background:#fff7ed}.pos{color:#15803d}.ok{color:#64748b;font-size:12px}.au-re{margin-left:4px;height:22px;padding:0 7px;border:1px solid #fca5a5;border-radius:5px;background:#fef2f2;color:#b91c1c;font-size:11px;font-weight:700;cursor:pointer}.au-tr,.au-go{height:24px;padding:0 8px;border:1px solid #cbd5e1;border-radius:5px;background:#fff;cursor:pointer;font-size:12px;white-space:nowrap}.tr-sum tr.on td{background:#eff6ff;font-weight:700}.tr-hint{margin-top:10px;padding:9px 12px;border-radius:8px;background:#fffbeb;border:1px solid #fcd34d;font-size:13px;color:#7c2d12;line-height:1.6}.tr-day tr.tr-0 td{color:#cbd5e1}.tr-day tr.tr-warn td{background:#fef2f2}.tr-day tr.tr-end td{box-shadow:inset 0 -2px 0 #1e3a5f}.tr-day td.tr-fl{font-size:12px;color:#b45309;white-space:normal;max-width:420px}
 .as-go{height:30px;padding:0 12px;border:1px solid #93c5fd;border-radius:7px;background:#eff6ff;color:#1e40af;font-weight:800;cursor:pointer}.as-bars{display:flex;flex-direction:column;gap:8px;margin-top:6px}.as-bar{display:grid;grid-template-columns:80px 1fr 110px;align-items:center;gap:10px;cursor:pointer;padding:3px 6px;border-radius:6px}.as-bar:hover,.as-bar.on{background:#eff6ff}.as-l{font-size:13px;font-weight:700;color:#334155}.as-t{height:16px;background:#f1f5f9;border-radius:5px;overflow:hidden}.as-t i{display:block;height:100%;border-radius:5px}.as-n{text-align:right;font-weight:800;font-variant-numeric:tabular-nums}.as-n small{font-weight:600;color:#94a3b8}.bk-0{background:#22c55e}.bk-5{background:#a3e635}.bk-10{background:#facc15}.bk-30{background:#fb923c}.bk-99{background:#ef4444}.as-rt{display:inline-block;min-width:52px;padding:1px 6px;border-radius:999px;color:#fff;font-size:11.5px;font-weight:800;text-align:center}.as-rt.bk-5,.as-rt.bk-10{color:#422006}.as-chip{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1px 8px;border-radius:999px;background:#eff6ff;color:#1e40af;font-size:12px}.as-chip button{border:0;background:none;cursor:pointer;color:#64748b;padding:0 2px}.card-h .search{margin-left:auto;height:28px;width:220px}
+.au-months,.au-bk{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 8px}.au-months .muted,.au-bk .muted{margin-right:4px}.au-mon{height:28px;padding:0 10px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;font-size:12px;color:#334155;cursor:pointer}.au-mon b{color:#1e3a5f}.au-mon.on{background:#1e3a5f;border-color:#1e3a5f;color:#fff}.au-mon.on b{color:#fff}.au-bkb{height:26px;padding:0 9px;border:1px solid #e2e8f0;border-radius:999px;background:#fff;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px}.au-bkb i{width:9px;height:9px;border-radius:50%;display:inline-block}.au-bkb.on{border-color:#1e3a5f;box-shadow:0 0 0 1px #1e3a5f}.au-bkb:disabled{opacity:.4;cursor:default}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -3074,12 +3075,13 @@ function auRec(id, pid, m) { var r = store.recs.get(sgKey(id, pid, m)); return r
 function auDay(m) { var e = SU.monthEnd(m + '-01'), t = SU.today(); return e > t && t.slice(0, 7) === m ? t : e; }
 /* 그 달 기초재고를 x 만큼 바꿈 (월 최초일부터 적용) */
 function auShift(it, pi, m, x) {
-  if (!x) return;
+  if (!x) return; it = store.items.get(it.id) || it;
   var before = SU.addDays(m + '-01', -1), cur = store.stock(it, pi, before);
   if (cur == null) { var v = SU.cleanForSave(it); v.procs[pi].o0 = SU.num(v.procs[pi].o0) + x; if (it._v) v.cat_at = SU.today(); setRec('i:' + it.id, v); return; }   // 품목 기초재고 날짜가 이 달 안 → 품목 기초재고
   setBaseVal(it.id, pi, Math.round((cur + x) * 1000) / 1000, before);
 }
 function auSave(it, pi, raw, d) {
+  it = store.items.get(it.id) || it;   /* 늘 최신 품목으로 (옛 사본으로 저장하면 앞서 바꾼 기초재고가 지워짐) */
   var pr = it.procs[pi], m = S.au.m, k = sgKey(it.id, pr.id, m), old = auRec(it.id, pr.id, m);
   raw = String(raw == null ? '' : raw).trim();
   if (raw === '') {   /* 지우면 반영했던 조정도 되돌림 */
@@ -3090,7 +3092,7 @@ function auSave(it, pi, raw, d) {
   var q = SU.num(raw); if (!q && raw !== '0') return null;
   var cur = store.stock(it, pi, d); if (cur == null) return '';
   var diff = Math.round((q - cur) * 1000) / 1000;
-  if (it._v) materialize(it);
+  if (it._v) { materialize(it); it = store.items.get(it.id) || it; }
   auShift(it, pi, m, diff);
   var v = { q: q, d: d, data0: old ? old.data0 : cur, tot: Math.round(((old ? SU.num(old.tot) : 0) + diff) * 1000) / 1000, by: me() };
   setRec(k, v);
@@ -3108,6 +3110,7 @@ function auRows() {
       var st = store.stock(it, pi, d); if (st == null) return;
       var r = auRec(it.id, pr.id, m), x = { it: it, pi: pi, pr: pr, st: st, r: r };
       x.data = r ? SU.num(r.data0) : st; x.diff = r ? Math.round((SU.num(r.q) - x.data) * 1000) / 1000 : null;
+      if (r) { var bse = Math.abs(SU.num(r.q)) || Math.abs(x.data); x.rate = x.diff ? (bse ? Math.abs(x.diff) / bse * 100 : 100) : 0; x.bk = !x.diff ? '0' : x.rate <= 5 ? '5' : x.rate <= 10 ? '10' : x.rate <= 30 ? '30' : '99'; }
       x.re = r ? Math.round((st - SU.num(r.q)) * 1000) / 1000 : 0;   // 실사 뒤 입력이 바뀌어 다시 틀어진 양
       if (r && r.d !== d) x.re = Math.round(((store.stock(it, pi, r.d) || 0) - SU.num(r.q)) * 1000) / 1000;
       out.push(x);
@@ -3119,13 +3122,13 @@ var AU_COLS = [
   { k: 'cat', t: '구분', v: function (x) { return SU.CAT_NAME[x.it.cat] || ''; } }, { k: 'p', t: '품번', v: function (x) { return x.it.p || ''; } }, { k: 'pc', t: '제품번호', v: function (x) { return prodCode(x.it); } },
   { k: 'n', t: '품명', v: function (x) { return x.it.it || x.it.n || ''; } }, { k: 's', t: '규격', v: function (x) { return x.it.s || ''; } }, { k: 'cust', t: '고객사', v: function (x) { return x.it.cust || ''; } }, { k: 'proc', t: '공정', v: function (x) { return x.pr.n; } },
   { k: 'data', t: '데이터 재고', num: 1, v: function (x) { return x.data; } }, { k: 'q', t: '실사 재고', num: 1, v: function (x) { return x.r ? SU.num(x.r.q) : -1e15; } },
-  { k: 'diff', t: '차이', num: 1, v: function (x) { return x.diff == null ? -1e15 : x.diff; } }, { k: 'now', t: '지금 재고', num: 1, v: function (x) { return x.st; } }];
+  { k: 'diff', t: '차이', num: 1, v: function (x) { return x.diff == null ? -1e15 : x.diff; } }, { k: 'rate', t: '오차율', num: 1, v: function (x) { return x.rate == null ? -1 : x.rate; } }, { k: 'now', t: '지금 재고', num: 1, v: function (x) { return x.st; } }];
 function renderAudit() {
   var A = S.au || (S.au = { m: SU.today().slice(0, 7), d: '', q: '', f: 'stock', page: 1, sk: '', sd: 0 });
   if (!A.d || A.d.slice(0, 7) !== A.m) A.d = auDay(A.m);
   var all = auRows(), cnt = { all: all.length, stock: 0, todo: 0, done: 0, diff: 0, re: 0 };
   all.forEach(function (x) { if (x.st) cnt.stock++; if (x.r) cnt.done++; else cnt.todo++; if (x.diff) cnt.diff++; if (x.r && Math.abs(x.re) > 1e-9) cnt.re++; });
-  var rows = all.filter(function (x) { return A.f === 'all' ? true : A.f === 'stock' ? (x.st || x.r) : A.f === 'todo' ? !x.r : A.f === 'done' ? !!x.r : A.f === 'diff' ? !!x.diff : (x.r && Math.abs(x.re) > 1e-9); });
+  var rows = all.filter(function (x) { if (A.f.indexOf('bk:') === 0) return x.r && x.bk === A.f.slice(3); return A.f === 'all' ? true : A.f === 'stock' ? (x.st || x.r) : A.f === 'todo' ? !x.r : A.f === 'done' ? !!x.r : A.f === 'diff' ? !!x.diff : (x.r && Math.abs(x.re) > 1e-9); });
   var sc = AU_COLS.filter(function (c) { return c.k === A.sk; })[0];
   if (sc && A.sd) rows.sort(function (a, b) { var u = sc.v(a), w = sc.v(b); return A.sd * (typeof u === 'number' && typeof w === 'number' ? u - w : String(u).localeCompare(String(w), 'ko')); });
   var shown = rows.slice(0, A.page * 200), tPlus = 0, tMinus = 0;
@@ -3135,6 +3138,13 @@ function renderAudit() {
     '<label class="muted small">실사일 <input type="date" id="auD" value="' + A.d + '" min="' + A.m + '-01" max="' + SU.monthEnd(A.m + '-01') + '"></label>' +
     '<input type="search" id="auQ" class="search" placeholder="품번·제품번호·품명·고객사" value="' + esc(A.q || '') + '" autocomplete="off">' +
     '<span class="muted small">실사 수량 넣고 Enter → 데이터 재고와 차이를 ' + Number(A.m.slice(5)) + '월 1일 기초재고에 반영 · 🔍 = 어디서 틀렸는지 역추적</span></div>';
+  /* 월별 실사 기록 (저장된 달 모두) */
+  var ms = {}; store.recs.forEach(function (rc, k) { if (k.charAt(0) === 'r' && rc.v) { var mm = k.slice(k.lastIndexOf('|') + 1); ms[mm] = 1; } });
+  var ml = Object.keys(ms).sort().reverse();
+  h += '<div class="au-months"><span class="muted small">월별 실사 기록</span>' + (ml.length ? ml.map(function (mm) { var L = asRows(mm).filter(function (r) { return S.ui.cat === 'all' || r.it.cat === S.ui.cat; }), g = asAgg(L);
+      return '<button type="button" class="au-mon' + (mm === A.m ? ' on' : '') + '" data-am="' + mm + '" title="' + mm + ' 실사 ' + g.n + '줄 · 틀림 ' + g.bad + ' · 차이 ' + fmt(g.q - g.data, false) + '"><b>' + mm.replace('-', '.') + '</b> ' + g.n + '줄 · 일치 ' + pct1(g.acc) + ' · 오차 ' + pct1(g.erate) + '</button>'; }).join('') : '<span class="muted small">— 아직 없음</span>') + '</div>';
+  var bkc = {}; all.forEach(function (x) { if (x.r) bkc[x.bk] = (bkc[x.bk] || 0) + 1; });
+  h += '<div class="au-bk"><span class="muted small">' + Number(A.m.slice(5)) + '월 오차 범위</span>' + AS_BK.map(function (b) { return '<button type="button" class="au-bkb' + (A.f === 'bk:' + b[0] ? ' on' : '') + '" data-af="bk:' + b[0] + '"' + (bkc[b[0]] ? '' : ' disabled') + '><i class="bk-' + b[0] + '"></i>' + b[1] + ' <b>' + (bkc[b[0]] || 0) + '</b></button>'; }).join('') + '</div>';
   h += '<div class="au-sum">실사 <b>' + cnt.done.toLocaleString() + '</b>줄 · 차이 <b class="' + (cnt.diff ? 'neg' : '') + '">' + cnt.diff.toLocaleString() + '</b>줄 (＋' + fmt(tPlus, false) + ' / ' + fmt(tMinus, false) + ')' + (cnt.re ? ' · <b class="neg">실사 뒤 다시 틀어짐 ' + cnt.re + '줄</b>' : '') + '</div>';
   h += '<div class="neg-why">' + AU_F.map(function (f) { return '<button type="button" data-af="' + f[0] + '" class="' + (A.f === f[0] ? 'on' : '') + '">' + f[1] + ' <small>' + (cnt[f[0]] || 0).toLocaleString() + '</small></button>'; }).join('') + '</div>';
   h += '<div class="tbl-wrap"><table class="grid neg-tbl au-tbl"><thead><tr>' + AU_COLS.map(function (c) { var on = A.sk === c.k && A.sd; return '<th class="' + (c.num ? 'num ' : '') + 'sortable' + (on ? ' sorted' : '') + '" data-ak="' + c.k + '">' + c.t + (on ? '<span class="sa">' + (A.sd > 0 ? '▲' : '▼') + '</span>' : '') + '</th>'; }).join('') + '<th>역추적</th></tr></thead><tbody>';
@@ -3143,10 +3153,11 @@ function renderAudit() {
     h += '<tr data-ai="' + it.id + '" data-ap="' + x.pi + '"' + (x.diff ? ' class="au-dif"' : '') + '><td><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span></td><td class="c-p link" data-open="' + it.id + '">' + esc(it.p) + '</td><td class="c-pc">' + prodCell(it) + '</td><td class="c-n">' + esc(it.it || it.n || '') + '</td><td class="c-s">' + esc(it.s || '') + '</td><td class="c-cust">' + esc(it.cust || '') + '</td><td class="c-proc">' + esc(x.pr.n) + '</td>' +
       '<td class="num">' + fmt(x.data, false) + '</td><td class="num mcell"><input class="aui" inputmode="decimal" value="' + (x.r ? esc(String(SU.num(x.r.q))) : '') + '" placeholder="실사" title="' + esc(x.r ? '실사 ' + x.r.d + (x.r.by ? ' · ' + x.r.by : '') + ' · 지우면 반영한 조정도 되돌림' : '현장 실사 수량 입력 (' + A.d + ' 끝)') + '"></td>' +
       '<td class="num">' + (x.diff == null ? '' : x.diff ? '<b class="' + (x.diff < 0 ? 'neg' : 'pos') + '">' + (x.diff > 0 ? '+' : '') + fmt(x.diff, false) + '</b>' : '<span class="ok">일치</span>') + '</td>' +
+      '<td class="num">' + (x.r ? '<span class="as-rt bk-' + x.bk + '">' + (x.diff ? pct1(x.rate) : '일치') + '</span>' : '') + '</td>' +
       '<td class="num">' + fmt(x.st, false) + (re ? ' <button type="button" class="au-re" title="실사 뒤에 입력이 바뀌어 다시 ' + fmt(x.re, false) + ' 틀어짐 → 눌러서 실사 수량으로 다시 맞춤">다시 맞춤</button>' : '') + '</td>' +
       '<td><button type="button" class="au-tr" title="이 품목·공정 ' + Number(A.m.slice(5)) + '월 날짜별 흐름 보기">🔍</button></td></tr>';
   });
-  if (!shown.length) h += '<tr><td colspan="12" class="empty">조건에 맞는 줄 없음</td></tr>';
+  if (!shown.length) h += '<tr><td colspan="13" class="empty">조건에 맞는 줄 없음</td></tr>';
   h += '</tbody></table></div>';
   if (rows.length > shown.length) h += '<div class="more"><button id="auMore">더 보기 (' + shown.length.toLocaleString() + ' / ' + rows.length.toLocaleString() + ')</button></div>';
   $('#view').innerHTML = h;
@@ -3157,7 +3168,8 @@ function renderAudit() {
   V.onchange = function (ev) { var t = ev.target; if (t.classList && t.classList.contains('aui') && t.value !== t.defaultValue) auCommit(t); };
   V.onclick = function (ev) {
     var th = ev.target.closest('th[data-ak]'); if (th) { var k = th.dataset.ak, d0 = th.classList.contains('num') ? -1 : 1; if (A.sk !== k) { A.sk = k; A.sd = d0; } else if (A.sd === d0) A.sd = -d0; else { A.sk = ''; A.sd = 0; } A.page = 1; renderAudit(); return; }
-    var f = ev.target.closest('[data-af]'); if (f) { A.f = f.dataset.af; A.page = 1; renderAudit(); return; }
+    var mb = ev.target.closest('[data-am]'); if (mb) { A.m = mb.dataset.am; A.d = auDay(A.m); A.f = 'done'; A.page = 1; renderAudit(); return; }
+    var f = ev.target.closest('[data-af]'); if (f) { A.f = A.f === f.dataset.af && f.dataset.af.indexOf('bk:') === 0 ? 'done' : f.dataset.af; A.page = 1; renderAudit(); return; }
     var tr = ev.target.closest('tr[data-ai]'), it = tr && store.items.get(tr.dataset.ai), pi = tr && Number(tr.dataset.ap);
     if (ev.target.closest('.au-tr') && it) { S.tr = { id: it.id, pi: pi, m: A.m }; S.ui.view = 'trace'; render(); scrollTo(0, 0); return; }
     if (ev.target.closest('.au-re') && it) { var r = auRec(it.id, it.procs[pi].id, A.m); if (r) { var msg = auSave(it, pi, String(r.q), r.d); schedulePush(); toast(msg + ' (Ctrl+Z 취소)'); renderAudit(); } return; }
