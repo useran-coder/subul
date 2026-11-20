@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v68">
+<meta name="su-ver" content="v69">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -824,7 +824,11 @@ function auEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){ret
 function auLsGet(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
 function auLsSet(k,v){try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 function auUrl(){try{return String(localStorage.getItem('dpt_auth_url')||AU_URL_DEFAULT).trim();}catch(e){return AU_URL_DEFAULT;}}
-function auKey(){try{return String(localStorage.getItem('dpt_auth_key')||localStorage.getItem('dpt_sync_key')||AU_KEY_DEFAULT).trim();}catch(e){return AU_KEY_DEFAULT;}}
+function auKey(){try{return String(localStorage.getItem('su_key')||localStorage.getItem('dpt_auth_key')||localStorage.getItem('dpt_sync_key')||AU_KEY_DEFAULT).trim();}catch(e){return AU_KEY_DEFAULT;}}   /* v69 : 수불관리 전용 칸(su_key) 먼저 — 같은 주소의 다른 도구가 공용 칸을 바꿔도 영향 없음 */
+/* 매출분석도구 설정(IndexedDB)에 있는 비밀키 (쓰지 않고 읽기만) */
+function auIdbKey(){return new Promise(function(res){try{var rq=indexedDB.open('dbpastec_sales'),made=false;rq.onupgradeneeded=function(){made=true;try{rq.transaction.abort();}catch(e){}};rq.onerror=rq.onblocked=function(){res('');};
+  rq.onsuccess=function(){var db=rq.result;if(made||!db.objectStoreNames.contains('kv')){db.close();return res('');}try{var g=db.transaction('kv','readonly').objectStore('kv').get('settings');g.onsuccess=function(){db.close();var st=g.result;res(st&&st.gsync&&String(st.gsync.key||'').trim()||'');};g.onerror=function(){db.close();res('');};}catch(e){db.close();res('');}};}catch(e){res('');}setTimeout(function(){res('');},2000);});}
+var AU_BADKEY=/접속키가\s*올바르지/;
 /* 같은 브라우저의 매출분석도구 설정(IndexedDB dbpastec_sales › kv › settings.gsync)에서 비밀키 찾기 */
 function auDiscoverKey(){
   return new Promise(function(res){
@@ -848,8 +852,8 @@ function auMask(s){try{s=String(s||'');var k='dbps@2026#au',o='';for(var i=0;i<s
 function auUnmask(s){try{var t=decodeURIComponent(escape(atob(String(s||'')))),k='dbps@2026#au',o='';for(var i=0;i<t.length;i++)o+=String.fromCharCode(t.charCodeAt(i)^k.charCodeAt(i%k.length));return o;}catch(e){return '';}}
 function auRestore(){var v=auLsGet('dpt_auth_v1');if(v&&typeof v==='object')AU=Object.assign(AU,v);}
 function auPersist(keep){auLsSet('dpt_auth_v1',keep===false?null:{token:AU.token,id:AU.id,name:AU.name,role:AU.role,exp:AU.exp});}
-async function auCall0(payload,timeoutMs,url){
-  payload.key=auKey(); if(AU.token&&!payload.token)payload.token=AU.token;
+async function auCall0(payload,timeoutMs,url,keyAt){
+  payload.key=keyAt||auKey(); if(AU.token&&!payload.token)payload.token=AU.token;
   var ctl=new AbortController(), timer=setTimeout(function(){try{ctl.abort();}catch(e){}},timeoutMs||60000), r;
   try{r=await fetch(url||auUrl(),{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload),signal:ctl.signal});}
   catch(e){var ne=new Error(e&&e.name==='AbortError'?'서버가 응답하지 않음(시간 초과)':'서버에 연결하지 못함 — '+(e.message||e));if(!(e&&e.name==='AbortError')&&/^(smGet|smPing|suGet|suPing|auMe)$/.test(payload.action||'')){ne.retry=true;ne.retryMs=2000;}throw ne;}   /* 읽기 요청은 일시적 연결 끊김이면 2초 뒤 두 번까지 다시 시도 */
@@ -860,7 +864,14 @@ async function auCall0(payload,timeoutMs,url){
   return d;
 }
 async function auCall(payload,timeoutMs,_try,url){
-  try{return await auCall0(payload,timeoutMs,url);}catch(e){if(e.retry&&(_try||0)<2){await new Promise(function(r){setTimeout(r,e.retryMs||1500);});return auCall(payload,timeoutMs,(_try||0)+1,url);}throw e;}
+  try{return await auCall0(payload,timeoutMs,url);}catch(e){
+    /* v69 : 비밀키가 틀리면 이 브라우저에 있는 다른 비밀키(공용 칸·매출분석도구 설정)로 차례로 다시 해 보고 맞는 키를 su_key 에 기억 */
+    if(AU_BADKEY.test(e.message||'')&&!_try){
+      var cur=auKey(),c=[];try{c=[localStorage.getItem('dpt_auth_key'),localStorage.getItem('dpt_sync_key')];}catch(_l){}c.push(await auIdbKey());
+      c=c.map(function(x){return String(x||'').trim();}).filter(function(x,i,a){return x&&x!==cur&&a.indexOf(x)===i;});
+      for(var i=0;i<c.length;i++){try{var d=await auCall0(Object.assign({},payload),timeoutMs,url,c[i]);try{localStorage.setItem('su_key',c[i]);}catch(_s){}return d;}catch(e3){if(!AU_BADKEY.test(e3.message||''))throw e3;}}
+      var be=new Error('서버 비밀키가 맞지 않음 — 이 브라우저에 저장된 비밀키가 바뀐 것 같음. 로그아웃 → 로그인 화면 «서버 설정»에 매출분석도구와 같은 비밀키를 넣으면 해결');be.badKey=true;throw be;
+    }if(e.retry&&(_try||0)<2){await new Promise(function(r){setTimeout(r,e.retryMs||1500);});return auCall(payload,timeoutMs,(_try||0)+1,url);}throw e;}
 }
 /* 수불 자료 요청 : 이 PC 의 매출분석 설정 주소가 subul.gs 없는 옛 배포면 기본 주소로 한 번 다시 시도하고 기억(su_url) */
 function suUrl(){try{return String(localStorage.getItem('su_url')||auUrl()).trim();}catch(e){return auUrl();}}
@@ -917,13 +928,13 @@ function auShowGate(){
   au$('auSrvT').onclick=function(){ var b=au$('auSrvBox'),o=b.style.display==='none'; b.style.display=o?'':'none'; if(o){au$('auSrvUrl').value=auUrl();au$('auSrvKey').value=auKey();} };
   au$('auSrvSave').onclick=function(){ var u=au$('auSrvUrl').value.trim(),k=au$('auSrvKey').value.trim();
     if(u&&!/\/exec\s*$/.test(u)){msg.style.color='var(--bad)';msg.textContent='주소는 …/exec 로 끝나야 함';return;}
-    try{if(u)localStorage.setItem('dpt_auth_url',u);else localStorage.removeItem('dpt_auth_url');if(k)localStorage.setItem('dpt_auth_key',k);localStorage.removeItem('su_url');}catch(e){}
+    try{if(u)localStorage.setItem('dpt_auth_url',u);else localStorage.removeItem('dpt_auth_url');if(k){localStorage.setItem('dpt_auth_key',k);localStorage.setItem('su_key',k);}localStorage.removeItem('su_url');}catch(e){}
     msg.style.color='var(--ok)';msg.textContent='저장함. 로그인할 것'; };
   au$('auForm').addEventListener('submit',async function(ev){
     ev.preventDefault();
     var id=au$('auId').value.trim(),pw=au$('auPw').value;
     if(!id||!pw){msg.style.color='var(--bad)';msg.textContent='아이디와 비밀번호 입력';return;}
-    if(!auKey()){var k=au$('auSrvKey')&&au$('auSrvKey').value.trim(); if(k){try{localStorage.setItem('dpt_auth_key',k);}catch(e){}} else {msg.style.color='var(--bad)';msg.innerHTML='서버 비밀키가 없음. '+keyHelp;return;}}
+    if(!auKey()){var k=au$('auSrvKey')&&au$('auSrvKey').value.trim(); if(k){try{localStorage.setItem('dpt_auth_key',k);localStorage.setItem('su_key',k);}catch(e){}} else {msg.style.color='var(--bad)';msg.innerHTML='서버 비밀키가 없음. '+keyHelp;return;}}
     var btn=au$('auBtn'); btn.disabled=true; btn.textContent='확인 중…'; msg.textContent='';
     try{
       var d=await auCall({action:'auLogin',id:id,pw:pw});
@@ -3056,8 +3067,8 @@ auBoot();
 /* ───────── v68 : 월 실사재고 (현장 실사 → 데이터 재고와 비교 → 차이는 그 달 기초재고(월 최초일)에 반영) ─────────
    기록 r:품목|공정id|YYYY-MM {q 실사, d 실사일, data0 처음 데이터 재고, tot 반영한 조정 합계}
    반영 = 그 달 기초재고(전월말 끝 재고)를 차이만큼 바꿈 → 월 현황 기초 칸과 같은 자리 (setBaseVal) */
-function auKey(id, pid, m) { return 'r:' + id + '|' + pid + '|' + m; }
-function auRec(id, pid, m) { var r = store.recs.get(auKey(id, pid, m)); return r && r.v ? r.v : null; }
+function sgKey(id, pid, m) { return 'r:' + id + '|' + pid + '|' + m; }
+function auRec(id, pid, m) { var r = store.recs.get(sgKey(id, pid, m)); return r && r.v ? r.v : null; }
 function auDay(m) { var e = SU.monthEnd(m + '-01'), t = SU.today(); return e > t && t.slice(0, 7) === m ? t : e; }
 /* 그 달 기초재고를 x 만큼 바꿈 (월 최초일부터 적용) */
 function auShift(it, pi, m, x) {
@@ -3067,7 +3078,7 @@ function auShift(it, pi, m, x) {
   setBaseVal(it.id, pi, Math.round((cur + x) * 1000) / 1000, before);
 }
 function auSave(it, pi, raw, d) {
-  var pr = it.procs[pi], m = S.au.m, k = auKey(it.id, pr.id, m), old = auRec(it.id, pr.id, m);
+  var pr = it.procs[pi], m = S.au.m, k = sgKey(it.id, pr.id, m), old = auRec(it.id, pr.id, m);
   raw = String(raw == null ? '' : raw).trim();
   if (raw === '') {   /* 지우면 반영했던 조정도 되돌림 */
     if (!old) return '';
@@ -3189,7 +3200,7 @@ function renderTrace() {
   h += '</tbody></table>';
   if (r && SU.num(r.q) !== SU.num(r.data0)) {
     var dd = SU.num(r.q) - SU.num(r.data0);
-    h += '<div class="tr-hint">' + (dd < 0 ? '실사가 데이터보다 <b>' + fmt(-dd, false) + '</b> 적음 → ① 이 공정 양품을 실제보다 많이 넣음 ② ' + (nxN && SU.isOut(nxN) ? '출고' : esc(nxN || '다음 공정') + ' 생산') + ' 입력 빠짐 ③ 불량을 양품으로 넣음 중 하나일 가능성' : '실사가 데이터보다 <b>' + fmt(dd, false) + '</b> 많음 → ① 이 공정 양품 입력 빠짐 ② ' + (nxN && SU.isOut(nxN) ? '출고' : esc(nxN || '다음 공정') + ' 생산') + '을 실제보다 많이 넣음 ③ 월초 재고(기초)가 실제보다 적음 중 하나일 가능성') + ' · 아래 날짜별 표의 ⚠ 표시 날부터 확인</div>';
+    h += '<div class="tr-hint">' + (dd < 0 ? '실사가 데이터보다 <b>' + fmt(-dd, false) + '</b> 적음 → ① 이 공정 양품을 실제보다 많이 넣음 ② ' + (nxN && SU.isOut(nxN) ? '출고' : esc(nxN || '다음 공정') + ' 생산') + ' 입력 빠짐 ③ 불량을 양품으로 넣음 중 하나일 가능성' : '실사가 데이터보다 <b>' + fmt(dd, false) + '</b> 많음 → ① 이 공정 양품 입력 빠짐 ② ' + (nxN && SU.isOut(nxN) ? '출고를' : esc(nxN || '다음 공정') + ' 생산을') + ' 실제보다 많이 넣음 ③ 월초 재고(기초)가 실제보다 적음 중 하나일 가능성') + ' · 아래 날짜별 표의 ⚠ 표시 날부터 확인</div>';
   }
   h += '</div>';
   /* 2) 날짜별 흐름 */
