@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v64">
+<meta name="su-ver" content="v65">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -210,6 +210,13 @@ html body .topbar button:not(:disabled):not(.on):not(.primary):not(.active):not(
 html body button.danger:not(:disabled):hover{background:#fef2f2;border-color:#fca5a5;color:#b91c1c}
 html body button:not(:disabled):is(.on,.primary,.active):hover{filter:brightness(1.12)}
 html body .topbar a.tb:hover{background:#ffffff1f;border-color:#ffffff4d;color:#fff}html body a.tb{transition:background-color .12s,border-color .12s}
+#qiUp{position:fixed;z-index:51;display:none;height:14px;min-width:13px;padding:0 2px;border:1px solid #93c5fd;border-radius:4px;background:#eff6ff;color:#1d4ed8;font-family:inherit;font-size:9px;font-weight:700;line-height:12px;cursor:pointer}
+html body #qiUp:hover{background:#1d4ed8;color:#fff;border-color:#1d4ed8}
+#qiClr{position:fixed;z-index:51;display:none;width:16px;height:16px;padding:0;border:0;border-radius:50%;background:rgba(100,116,139,.55);color:#fff;font-family:inherit;font-size:11px;font-weight:700;line-height:16px;text-align:center;cursor:pointer;opacity:.75}
+html body #qiClr:hover{background:#dc2626;color:#fff;opacity:1}
+#qiFill{position:fixed;width:7px;height:7px;background:#1d4ed8;border:1px solid #fff;box-shadow:0 0 0 1px #1d4ed8;cursor:crosshair;z-index:50;display:none}
+#view input.qi.qi-fillr{outline:2px dashed #1d4ed8!important;outline-offset:-2px;background:#eff6ff!important}
+body.qi-filling,body.qi-filling *{cursor:crosshair!important;user-select:none!important}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -2980,6 +2987,66 @@ document.getElementById('undoBtn').onclick = function () { undo(); };
 document.getElementById('redoBtn').onclick = function () { redo(); };
 document.getElementById('verTag').textContent = SUB_VER;
 auBoot();
+
+/* v65 : 일일 입력 양품·불량 칸 — 가공비 견적기와 같은 ⇡ 윗줄 복사(Ctrl+D) · × 지우기 · ■ 끌어서 위·아래 칸에 복사 */
+(function () {
+  function vis() { return S.ui.view === 'day' && document.querySelector('#view table.day'); }
+  function cell(t) { return t && t.tagName === 'INPUT' && t.classList.contains('qi') && t.dataset.k && (t.dataset.f === 'g' || t.dataset.f === 'b') && t.closest('#view table.day') ? t : null; }
+  function col(f) { return $$('#view table.day input.qi[data-f="' + f + '"]'); }
+  function upOf(t) { var L = col(t.dataset.f), i = L.indexOf(t); return i > 0 ? L[i - 1] : null; }
+  /* 한 칸 저장 (표 다시 계산은 부른 쪽에서 한 번만) */
+  function put(inp, raw) {
+    raw = String(raw == null ? '' : raw).trim(); var n = SU.num(raw);
+    var k = inp.dataset.k, cur = store.recs.get(k), v = Object.assign({}, (cur && cur.v) || {});
+    if ((SU.num(v[inp.dataset.f]) || 0) === (n || 0)) { inp.value = fmtIn(n); return false; }
+    if (n) v[inp.dataset.f] = n; else delete v[inp.dataset.f];
+    if (!v.g && !v.b) v = null;
+    setRec(k, v); inp.value = fmtIn(n); inp.defaultValue = inp.value; inp.classList.add('pend'); inp.classList.remove('err'); return true;
+  }
+  function done(n, msg) { if (n) { refreshDay(); schedulePush(); } if (msg) toast(msg + (n ? ' (Ctrl+Z 취소)' : '')); }
+  var U = document.createElement('button'); U.type = 'button'; U.id = 'qiUp'; U.textContent = '⇡'; document.body.appendChild(U);
+  var C = document.createElement('button'); C.type = 'button'; C.id = 'qiClr'; C.textContent = '×'; C.title = '이 칸 값 지우기'; document.body.appendChild(C);
+  var H = document.createElement('div'); H.id = 'qiFill'; H.title = '끌어서 위·아래 칸에 복사'; document.body.appendChild(H);
+  var cur = null, hov = null, drag = null;
+  function inWrap(r) { var w = document.querySelector('#view .tbl-wrap'); if (!w) return !!r.width; var W = w.getBoundingClientRect(), th = w.querySelector('thead'), top = th ? th.getBoundingClientRect().bottom : W.top; return r.width && r.top >= top - 1 && r.bottom <= W.bottom + 1 && r.left >= W.left - 1 && r.right <= W.right + 1; }
+  function upv(t) { if (!t || String(t.value).trim() !== '') return ''; var u = upOf(t); return u ? String(u.value).trim() : ''; }
+  function live(t) { return t && document.body.contains(t) ? t : null; }
+  function placeU() { var c = live(cur), h = live(hov), t = c && upv(c) ? c : h && upv(h) ? h : null;
+    if (!t || !vis()) { U.style.display = 'none'; U._t = null; return; } var r = t.getBoundingClientRect(); if (!inWrap(r)) { U.style.display = 'none'; return; }
+    U.title = '윗줄 값 «' + upv(t) + '» 그대로 넣기 (Ctrl+D)'; U._t = t; U.style.left = (r.left + 3) + 'px'; U.style.top = (r.top + (r.height - 14) / 2) + 'px'; U.style.display = 'block'; }
+  function placeC() { var t = live(hov); if (!t || !vis() || String(t.value).trim() === '') { C.style.display = 'none'; C._t = null; return; }
+    var r = t.getBoundingClientRect(); if (!inWrap(r)) { C.style.display = 'none'; return; } C.style.left = (r.left + 3) + 'px'; C.style.top = (r.top + (r.height - 16) / 2) + 'px'; C.style.display = 'block'; C._t = t; }
+  function placeH() { var t = live(cur); if (!t || !vis()) { H.style.display = 'none'; return; } var r = t.getBoundingClientRect(); if (!inWrap(r)) { H.style.display = 'none'; return; }
+    H.style.left = (r.right - 4) + 'px'; H.style.top = (r.bottom - 4) + 'px'; H.style.display = 'block'; }
+  function place() { placeU(); placeC(); placeH(); }
+  function fromUp(t) { var u = upOf(t); if (!u) { toast('첫 줄은 윗줄이 없음'); return; } var v = String(u.value).trim(); if (v === '') { toast('윗줄이 비어 있음'); return; }
+    var n = put(t, v) ? 1 : 0; done(n, '윗줄 값 복사 ' + v); setTimeout(function () { var x = document.querySelector('#view input.qi[data-k="' + t.dataset.k + '"][data-f="' + t.dataset.f + '"]'); if (x) { x.focus(); x.select(); } cur = cell(document.activeElement); place(); }, 0); }
+  [U, C, H].forEach(function (b) { b.addEventListener('mousedown', function (e) { if (b !== H) { e.preventDefault(); e.stopPropagation(); } }); });
+  U.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); var t = U._t; U.style.display = 'none'; if (t) fromUp(t); });
+  C.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); var t = C._t; C.style.display = 'none'; if (!t) return; hov = null; var n = put(t, '') ? 1 : 0; done(n, n ? '칸 지움' : ''); place(); });
+  document.addEventListener('keydown', function (e) { var t = cell(e.target); if (!t) return; if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === 'd' || e.key === 'D' || e.code === 'KeyD')) { e.preventDefault(); e.stopPropagation(); fromUp(t); } }, true);
+  document.addEventListener('focusin', function (e) { if (e.target === U || e.target === C) return; cur = cell(e.target); place(); }, true);
+  document.addEventListener('focusout', function () { if (drag) return; setTimeout(function () { if (drag) return; var a = document.activeElement; if (a === U || a === C) return; cur = cell(a); place(); }, 0); }, true);
+  document.addEventListener('mouseover', function (e) { if (drag || e.target === U || e.target === C || e.target === H) return; var td = e.target.closest && e.target.closest('#view table.day td.in'); var t = cell(e.target) || (td && cell(td.querySelector('input.qi'))); if (t !== hov) { hov = t || null; placeU(); placeC(); } }, true);
+  document.addEventListener('input', function (e) { if (cell(e.target)) place(); }, true);
+  window.addEventListener('scroll', function () { if (U.style.display !== 'none' || C.style.display !== 'none' || H.style.display !== 'none') place(); }, true);
+  window.addEventListener('resize', place);
+  /* ■ 끌어서 복사 */
+  function rowAt(x, y) { var keep = [U.style.display, C.style.display, H.style.display]; U.style.display = C.style.display = H.style.display = 'none'; var el = document.elementFromPoint(x, y); H.style.display = keep[2];
+    var tr = el && el.closest && el.closest('#view table.day tr'); if (!tr) return null; var inp = tr.querySelector('input.qi[data-f="' + drag.f + '"]'); return inp ? drag.L.indexOf(inp) : null; }
+  function mark() { $$('#view .qi-fillr').forEach(function (n) { n.classList.remove('qi-fillr'); }); if (!drag || drag.to == null) return;
+    var a = Math.min(drag.r, drag.to), b = Math.max(drag.r, drag.to); for (var i = a; i <= b; i++) if (drag.L[i]) drag.L[i].classList.add('qi-fillr'); }
+  H.addEventListener('mousedown', function (e) { var t = live(cur); if (!t) return; e.preventDefault(); e.stopPropagation();
+    if (t.value !== t.defaultValue) t.dispatchEvent(new Event('change', { bubbles: true }));
+    t = document.querySelector('#view input.qi[data-k="' + t.dataset.k + '"][data-f="' + t.dataset.f + '"]') || t;
+    var L = col(t.dataset.f); drag = { L: L, r: L.indexOf(t), f: t.dataset.f, v: String(t.value).trim(), to: L.indexOf(t), t: t }; document.body.classList.add('qi-filling'); mark(); });
+  document.addEventListener('mousemove', function (e) { if (!drag) return; e.preventDefault(); var i = rowAt(e.clientX, e.clientY); if (i != null && i >= 0 && i !== drag.to) { drag.to = i; mark(); }
+    var w = document.querySelector('#view .tbl-wrap'); if (w) { var R = w.getBoundingClientRect(); if (e.clientY > R.bottom - 24) w.scrollTop += 18; else if (e.clientY < R.top + 60) w.scrollTop -= 18; } }, true);
+  document.addEventListener('mouseup', function () { if (!drag) return; var d = drag; drag = null; document.body.classList.remove('qi-filling'); $$('#view .qi-fillr').forEach(function (n) { n.classList.remove('qi-fillr'); });
+    if (d.to == null || d.to === d.r) { place(); return; } var a = Math.min(d.r, d.to), b = Math.max(d.r, d.to), n = 0;
+    for (var i = a; i <= b; i++) { if (i === d.r) continue; if (put(d.L[i], d.v)) n++; }
+    done(n, n + '칸에 «' + (d.v || '빈 값') + '» 복사'); setTimeout(function () { var x = live(d.t); if (x) { x.focus(); } cur = cell(document.activeElement); place(); }, 0); }, true);
+})();
 
 </script>
 <script id="su-new-version-popup">
