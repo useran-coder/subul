@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v78">
+<meta name="su-ver" content="v79">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -222,6 +222,7 @@ body.qi-filling,body.qi-filling *{cursor:crosshair!important;user-select:none!im
 .as-go{height:30px;padding:0 12px;border:1px solid #93c5fd;border-radius:7px;background:#eff6ff;color:#1e40af;font-weight:800;cursor:pointer}.as-bars{display:flex;flex-direction:column;gap:8px;margin-top:6px}.as-bar{display:grid;grid-template-columns:80px 1fr 110px;align-items:center;gap:10px;cursor:pointer;padding:3px 6px;border-radius:6px}.as-bar:hover,.as-bar.on{background:#eff6ff}.as-l{font-size:13px;font-weight:700;color:#334155}.as-t{height:16px;background:#f1f5f9;border-radius:5px;overflow:hidden}.as-t i{display:block;height:100%;border-radius:5px}.as-n{text-align:right;font-weight:800;font-variant-numeric:tabular-nums}.as-n small{font-weight:600;color:#94a3b8}.bk-0{background:#22c55e}.bk-5{background:#a3e635}.bk-10{background:#facc15}.bk-30{background:#fb923c}.bk-99{background:#ef4444}.as-rt{display:inline-block;min-width:52px;padding:1px 6px;border-radius:999px;color:#fff;font-size:11.5px;font-weight:800;text-align:center}.as-rt.bk-5,.as-rt.bk-10{color:#422006}.as-chip{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1px 8px;border-radius:999px;background:#eff6ff;color:#1e40af;font-size:12px}.as-chip button{border:0;background:none;cursor:pointer;color:#64748b;padding:0 2px}.card-h .search{margin-left:auto;height:28px;width:220px}
 .au-months,.au-bk{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 8px}.au-months .muted,.au-bk .muted{margin-right:4px}.au-mon{height:28px;padding:0 10px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;font-size:12px;color:#334155;cursor:pointer}.au-mon b{color:#1e3a5f}.au-mon.on{background:#1e3a5f;border-color:#1e3a5f;color:#fff}.au-mon.on b{color:#fff}.au-bkb{height:26px;padding:0 9px;border:1px solid #e2e8f0;border-radius:999px;background:#fff;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px}.au-bkb i{width:9px;height:9px;border-radius:50%;display:inline-block}.au-bkb.on{border-color:#1e3a5f;box-shadow:0 0 0 1px #1e3a5f}.au-bkb:disabled{opacity:.4;cursor:default}
 td.yr{color:#1e40af;font-weight:700}
+.mbar button.delm.on{background:#fef2f2;border-color:#ef4444;color:#b91c1c}.mbar button.delm:hover{border-color:#ef4444;color:#b91c1c}.delbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 8px;padding:7px 10px;border:1px solid #fca5a5;border-radius:8px;background:#fef2f2;font-size:13px}.delbar label{display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-weight:700}.delbar button{height:28px;padding:0 10px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;font-weight:700;cursor:pointer}.delbar button.danger{background:#dc2626;border-color:#dc2626;color:#fff}.delbar button.danger:hover:not(:disabled){background:#b91c1c}.delbar button:disabled{opacity:.4;cursor:default}td.c-cat input.dsel{margin:0 5px 0 0;vertical-align:middle;width:15px;height:15px;cursor:pointer;accent-color:#dc2626}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -368,7 +369,7 @@ var SU = (function () {
     var rec = { v: v, r: meta && meta.r != null ? meta.r : (old ? old.r : 0), by: meta && meta.by || '', at: meta && meta.at || '' };
     this.recs.set(k, rec);
     var t = k.charAt(0);
-    if (t === 'i') { var id = k.slice(2); this.virt.delete(id); if (v && !v.del) { v.id = id; if (!v.catSet && (v.cat === 'part' || v.cat === 'frame')) v.cat = (isFrameName(v.n) || isFrameName(v.it)) ? 'frame' : 'part'; this.items.set(id, v); this.dead.delete(id); } else { this.items.delete(id); this.dead.add(id); } this.erpDirty = true; }
+    if (t === 'i') { var id = k.slice(2); this.virt.delete(id); if (v && !v.del) { v.id = id; if (!v.catSet && (v.cat === 'part' || v.cat === 'frame')) v.cat = (isFrameName(v.n) || isFrameName(v.it)) ? 'frame' : 'part'; this.items.set(id, v); this.dead.delete(id); } else { this.items.delete(id); if (v && v.soft) this.dead.delete(id); else this.dead.add(id); } this.erpDirty = true; }
     else if (t === 'e') { if (v && (v.g || v.b)) this.ent.set(k.slice(2), v); else this.ent.delete(k.slice(2)); }
     else if (t === 'a') { if (v && num(v.a)) this.adj.set(k.slice(2), v); else this.adj.delete(k.slice(2)); }   /* 기초재고 조정 a:품목|공정|날짜 {a: 더할 수량} */
     else if (k === 'c:procs') this.cfg = v;
@@ -1071,7 +1072,7 @@ function erpOrphans() {
   return L;
 }
 function erpPurge(L) {
-  L.forEach(function (x) { x.ks.forEach(function (k) { setRec(k, null); }); setRec('i:' + x.it.id, null); });
+  L.forEach(function (x) { x.ks.forEach(function (k) { setRec(k, null); }); setRec('i:' + x.it.id, { del: 1, soft: 1 }); });
   schedulePush(); render();
   toast('지움: ERP 품목 ' + L.length + '개 · 입력 ' + L.reduce(function (s, x) { return s + x.ks.length; }, 0) + '칸 (Ctrl+Z 로 되돌림)');
 }
@@ -2349,6 +2350,37 @@ function bindDayInputs() {
 
 /* ───────── 월 현황 ───────── */
 var METRICS = { stock: '재고', p: '생산', g: '양품', b: '불량', out: '출고' };
+/* ───────── 품목 삭제 (월 현황 🗑 : 개별 체크 · 지금 조건 전체) ─────────
+   품목 + 그 품목에 넣은 생산·조정·실사 입력 같이 지움 · 관리자 = 모두, 일반 = 내가 등록한 품목만 · Ctrl+Z 로 되돌림 */
+var DEL = { on: false, sel: new Set() };
+function canDelIt(it) { return isAdmin() || (!it._v && it.cby && it.cby === me()); }
+function delBar(list) {
+  if (!DEL.on) return '';
+  var ok = list.filter(canDelIt), all = ok.length && ok.every(function (it) { return DEL.sel.has(it.id); });
+  return '<div class="delbar"><label><input type="checkbox" id="delAll"' + (all ? ' checked' : '') + (ok.length ? '' : ' disabled') + '> 전체 선택 <span class="muted">(지금 조건 ' + ok.length.toLocaleString() + '품목' + (ok.length < list.length ? ' · 지울 권한 없는 ' + (list.length - ok.length) + '품목 제외' : '') + ')</span></label>' +
+    '<b>' + DEL.sel.size.toLocaleString() + '품목 선택</b><button type="button" id="delGo" class="danger"' + (DEL.sel.size ? '' : ' disabled') + '>🗑 선택 품목 삭제</button><button type="button" id="delClr"' + (DEL.sel.size ? '' : ' disabled') + '>선택 해제</button><button type="button" id="delOff">닫기</button>' +
+    '<span class="muted small">품목과 그 품목의 생산·조정·실사 입력 같이 지움 · 모든 PC 반영 · Ctrl+Z 로 되돌림</span></div>';
+}
+function delRun() {
+  var ids = Array.from(DEL.sel).filter(function (id) { var it = store.items.get(id); return it && canDelIt(it); }); if (!ids.length) return;
+  var set = {}, ks = []; ids.forEach(function (id) { set[id] = 1; });
+  store.recs.forEach(function (rc, k) { var t = k.charAt(0); if ((t === 'e' || t === 'a' || t === 'r') && rc.v != null && set[k.slice(2).split('|')[0]]) ks.push(k); });
+  var ex = ids.slice(0, 6).map(function (id) { var it = store.items.get(id); return '· ' + (it.p || it.n) + (it.s ? ' ' + it.s : ''); }).join('\n');
+  if (!confirm('선택한 ' + ids.length.toLocaleString() + '품목 · 입력 ' + ks.length.toLocaleString() + '칸 지울까?\n' + ex + (ids.length > 6 ? '\n… 외 ' + (ids.length - 6) + '품목' : '') + '\n\n모든 PC에서 지워짐 · ERP 품목은 다시 안 생김 · 바로 Ctrl+Z 로 되돌림 가능')) return;
+  ks.forEach(function (k) { setRec(k, null); });
+  ids.forEach(function (id) { setRec('i:' + id, null); });
+  schedulePush(); DEL.sel.clear(); render();
+  toast('지움: ' + ids.length.toLocaleString() + '품목 · 입력 ' + ks.length.toLocaleString() + '칸 (Ctrl+Z 로 되돌림)');
+}
+function delBind(list) {
+  if ($('#delMode')) $('#delMode').onclick = function () { DEL.on = !DEL.on; if (!DEL.on) DEL.sel.clear(); renderMonth(); };
+  if (!DEL.on) return;
+  $('#delAll').onchange = function () { var on = this.checked; list.forEach(function (it) { if (!canDelIt(it)) return; if (on) DEL.sel.add(it.id); else DEL.sel.delete(it.id); }); renderMonth(); };
+  $('#delGo').onclick = delRun;
+  $('#delClr').onclick = function () { DEL.sel.clear(); renderMonth(); };
+  $('#delOff').onclick = function () { DEL.on = false; DEL.sel.clear(); renderMonth(); };
+}
+function delChk(it) { return DEL.on ? '<input type="checkbox" class="dsel" data-dsel="' + it.id + '"' + (DEL.sel.has(it.id) ? ' checked' : '') + (canDelIt(it) ? '' : ' disabled title="지울 권한 없음 (관리자 또는 등록한 사람)"') + '>' : ''; }
 function renderMonth() {
   var u = S.ui, d = u.date, ms = SU.monthStart(d), me_ = SU.monthEnd(d), days = [], x = ms;
   while (x <= me_) { days.push(x); x = SU.addDays(x, 1); }
@@ -2363,7 +2395,7 @@ function renderMonth() {
   store.items.forEach(function (it) { if (u.cat !== 'all' && it.cat !== u.cat) return; (it.procs || []).forEach(function (p) { pall[p.n] = 1; }); });
   var pnames = store.procList().filter(function (n) { return pall[n] || pset[n]; });
   var h = '<div class="mbar"><b>' + ms.slice(0, 4) + '년 ' + Number(ms.slice(5, 7)) + '월</b> 공정: <button data-pf="" class="' + (!u.proc ? 'on' : '') + '">전체</button><span class="vsep"></span>' + pnames.map(function (n) { var c = pset[n] || 0; return '<button data-pf="' + esc(n) + '" class="' + (u.proc === n ? 'on' : '') + '"' + (c || u.proc === n ? '' : ' disabled') + ' title="' + (c ? c.toLocaleString() + '품목' : '지금 표에 이 공정 없음') + '">' + esc(n) + '</button>'; }).join('') +
-    '<span class="spacer"></span>' + sortResetBtn() + '<button type="button" id="baseZero" class="bz" title="지금 표에 보이는 조건의 기초재고를 모두 0으로 (개별 칸은 기초 칸에서 직접 수정)">기초재고 모두 0</button></div>';
+    '<span class="spacer"></span>' + sortResetBtn() + '<button type="button" id="delMode" class="delm' + (DEL.on ? ' on' : '') + '" title="품목 삭제 — 체크해서 개별 · 전체 선택">🗑 삭제</button><button type="button" id="baseZero" class="bz" title="지금 표에 보이는 조건의 기초재고를 모두 0으로 (개별 칸은 기초 칸에서 직접 수정)">기초재고 모두 0</button></div>' + delBar(list);
   h += '<div class="tbl-wrap"><table class="grid month"><thead><tr>' + sortTh('cat', 'c-cat', '구분') + sortTh('p', 'c-p', '품번') + sortTh('pc', 'c-pc', '제품번호') + sortTh('pn', 'c-n', '품명·규격') + sortTh('proc', 'c-proc', '공정') + sortTh('base', 'num', '기초') +
     days.map(function (dd) { var w = new Date(dd + 'T00:00:00').getDay(); return sortTh('d' + dd, 'num day' + (w === 0 ? ' sun' : w === 6 ? ' sat' : '') + (dd === td ? ' today' : ''), Number(dd.slice(8)) + '<span class="dgo" title="그날 입력 화면으로">↗</span>', ' data-d="' + dd + '"'); }).join('') + sortTh('tot', 'num', '합계') + '</tr></thead><tbody>';
   var before = SU.addDays(ms, -1);
@@ -2374,7 +2406,7 @@ function renderMonth() {
     it.procs.forEach(function (pr, pi) {
       var out = SU.isOut(pr.n), buy = it.cat === 'oem' && SU.isBuy(pr.n), pin = false;   // v59 : 공정 줄 바로 입력 되돌림 (사용자 요청) — 재고만 표시
       if (!rowOn(pr)) return;
-      h += '<tr class="' + (pi === 0 ? 'first' : '') + (out ? ' outrow' : buy ? ' buyrow' : pin ? ' inrow' : '') + '" data-i="' + it.id + '" data-p="' + pi + '"><td class="c-cat"><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span>' + nst + '</td><td class="c-p link" data-open="' + it.id + '">' + esc(it.p) + '</td><td class="c-pc" title="' + esc(prodTitle(it)) + '">' + prodCell(it) + '</td><td class="c-n">' + esc([it.it || it.n, it.s].filter(Boolean).join(' · ')) + (it.cust ? ' <small class="muted">' + esc(it.cust) + '</small>' : '') + '</td><td class="c-proc">' + (it.cat === 'oem' ? '<span class="pname">' + esc(pr.n) + '</span>' : '<span class="pname' + (out ? '' : ' drag') + '" data-pm="' + it.id + '" data-pi="' + pi + '"' + (out ? '' : ' draggable="true"') + ' title="' + (out ? '눌러서 공정 메뉴' : '끌어서 순서 바꾸기 · 눌러서 메뉴 (앞뒤 이동·삭제)') + '">' + esc(pr.n) + '</span>') + (pi === lastPi && it.cat !== 'oem' ? '<button type="button" class="padd" data-add="' + it.id + '" title="이 품목에 공정 추가">＋</button>' : '') + '</td>';
+      h += '<tr class="' + (pi === 0 ? 'first' : '') + (out ? ' outrow' : buy ? ' buyrow' : pin ? ' inrow' : '') + '" data-i="' + it.id + '" data-p="' + pi + '"><td class="c-cat">' + delChk(it) + '<span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span>' + nst + '</td><td class="c-p link" data-open="' + it.id + '">' + esc(it.p) + '</td><td class="c-pc" title="' + esc(prodTitle(it)) + '">' + prodCell(it) + '</td><td class="c-n">' + esc([it.it || it.n, it.s].filter(Boolean).join(' · ')) + (it.cust ? ' <small class="muted">' + esc(it.cust) + '</small>' : '') + '</td><td class="c-proc">' + (it.cat === 'oem' ? '<span class="pname">' + esc(pr.n) + '</span>' : '<span class="pname' + (out ? '' : ' drag') + '" data-pm="' + it.id + '" data-pi="' + pi + '"' + (out ? '' : ' draggable="true"') + ' title="' + (out ? '눌러서 공정 메뉴' : '끌어서 순서 바꾸기 · 눌러서 메뉴 (앞뒤 이동·삭제)') + '">' + esc(pr.n) + '</span>') + (pi === lastPi && it.cat !== 'oem' ? '<button type="button" class="padd" data-add="' + it.id + '" title="이 품목에 공정 추가">＋</button>' : '') + '</td>';
       var b0 = out ? null : store.stock(it, pi, before);
       if (b0 == null) h += '<td class="num muted"></td>';
       else { var ak = store.adj.get(it.id + '|' + pr.id + '|' + before), ar = ak ? store.recs.get('a:' + it.id + '|' + pr.id + '|' + before) : null;
@@ -2410,6 +2442,7 @@ function renderMonth() {
   $$('.mbar [data-pf]').forEach(function (b) { b.onclick = function () { S.ui.proc = b.dataset.pf; S.ui.page = 1; render(); }; });
   $$('.mbar [data-mm]').forEach(function (b) { b.onclick = function () { S.ui.mIn = b.dataset.mm === '1'; try { localStorage.setItem('suMIn', S.ui.mIn ? '1' : '0'); } catch (e) {} renderMonth(); }; });
   if ($('#baseZero')) $('#baseZero').onclick = baseZeroAll;
+  delBind(list);
   $$('#view .padd').forEach(function (b) { b.onclick = function (ev) { ev.stopPropagation(); procAddRow(b); }; });
   bindProcDrag($('#view'));
   $$('#view .pname').forEach(function (b) { b.onclick = function (ev) { ev.stopPropagation(); procEditMenu(b); }; });
@@ -2417,7 +2450,7 @@ function renderMonth() {
   bindSort(renderMonth);
   $('#view').onclick = function (ev) { var c = ev.target.closest('td.pgc'); if (c) { pgOpen(c); return; } var o = ev.target.closest('[data-open]'); if (o) openItem(o.dataset.open); };
   $('#view').onmouseover = function (ev) { var c = ev.target.closest('td.pgc'); if (c && !c.title) c.title = pgTitle(c.dataset.k); };
-  $('#view').onchange = function (ev) { var inp = ev.target; if (inp.classList.contains('bi')) setBase(inp); else if (inp.classList.contains('pg')) return; else if (inp.classList.contains('mi')) setBuyCell(inp); };
+  $('#view').onchange = function (ev) { var inp = ev.target; if (inp.classList.contains('dsel')) { if (inp.checked) DEL.sel.add(inp.dataset.dsel); else DEL.sel.delete(inp.dataset.dsel); $$('#view input.dsel[data-dsel="' + inp.dataset.dsel + '"]').forEach(function (c) { c.checked = inp.checked; }); var bar = $('#view .delbar'); if (bar) { bar.outerHTML = delBar(list); delBind(list); } return; } if (inp.classList.contains('bi')) setBase(inp); else if (inp.classList.contains('pg')) return; else if (inp.classList.contains('mi')) setBuyCell(inp); };
   $('#view').onkeydown = function (ev) {
     var inp = ev.target;
     if (inp.classList && inp.classList.contains('pg')) { pgKey(ev, inp); return; }
