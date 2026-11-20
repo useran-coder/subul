@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v74">
+<meta name="su-ver" content="v75">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -1679,8 +1679,8 @@ function renderDash() {
     (cu.slice(0, 10).map(function (x) { return '<tr><td>' + esc(x[0]) + '</td><td class="num">' + fmt(x[1].q) + '</td><td class="num">' + won(x[1].a) + '</td>' + yrCell(x[0]) + '<td class="num">' + x[1].n + '</td></tr>'; }).join('') || '<tr><td colspan="5" class="muted">이 기간 출고 없음</td></tr>') + '</tbody></table>' + (cu.length > 10 ? '<div class="muted small">외 ' + (cu.length - 10) + '곳</div>' : '') + '</div>';
   /* 완제품 재고 많은 품목 */
   T.top.sort(function (a, b) { return b.st - a.st; });
-  h += '<div class="card"><h3 class="card-h">완제품 재고 많은 품목 <small class="muted">TOP 12</small><button type="button" class="card-more" data-more="topst" title="완제품 재고 있는 품목 모두 자세히">더보기 ›</button></h3><table class="grid small"><thead><tr><th>구분</th><th>품번</th><th>품명·규격</th><th>고객사</th><th class="num">재고</th><th class="num">수주 잔량</th></tr></thead><tbody>' +
-    (T.top.slice(0, 12).map(function (x) { var it = x.it; return '<tr><td><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat]) + '</span></td><td class="link" data-open="' + it.id + '">' + esc(it.p || it.n) + '</td><td class="c-n">' + esc([it.it || it.n, it.s].filter(Boolean).join(' · ')) + '</td><td class="c-cust">' + esc(it.cust) + '</td><td class="num">' + fmt(x.st) + '</td><td class="num">' + (x.bal ? fmt(x.bal.rem, false) : '') + '</td></tr>'; }).join('') || '<tr><td colspan="6" class="muted">없음</td></tr>') + '</tbody></table></div></div>';
+  h += '<div class="card"><h3 class="card-h">완제품 재고 많은 품목 <small class="muted">TOP 12</small><button type="button" class="card-more" data-more="topst" title="완제품 재고 있는 품목 모두 자세히">더보기 ›</button></h3><table class="grid small"><thead><tr><th>구분</th><th>품번</th><th>품명</th><th>규격</th><th title="그 품목 ERP 출고 중 가장 최근 고객사 (출고 없으면 품목 고객사)">최근 매출 고객사</th><th class="num">재고</th><th class="num">수주 잔량</th></tr></thead><tbody>' +
+    (T.top.slice(0, 12).map(function (x) { var it = x.it; return '<tr><td><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat]) + '</span></td><td class="link" data-open="' + it.id + '">' + esc(it.p || it.n) + '</td><td class="c-n">' + esc(it.it || it.n || '') + '</td><td class="c-s">' + esc(it.s || '') + '</td><td class="c-cust">' + esc(recentCust(it)) + '</td><td class="num">' + fmt(x.st) + '</td><td class="num">' + (x.bal ? fmt(x.bal.rem, false) : '') + '</td></tr>'; }).join('') || '<tr><td colspan="7" class="muted">없음</td></tr>') + '</tbody></table></div></div>';
   /* 경고 */
   T.neg.sort(function (a, b) { return a.st - b.st; }); T.old.sort(function (a, b) { return String(a.it.od).localeCompare(String(b.it.od)); }); T.idle.sort(function (a, b) { return b.st - a.st; });
   function alist(arr, f) { return arr.slice(0, 8).map(f).join('') + (arr.length > 8 ? '<div class="muted small">외 ' + (arr.length - 8) + '건</div>' : ''); }
@@ -1794,15 +1794,17 @@ function renderCustPage() {
   };
 }
 /* 완제품 재고 : 현황판 «완제품 재고 많은 품목» 전체 + 마지막 생산·출고 · 30일 움직임 없음 */
+/* 최근 매출 고객사 : 그 품목 ERP 출고 줄 중 가장 최근 날짜의 고객사 (없으면 품목 고객사 칸) */
+function recentCust(it) { var L = store.erpShip.get(it.id) || [], b = null; L.forEach(function (r) { if (r.c && (!b || SU.ymd(r.d) >= SU.ymd(b.d))) b = r; }); return b ? b.c : (it.cust || ''); }
 function renderTopPage() {
   var P = S.pg || (S.pg = { k: '', dir: 0, q: '', open: '' }), D = dashData(), T = D.T || D, R = perRange(S.ui.per, S.ui.date), ix = store.index(), q = (P.q || '').toLowerCase();
   var idle = {}; (T.idle || []).forEach(function (x) { idle[x.it.id] = 1; });
   function lastOf(it, pi) { var pr = it.procs[pi]; if (!pr) return ''; var e = ix.get(it.id + '|' + pr.id); if (!e) return ''; var i = bsearch(e.ds, R.sd); return i ? e.ds[i - 1] : ''; }
-  var all = (T.top || []).map(function (x) { var it = x.it, fi = SU.finIndex(it), op = it.procs.indexOf(SU.outProc(it)); return { it: it, st: x.st, rem: x.bal ? x.bal.rem : null, oq: x.bal ? x.bal.oq : null, lp: lastOf(it, fi), lo: op >= 0 ? lastOf(it, op) : '', idle: !!idle[it.id], fin: fi >= 0 ? it.procs[fi].n : '' }; });
+  var all = (T.top || []).map(function (x) { var it = x.it, fi = SU.finIndex(it), op = it.procs.indexOf(SU.outProc(it)); return { it: it, st: x.st, rem: x.bal ? x.bal.rem : null, oq: x.bal ? x.bal.oq : null, lp: lastOf(it, fi), lo: op >= 0 ? lastOf(it, op) : '', idle: !!idle[it.id], fin: fi >= 0 ? it.procs[fi].n : '', rc: recentCust(it) }; });
   var tot = all.reduce(function (s, x) { return s + x.st; }, 0);
-  var rows = all.filter(function (x) { return !q || (itemText(x.it) + ' ' + prodCode(x.it).toLowerCase()).indexOf(q) >= 0; });
+  var rows = all.filter(function (x) { return !q || (itemText(x.it) + ' ' + prodCode(x.it).toLowerCase() + ' ' + x.rc.toLowerCase()).indexOf(q) >= 0; });
   rows.sort(function (a, b) { return b.st - a.st; });
-  var cols = [{ k: 'cat', t: '구분', v: function (x) { return x.it.cat; } }, { k: 'p', t: '품번', v: function (x) { return x.it.p || x.it.n; } }, { k: 'pc', t: '제품번호', v: function (x) { return prodCode(x.it); } }, { k: 'n', t: '품명', v: function (x) { return x.it.it || x.it.n || ''; } }, { k: 's', t: '규격', v: function (x) { return x.it.s || ''; } }, { k: 'cust', t: '고객사', v: function (x) { return x.it.cust || ''; } },
+  var cols = [{ k: 'cat', t: '구분', v: function (x) { return x.it.cat; } }, { k: 'p', t: '품번', v: function (x) { return x.it.p || x.it.n; } }, { k: 'pc', t: '제품번호', v: function (x) { return prodCode(x.it); } }, { k: 'n', t: '품명', v: function (x) { return x.it.it || x.it.n || ''; } }, { k: 's', t: '규격', v: function (x) { return x.it.s || ''; } }, { k: 'cust', t: '최근 매출 고객사', v: function (x) { return x.rc; } },
     { k: 'fin', t: '완성 공정', v: function (x) { return x.fin; } }, { k: 'st', t: '완제품 재고', num: 1, v: function (x) { return x.st; } }, { k: 'oq', t: '수주', num: 1, v: function (x) { return x.oq == null ? -1e15 : x.oq; } }, { k: 'rem', t: '수주 잔량', num: 1, v: function (x) { return x.rem == null ? -1e15 : x.rem; } }, { k: 'lp', t: '마지막 생산', v: function (x) { return x.lp; } }, { k: 'lo', t: '마지막 출고', v: function (x) { return x.lo; } }, { k: 'idle', t: '상태', v: function (x) { return x.idle ? 1 : 0; } }];
   rows = pgSort(rows, cols);
   var shown = rows.slice(0, (P.page || 1) * 300);
@@ -1810,7 +1812,7 @@ function renderTopPage() {
   var h = pgHead('완제품 재고 <b>' + all.length.toLocaleString() + '</b>품목', R.sd.replace(/-/g, '.') + ' 기준 · 완성 공정(출고 바로 앞) 재고 · 위 구분 탭으로 구분별 · 품번 누르면 품목 창', false) +
     '<div class="pg-sum">완제품 재고 합계 <b>' + fmt(tot, false) + '</b> · 💤 30일 움직임 없음 <b>' + Object.keys(idle).length + '</b>품목' + (q ? ' · 검색 결과 ' + rows.length + '품목' : '') + '</div>' +
     '<div class="tbl-wrap"><table class="grid pg-tbl"><thead><tr><th class="num">#</th>' + pgTh(cols) + '</tr></thead><tbody>' +
-    shown.map(function (x, i) { var it = x.it; return '<tr><td class="num muted">' + (i + 1) + '</td><td><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span></td><td class="link" data-open="' + it.id + '">' + esc(it.p || it.n) + '</td><td class="c-pc" title="' + esc(prodTitle(it)) + '">' + prodCell(it) + '</td><td class="c-n">' + esc(it.it || it.n || '') + '</td><td class="c-s">' + esc(it.s || '') + '</td><td class="c-cust">' + esc(it.cust || '') + '</td><td>' + esc(x.fin) + '</td><td class="num"><b>' + fmt(x.st) + '</b></td><td class="num">' + (x.oq == null ? '' : fmt(x.oq, false)) + '</td><td class="num' + (x.rem < 0 ? ' neg' : '') + '">' + (x.rem == null ? '' : fmt(x.rem, false)) + '</td><td>' + md(x.lp) + '</td><td>' + md(x.lo) + '</td><td>' + (x.idle ? '<span class="idle-tag" title="30일 동안 생산·출고 없이 재고만 있음">💤 30일 움직임 없음</span>' : '') + '</td></tr>'; }).join('') +
+    shown.map(function (x, i) { var it = x.it; return '<tr><td class="num muted">' + (i + 1) + '</td><td><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span></td><td class="link" data-open="' + it.id + '">' + esc(it.p || it.n) + '</td><td class="c-pc" title="' + esc(prodTitle(it)) + '">' + prodCell(it) + '</td><td class="c-n">' + esc(it.it || it.n || '') + '</td><td class="c-s">' + esc(it.s || '') + '</td><td class="c-cust">' + esc(x.rc) + '</td><td>' + esc(x.fin) + '</td><td class="num"><b>' + fmt(x.st) + '</b></td><td class="num">' + (x.oq == null ? '' : fmt(x.oq, false)) + '</td><td class="num' + (x.rem < 0 ? ' neg' : '') + '">' + (x.rem == null ? '' : fmt(x.rem, false)) + '</td><td>' + md(x.lp) + '</td><td>' + md(x.lo) + '</td><td>' + (x.idle ? '<span class="idle-tag" title="30일 동안 생산·출고 없이 재고만 있음">💤 30일 움직임 없음</span>' : '') + '</td></tr>'; }).join('') +
     (rows.length ? '' : '<tr><td colspan="14" class="empty">' + (all.length ? '조건에 맞는 품목 없음' : '완제품 재고 없음') + '</td></tr>') + '</tbody></table></div>' +
     (rows.length > shown.length ? '<div class="more"><button id="pgMore">더 보기 (' + shown.length.toLocaleString() + ' / ' + rows.length.toLocaleString() + ')</button></div>' : '');
   $('#view').innerHTML = h;
