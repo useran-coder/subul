@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v76">
+<meta name="su-ver" content="v77">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -850,13 +850,15 @@ function auDiscoverKey(){
     setTimeout(function(){res(!!auKey());},2000);
   });
 }
+/* 서버 v27 : 비밀키 없이 로그인해도 아이디·비번 맞으면 응답에 skey → 이 PC에 저장 (새 PC 첫 로그인) */
+function auSaveSkey(d){var k=d&&d.skey&&String(d.skey).trim();if(k){try{localStorage.setItem('dpt_auth_key',k);localStorage.setItem('su_key',k);}catch(e){}}}
 function auValid(){return !!(AU.token&&AU.exp&&Date.now()<AU.exp);}
 function auMask(s){try{s=String(s||'');var k='dbps@2026#au',o='';for(var i=0;i<s.length;i++)o+=String.fromCharCode(s.charCodeAt(i)^k.charCodeAt(i%k.length));return btoa(unescape(encodeURIComponent(o)));}catch(e){return '';}}
 function auUnmask(s){try{var t=decodeURIComponent(escape(atob(String(s||'')))),k='dbps@2026#au',o='';for(var i=0;i<t.length;i++)o+=String.fromCharCode(t.charCodeAt(i)^k.charCodeAt(i%k.length));return o;}catch(e){return '';}}
 function auRestore(){var v=auLsGet('dpt_auth_v1');if(v&&typeof v==='object')AU=Object.assign(AU,v);}
 function auPersist(keep){auLsSet('dpt_auth_v1',keep===false?null:{token:AU.token,id:AU.id,name:AU.name,role:AU.role,exp:AU.exp});}
 async function auCall0(payload,timeoutMs,url,keyAt){
-  payload.key=keyAt||auKey(); if(AU.token&&!payload.token)payload.token=AU.token;
+  payload.key=keyAt!=null?keyAt:auKey(); if(AU.token&&!payload.token)payload.token=AU.token;
   var ctl=new AbortController(), timer=setTimeout(function(){try{ctl.abort();}catch(e){}},timeoutMs||60000), r;
   try{r=await fetch(url||auUrl(),{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload),signal:ctl.signal});}
   catch(e){var ne=new Error(e&&e.name==='AbortError'?'서버가 응답하지 않음(시간 초과)':'서버에 연결하지 못함 — '+(e.message||e));if(!(e&&e.name==='AbortError')&&/^(smGet|smPing|suGet|suPing|auMe)$/.test(payload.action||'')){ne.retry=true;ne.retryMs=2000;}throw ne;}   /* 읽기 요청은 일시적 연결 끊김이면 2초 뒤 두 번까지 다시 시도 */
@@ -873,6 +875,7 @@ async function auCall(payload,timeoutMs,_try,url){
       var cur=auKey(),c=[];try{c=[localStorage.getItem('dpt_auth_key'),localStorage.getItem('dpt_sync_key')];}catch(_l){}c.push(await auIdbKey());
       c=c.map(function(x){return String(x||'').trim();}).filter(function(x,i,a){return x&&x!==cur&&a.indexOf(x)===i;});
       for(var i=0;i<c.length;i++){try{var d=await auCall0(Object.assign({},payload),timeoutMs,url,c[i]);try{localStorage.setItem('su_key',c[i]);}catch(_s){}return d;}catch(e3){if(!AU_BADKEY.test(e3.message||''))throw e3;}}
+      if(payload.action==='auLogin'){try{var d0=await auCall0(Object.assign({},payload),timeoutMs,url,'');auSaveSkey(d0);return d0;}catch(e4){if(!AU_BADKEY.test(e4.message||''))throw e4;}}   /* 서버 v27 : 비밀키 없이 로그인 → skey 받음 */
       var be=new Error('서버 비밀키가 맞지 않음 — 이 브라우저에 저장된 비밀키가 바뀐 것 같음. 로그아웃 → 로그인 화면 «서버 설정»에 매출분석도구와 같은 비밀키를 넣으면 해결');be.badKey=true;throw be;
     }if(e.retry&&(_try||0)<2){await new Promise(function(r){setTimeout(r,e.retryMs||1500);});return auCall(payload,timeoutMs,(_try||0)+1,url);}throw e;}
 }
@@ -896,7 +899,7 @@ async function suCall(payload,timeoutMs){
 async function auTryAuto(){
   var a=auLsGet('dpt_auth_auto_v1'); if(!a||!a.id)return false;
   var pw=auUnmask(a.p); if(!pw)return false;
-  try{var d=await auCall({action:'auLogin',id:a.id,pw:pw});if(!d||!d.token||!d.user)return false;
+  try{var d=await auCall({action:'auLogin',id:a.id,pw:pw});if(!d||!d.token||!d.user)return false;auSaveSkey(d);
     AU.token=d.token;AU.id=d.user.id;AU.name=d.user.name;AU.role=d.user.role;AU.exp=d.exp;auPersist();return true;}catch(e){return false;}
 }
 function auShowGate(){
@@ -922,8 +925,7 @@ function auShowGate(){
   setTimeout(function(){(au$('auId').value?au$('auPw'):au$('auId')).focus();},60);
   var keyHelp='같은 PC·같은 브라우저에서 <b>매출분석도구</b>나 <b>가공비 견적기</b>를 한 번 열면 비밀키가 자동 설정됨 (열고 이 화면으로 돌아오면 자동 확인).'
     +'<div class="au-kl"><a href="https://useran-coder.github.io/sales/" target="_blank" rel="noopener">매출분석도구 열기</a><a href="https://useran-coder.github.io/cost/" target="_blank" rel="noopener">가공비 견적기 열기</a></div>';
-  auDiscoverKey().then(function(ok){ if(!ok&&au$('auSrvBox')){ au$('auSrvBox').style.display=''; au$('auSrvUrl').value=auUrl(); au$('auSrvKey').value='';
-    msg.style.color='var(--warn)'; msg.innerHTML='이 PC에서 처음 사용함. '+keyHelp; } });
+  auDiscoverKey();   /* 비밀키 없어도 로그인 가능 (서버가 로그인 성공 때 비밀키를 돌려줌) */
   function keyFound(){ if(!au$('auSrvBox'))return; au$('auSrvBox').style.display='none'; msg.style.color='var(--ok)'; msg.textContent='비밀키를 찾음. 로그인할 것'; }
   addEventListener('storage',function(e){ if((e.key==='dpt_auth_key'||e.key==='dpt_sync_key')&&auKey())keyFound(); });
   var re=function(){ if(document.visibilityState==='visible'&&au$('auGate')&&!auKey())auDiscoverKey().then(function(ok){ if(ok||auKey())keyFound(); }); };
@@ -937,11 +939,12 @@ function auShowGate(){
     ev.preventDefault();
     var id=au$('auId').value.trim(),pw=au$('auPw').value;
     if(!id||!pw){msg.style.color='var(--bad)';msg.textContent='아이디와 비밀번호 입력';return;}
-    if(!auKey()){var k=au$('auSrvKey')&&au$('auSrvKey').value.trim(); if(k){try{localStorage.setItem('dpt_auth_key',k);localStorage.setItem('su_key',k);}catch(e){}} else {msg.style.color='var(--bad)';msg.innerHTML='서버 비밀키가 없음. '+keyHelp;return;}}
+    if(!auKey()){var k=au$('auSrvKey')&&au$('auSrvKey').value.trim(); if(k){try{localStorage.setItem('dpt_auth_key',k);localStorage.setItem('su_key',k);}catch(e){}}}
     var btn=au$('auBtn'); btn.disabled=true; btn.textContent='확인 중…'; msg.textContent='';
     try{
       var d=await auCall({action:'auLogin',id:id,pw:pw});
       if(!d||!d.token||!d.user)throw new Error('서버가 로그인 요청을 처리하지 못함.');
+      auSaveSkey(d);
       var sameUser=!AU.id||AU.id===d.user.id;
       AU.token=d.token;AU.id=d.user.id;AU.name=d.user.name;AU.role=d.user.role;AU.exp=d.exp;
       auPersist(au$('auKeep').checked);
