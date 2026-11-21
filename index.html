@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v80">
+<meta name="su-ver" content="v81">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -223,6 +223,8 @@ body.qi-filling,body.qi-filling *{cursor:crosshair!important;user-select:none!im
 .au-months,.au-bk{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 8px}.au-months .muted,.au-bk .muted{margin-right:4px}.au-mon{height:28px;padding:0 10px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;font-size:12px;color:#334155;cursor:pointer}.au-mon b{color:#1e3a5f}.au-mon.on{background:#1e3a5f;border-color:#1e3a5f;color:#fff}.au-mon.on b{color:#fff}.au-bkb{height:26px;padding:0 9px;border:1px solid #e2e8f0;border-radius:999px;background:#fff;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px}.au-bkb i{width:9px;height:9px;border-radius:50%;display:inline-block}.au-bkb.on{border-color:#1e3a5f;box-shadow:0 0 0 1px #1e3a5f}.au-bkb:disabled{opacity:.4;cursor:default}
 td.yr{color:#1e40af;font-weight:700}
 .mbar button.delm.on{background:#fef2f2;border-color:#ef4444;color:#b91c1c}.mbar button.delm:hover{border-color:#ef4444;color:#b91c1c}.delbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 8px;padding:7px 10px;border:1px solid #fca5a5;border-radius:8px;background:#fef2f2;font-size:13px}.delbar label{display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-weight:700}.delbar button{height:28px;padding:0 10px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;font-weight:700;cursor:pointer}.delbar button.danger{background:#dc2626;border-color:#dc2626;color:#fff}.delbar button.danger:hover:not(:disabled){background:#b91c1c}.delbar button:disabled{opacity:.4;cursor:default}td.c-cat input.dsel{margin:0 5px 0 0;vertical-align:middle;width:15px;height:15px;cursor:pointer;accent-color:#dc2626}
+.qk-tools{margin-left:auto;display:flex;gap:6px;align-items:center}.qk-tools button{height:30px}
+.qk-tools .sreset{margin-right:0}.qk-tools button.bz{padding:0 10px;border:1px solid #fca5a5;border-radius:7px;background:#fff;color:#b42318;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap}.qk-tools button.bz:hover{background:#b42318;color:#fff;border-color:#b42318}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -2140,7 +2142,8 @@ function usedCols(items) { return DAY_COLS.filter(function (c) { return c.k === 
 function shownProcs(it) { var f = S.ui.proc; return f ? it.procs.filter(function (p) { return p.n === f; }) : it.procs; }
 function renderDay() {
   var u = S.ui, d = u.date, list = filtered(), shown = list.slice(0, u.page * PAGE), cols = usedCols(shown);
-  var h = quickBox() + '<div class="mbar"><span class="spacer"></span>' + sortResetBtn() + '<button type="button" id="baseZero" class="bz" title="지금 표에 보이는 조건의 전일 재고(' + SU.addDays(d, -1) + ' 끝)를 모두 0으로 · 개별 칸은 전일 재고 칸에서 직접 수정">전일 재고 모두 0</button></div>' + '<div class="tbl-wrap"><table class="grid day"><thead><tr>' + sortTh('cat', 'c-cat', '구분') + cols.map(function (c) { return sortTh(c.k, 'c-' + c.k, c.t); }).join('') +
+  var qkTools = sortResetBtn() + '<button type="button" id="baseZero" class="bz" title="지금 표에 보이는 조건의 전일 재고(' + SU.addDays(d, -1) + ' 끝)를 모두 0으로 · 개별 칸은 전일 재고 칸에서 직접 수정">전일 재고 모두 0</button>', qkOpen = lsGet('subul.qk', '1') === '1';
+  var h = quickBox(qkOpen ? qkTools : '') + (qkOpen ? '' : '<div class="mbar"><span class="spacer"></span>' + qkTools + '</div>') + '<div class="tbl-wrap"><table class="grid day"><thead><tr>' + sortTh('cat', 'c-cat', '구분') + cols.map(function (c) { return sortTh(c.k, 'c-' + c.k, c.t); }).join('') +
     sortTh('proc', 'c-proc', '공정') + sortTh('prev', 'num', '전일 재고<small>출고: 수주</small>') + sortTh('g', 'num in', '양품<small>출고: 직접 입력</small>') + sortTh('b', 'num in', '불량<small>출고: ERP</small>') + sortTh('p', 'num', '생산') + sortTh('r', 'num', '불량율') + sortTh('s', 'num st', '재고<small>' + dlabel(d) + ' · 출고: 잔량</small>') + sortTh('ms', 'num', '이달 생산<small>출고: 이달 출고</small>') + sortTh('now', 'num', '현 재고<small>오늘 · 출고: 누계</small>') + '</tr></thead><tbody>';
   if (!shown.length) h += '<tr><td colspan="' + (cols.length + 10) + '" class="empty">' + (store.items.size ? '조건에 맞는 품목 없음. 위 «진행 중 품목» → «전체 품목», «모든 공정»으로 바꿔 볼 것' : '아직 품목 없음. «➕ 수주 입력»에서 등록하거나 관리자가 «⚙ 설정 → 구글시트에서 가져오기» 실행. ERP 수주현황·출고현황은 출고매칭에 올리면 자동 반영') + '</td></tr>';
   shown.forEach(function (it) {
@@ -2205,14 +2208,14 @@ function refreshDay() {
 
 /* ── 작업일보 빠른 입력 : 품번·제품번호로 찾아 공정·수량 넣고 Enter (그날 값에 더함) ── */
 S.qk = { id: '', pid: '', lastProc: '', log: [], hi: 0, sug: [] };
-function quickBox() {
+function quickBox(tools) {
   var open = lsGet('subul.qk', '1') === '1';
   var td = SU.today(), past = S.ui.date < td, fut = S.ui.date > td;
   return '<div class="qk card' + (open ? '' : ' closed') + (past ? ' past' : '') + (fut ? ' fut' : '') + '" id="qk"><div class="qk-head"><b>⚡ 작업일보 빠른 입력</b>' + (past ? ' <span class="qk-flag">📅 지난 날짜 ' + dlabel(S.ui.date) + ' 입력 중 (밀린 작업일보)</span>' : fut ? ' <span class="qk-flag bad">⚠ 미래 날짜 ' + dlabel(S.ui.date) + '</span>' : '') + ' <span class="muted small">' + dlabel(S.ui.date) + ' · 품번·제품번호(B·D)로 찾고 → 공정 → 양품·불량 → Enter. 그날 이미 있는 값에 <b>더함</b></span><span class="spacer"></span><button type="button" id="qkTog" class="small">' + (open ? '접기' : '펼치기') + '</button></div>' +
     '<div class="qk-body"><div class="qk-row"><label>입력 날짜<span class="qk-date"><button type="button" id="qkDp" title="전날">◀</button><input type="date" id="qkD" value="' + S.ui.date + '" max="' + SU.today() + '"><button type="button" id="qkDn" title="다음 날">▶</button><button type="button" id="qkDt" class="small">오늘</button></span></label><div class="qk-find"><input id="qkF" placeholder="🔍 품번 · B/D 제품번호 · 품명 · 고객사" autocomplete="off"><div id="qkSug" class="qk-sug"></div></div>' +
     '<div id="qkSel" class="qk-sel muted">품목 선택</div>' +
     '<label>공정<select id="qkP"></select></label><label>양품<input id="qkG" class="qi" inputmode="decimal"></label><label>불량<input id="qkB" class="qi bad" inputmode="decimal"></label>' +
-    '<button type="button" id="qkAdd" class="primary">더하기 ↵</button></div><div id="qkLog" class="qk-log"></div></div></div>';
+    '<button type="button" id="qkAdd" class="primary">더하기 ↵</button>' + (tools ? '<span class="qk-tools">' + tools + '</span>' : '') + '</div><div id="qkLog" class="qk-log"></div></div></div>';
 }
 function qkItem() { return S.qk.id ? store.items.get(S.qk.id) : null; }
 function drawQkSel() {
@@ -2243,7 +2246,7 @@ function bindQuick() {
   $('#qkDp').onclick = function () { setDate(SU.addDays(S.ui.date, -1)); };
   $('#qkDn').onclick = function () { setDate(SU.addDays(S.ui.date, 1)); };
   $('#qkDt').onclick = function () { setDate(SU.today()); };
-  $('#qkTog').onclick = function () { var c = $('#qk').classList.toggle('closed'); lsSet('subul.qk', c ? '0' : '1'); this.textContent = c ? '펼치기' : '접기'; };
+  $('#qkTog').onclick = function () { var c = $('#qk').classList.toggle('closed'); lsSet('subul.qk', c ? '0' : '1'); this.textContent = c ? '펼치기' : '접기'; if (S.ui.view === 'day') renderDay(); };
   function drawSug() {
     $('#qkSug').innerHTML = S.qk.sug.map(function (it, i) { return '<div class="qs' + (i === S.qk.hi ? ' hi' : '') + '" data-i="' + i + '"><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat]) + '</span> <b>' + esc(it.p || '') + '</b> ' + esc([it.it || it.n, it.s, it.memo].filter(Boolean).join(' · ')) + ' <small class="muted">' + esc(it.cust || '') + ' · ' + esc(it.procs.map(function (p) { return p.n; }).join('→')) + '</small></div>'; }).join('');
     $('#qkSug').style.display = S.qk.sug.length ? '' : 'none';
