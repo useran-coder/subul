@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v89">
+<meta name="su-ver" content="v90">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -506,7 +506,7 @@ var SU = (function () {
     var E = this.erp, r = { shipD: '', ordD: '', up: { ship: null, order: null } };
     E.ship.forEach(function (s) { var d = ymd(s.d); if (d > r.shipD) r.shipD = d; });
     E.order.forEach(function (o) { var d = ymd(o.od); if (d > r.ordD) r.ordD = d; });
-    E.up.forEach(function (u) { var k = u.kind === 'ship' ? 'ship' : 'order'; if (!r.up[k] || String(u.at || '') > String(r.up[k].at || '')) r.up[k] = u; });
+    E.up.forEach(function (u) { if (u.kind === 'subul') return; var k = u.kind === 'ship' ? 'ship' : 'order'; if (!r.up[k] || String(u.at || '') > String(r.up[k].at || '')) r.up[k] = u; });
     return r;
   };
   /* 반영 시작일 : 설정값(시트 가져오기 때 «시트 마지막 출고 다음 날»로 자동 저장) → 없으면 이달 1일
