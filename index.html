@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v120">
+<meta name="su-ver" content="v121">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -263,6 +263,7 @@ td.yr{font-weight:400!important}td.num.pa{font-weight:700;color:#0f172a}
 .grid td.c-proc .padd{float:none!important;display:inline-block;vertical-align:middle;margin:0 4px 0 0!important}.grid td.c-proc{white-space:nowrap}
 .grid td[rowspan]{vertical-align:top;padding-top:7px}
 .grid.month tr.rep td:is(.c-cat,.c-p,.c-pc,.c-n,.c-s,.c-memo){color:transparent!important;text-decoration-color:transparent!important;border-bottom-color:inherit}.grid.month tr.rep td:is(.c-cat,.c-p,.c-pc,.c-n,.c-s,.c-memo) *{visibility:hidden}
+.grid.day td.rs-out{background:linear-gradient(to top,#fffaf0 var(--oh,30px),transparent var(--oh,30px))}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -2256,14 +2257,14 @@ function renderDay() {
     sortTh('proc', 'c-proc', '공정') + sortTh('prev', 'num', '전일 재고<small>출고: 수주</small>') + sortTh('g', 'num in', '양품<small>출고: 직접 입력</small>') + sortTh('b', 'num in', '불량<small>출고: ERP</small>') + sortTh('p', 'num', '생산') + sortTh('r', 'num', '불량율') + sortTh('s', 'num st', '재고<small>' + dlabel(d) + ' · 출고: 잔량</small>') + sortTh('ms', 'num', '이달 생산<small>출고: 이달 출고</small>') + sortTh('now', 'num', '현 재고<small>오늘 · 출고: 누계</small>') + '</tr></thead><tbody>';
   if (!shown.length) h += '<tr><td colspan="' + (cols.length + 10) + '" class="empty">' + (store.items.size ? '조건에 맞는 품목 없음. 위 «진행 중 품목» → «전체 품목», «모든 공정»으로 바꿔 볼 것' : '아직 품목 없음. «➕ 수주 입력»에서 등록하거나 관리자가 «⚙ 설정 → 구글시트에서 가져오기» 실행. ERP 수주현황·출고현황은 출고매칭에 올리면 자동 반영') + '</td></tr>';
   shown.forEach(function (it) {
-    var ps = shownProcs(it), n = ps.length || 1;
+    var ps = shownProcs(it), n = ps.length || 1, rsO = ps.length > 1 && SU.isOut(ps[ps.length - 1].n) ? ' rs-out' : '';   /* v121 : 출고 줄 높이만큼 품목 칸 아래도 출고 색 */
     ps.forEach(function (pr, si) {
       var pi = it.procs.indexOf(pr), out = SU.isOut(pr.n), e = store.manual(it.id, pr.id, d) || {}, k = 'e:' + it.id + '|' + pr.id + '|' + d;
       var cls = 'pr' + (si === 0 ? ' first' : '') + (out ? ' out' : '');
       h += '<tr class="' + cls + '" data-i="' + it.id + '" data-p="' + pi + '">';
       if (si === 0) {
-        h += '<td rowspan="' + n + '" class="c-cat"><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || it.cat) + '</span>' + (it.src === 'erp' ? '<span class="erp-tag" title="ERP 수주·출고로 자동 생긴 품목">ERP</span>' : '') + nsTag(it) + (it.chk && it.chk.length ? '<span class="warn-dot" title="' + esc(it.chk.join('\n')) + '">!</span>' : '') + '</td>';
-        cols.forEach(function (c) { var cv = colVal(it, c.k); h += '<td rowspan="' + n + '" class="c-' + c.k + (c.k === 'p' || c.k === 'n' ? ' link' : '') + '" data-open="' + it.id + '" title="' + esc(c.k === 'pc' ? prodTitle(it) : cv) + '">' + (c.k === 'pc' ? prodCell(it) : esc(cv)) + '</td>'; });
+        h += '<td rowspan="' + n + '" class="c-cat' + rsO + '"><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || it.cat) + '</span>' + (it.src === 'erp' ? '<span class="erp-tag" title="ERP 수주·출고로 자동 생긴 품목">ERP</span>' : '') + nsTag(it) + (it.chk && it.chk.length ? '<span class="warn-dot" title="' + esc(it.chk.join('\n')) + '">!</span>' : '') + '</td>';
+        cols.forEach(function (c) { var cv = colVal(it, c.k); h += '<td rowspan="' + n + '" class="c-' + c.k + rsO + (c.k === 'p' || c.k === 'n' ? ' link' : '') + '" data-open="' + it.id + '" title="' + esc(c.k === 'pc' ? prodTitle(it) : cv) + '">' + (c.k === 'pc' ? prodCell(it) : esc(cv)) + '</td>'; });
       }
       h += '<td class="c-proc" title="' + esc(out ? '' : '재고를 빼 가는 곳: ' + (store.usedBy(it, pi).join(', ') || '없음')) + '">' + (si === n - 1 && it.cat !== 'oem' ? '<button type="button" class="padd" data-add="' + it.id + '" title="이 품목에 공정 추가">＋</button>' : '') + (it.cat === 'oem' ? '<span class="pname">' + esc(pr.n) + '</span>' : '<span class="pname' + (out || si === n - 1 ? '' : ' drag') + '" data-pm="' + it.id + '" data-pi="' + pi + '"' + (out || si === n - 1 ? '' : ' draggable="true"') + ' title="' + (out ? '눌러서 공정 메뉴' : si === n - 1 ? '눌러서 메뉴 (앞으로 이동·삭제)' : '끌어서 순서 바꾸기 · 눌러서 메뉴 (앞뒤 이동·삭제)') + '">' + esc(pr.n) + '</span>') + (pr.out && pr.out.length ? ' <span class="lk">🔗</span>' : '') + '' + '</td>';
       if (out) {
@@ -2285,6 +2286,7 @@ function renderDay() {
   autoMore(renderDay);
   bindSort(renderDay);
   bindDayInputs();
+  (function () { var t = $('#view table.grid.day'), o = t && t.querySelector('tr.out'); if (o) t.style.setProperty('--oh', o.offsetHeight + 'px'); })();
   if ($('#nmOff')) $('#nmOff').onclick = function () { S.ui.nm = false; S.ui.page = 1; render(); };
   $('#baseZero').onclick = baseZeroAll;
   bindQuick();
