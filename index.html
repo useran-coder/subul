@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v96">
+<meta name="su-ver" content="v97">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -1016,6 +1016,7 @@ function me() { return AU.name || AU.id || ''; }
 function isAdmin() { return AU.role === 'admin'; }
 
 var store = new SU.Store();
+['set', 'setErp', 'setBuy', 'clear'].forEach(function (f) { var o = store[f]; store[f] = function () { MEMO = null; return o.apply(this, arguments); }; });   /* v97 : 자료가 바뀌면 화면 계산 기억(MEMO) 버림 */
 var S = {
   sync: { pos: 0, epoch: '', rev: 0, busy: false, err: '', last: null, srv: '' },
   pending: new Map(),     // 아직 서버에 못 보낸 칸 key → {k,v,base}
@@ -1036,7 +1037,16 @@ function erpUpLine(short) {
 }
 function lsGet(k, d) { try { return localStorage.getItem(k) || d; } catch (e) { return d; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
-var PAGE = 120;
+var PAGE = 40;   /* v97 : 처음엔 40품목만 그리고 아래로 내리면 자동으로 40품목씩 더 (표 그리기가 가장 느림) */
+var MORE_IO = null;
+function autoMore(fn) {
+  if (MORE_IO) { MORE_IO.disconnect(); MORE_IO = null; }
+  var b = $('#more'); if (!b || !('IntersectionObserver' in window)) return;
+  MORE_IO = new IntersectionObserver(function (es) { if (!es.some(function (e) { return e.isIntersecting; })) return; MORE_IO.disconnect(); MORE_IO = null;
+    var w = $('#view .tbl-wrap'), st = w ? w.scrollTop : 0, sl = w ? w.scrollLeft : 0, y = window.scrollY; S.ui.page++; fn();
+    var w2 = $('#view .tbl-wrap'); if (w2) { w2.scrollTop = st; w2.scrollLeft = sl; } window.scrollTo(window.scrollX, y); }, { rootMargin: '800px 0px' });
+  MORE_IO.observe(b);
+}
 
 /* ───────── 이 PC 저장 (IndexedDB) ───────── */
 var idb = (function () {
@@ -1329,9 +1339,17 @@ function renderSync() {
 }
 
 /* ───────── 품목 목록 · 거르기 ───────── */
-function catOrder(c) { var i = SU.CATS.map(function (x) { return x.id; }).indexOf(c); return i < 0 ? 9 : i; }
+
 function seqNum(s) { var n = parseFloat(String(s || '').replace(/[^\d.]/g, '')); return isFinite(n) ? n : 1e9; }
+var MEMO = null;
+function memo() { if (!MEMO) { MEMO = { si: null, act: new Map() }; Promise.resolve().then(function () { MEMO = null; }); } return MEMO; }
+var CAT_ORD = null;
+function catOrder(c) { if (!CAT_ORD) { CAT_ORD = {}; SU.CATS.forEach(function (x, i) { CAT_ORD[x.id] = i; }); } var i = CAT_ORD[c]; return i == null ? 9 : i; }
 function sortedItems() {
+  var M = memo(); store.deriveErp(); if (M.si && M.n === store.items.size) return M.si.slice();
+  var r = sortedItems0(); M.si = r; M.n = store.items.size; return r.slice();
+}
+function sortedItems0() {
   store.deriveErp();
   var arr = Array.from(store.items.values()).filter(function (it) { return !(/운반비/.test(it.n || '') || /^MAINTRAN/i.test(String(it.p || '').trim())); });   /* 운반비는 수불에서 뺌 */
   arr.sort(function (a, b) { return catOrder(a.cat) - catOrder(b.cat) || String(a.src || 'w').localeCompare(String(b.src || 'w')) || seqNum(a.seq) - seqNum(b.seq) || String(a.od || '').localeCompare(String(b.od || '')); });
@@ -1340,7 +1358,8 @@ function sortedItems() {
 function itemText(it) { return [it.cust, it.ord, it.p, it.it, it.n, it.s, it.memo, it.seq, it.code].concat(it.code ? [] : shipCodes(it)).join(' ').toLowerCase(); }
 function matchQ(it, q) { if (!q) return true; var t = itemText(it); return q.toLowerCase().split(/\s+/).filter(Boolean).every(function (w) { return t.indexOf(w) >= 0; }); }
 /* 진행 중 : 재고가 있거나, 이 달에 입력이 있거나, 최근 30일 안에 등록한 품목 */
-function isActive(it, d) {
+function isActive(it, d) { var M = memo(), k = it.id + '|' + d; if (M.act.has(k)) return M.act.get(k); var v = isActive0(it, d); M.act.set(k, v); return v; }
+function isActive0(it, d) {
   var ms = SU.monthStart(d), me_ = SU.monthEnd(d), recent = SU.addDays(d, -30);
   if ((it.od || '') >= recent || (it.cat_at || '') >= recent) return true;
   for (var i = 0; i < (it.procs || []).length; i++) {
@@ -2182,6 +2201,7 @@ function renderDay() {
   $('#view').innerHTML = h;
   refreshDay();
   if ($('#more')) $('#more').onclick = function () { S.ui.page++; renderDay(); };
+  autoMore(renderDay);
   bindSort(renderDay);
   bindDayInputs();
   $('#baseZero').onclick = baseZeroAll;
@@ -2418,6 +2438,7 @@ function renderMonth() {
     it.procs.forEach(function (pr, pi) {
       var out = SU.isOut(pr.n), buy = it.cat === 'oem' && SU.isBuy(pr.n), pin = false;   // v59 : 공정 줄 바로 입력 되돌림 (사용자 요청) — 재고만 표시
       if (!rowOn(pr)) return;
+      var hO = h; h = '';   /* v97 : 이 줄만 따로 만든 뒤 붙임 (전체 문자열 복사 없앰) */
       h += '<tr class="' + (pi === 0 ? 'first' : '') + (out ? ' outrow' : buy ? ' buyrow' : pin ? ' inrow' : '') + '" data-i="' + it.id + '" data-p="' + pi + '"><td class="c-cat">' + delChk(it) + '<span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span>' + nst + '</td><td class="c-p link" data-open="' + it.id + '">' + esc(it.p) + '</td><td class="c-pc" title="' + esc(prodTitle(it)) + '">' + prodCell(it) + '</td><td class="c-n" title="' + esc([it.it || it.n, it.cust ? '고객사 ' + it.cust : ''].filter(Boolean).join('\n')) + '">' + esc(it.it || it.n || '') + '</td><td class="c-s" title="' + esc(it.s || '') + '">' + esc(it.s || '') + '</td><td class="c-memo" title="' + esc(it.memo || '') + '">' + esc(it.memo || '') + '</td><td class="c-proc">' + (it.cat === 'oem' ? '<span class="pname">' + esc(pr.n) + '</span>' : '<span class="pname' + (out || pi === lastPi ? '' : ' drag') + '" data-pm="' + it.id + '" data-pi="' + pi + '"' + (out || pi === lastPi ? '' : ' draggable="true"') + ' title="' + (out ? '눌러서 공정 메뉴' : pi === lastPi ? '눌러서 메뉴 (앞으로 이동·삭제)' : '끌어서 순서 바꾸기 · 눌러서 메뉴 (앞뒤 이동·삭제)') + '">' + esc(pr.n) + '</span>') + (pi === lastPi && it.cat !== 'oem' ? '<button type="button" class="padd" data-add="' + it.id + '" title="이 품목에 공정 추가">＋</button>' : '') + '</td>';
       var hp = h.length;   /* v87 : 이달 생산·재고 칸은 다 만든 뒤 공정 칸 바로 뒤에 끼움 */
       var b0 = out ? null : store.stock(it, pi, before);
@@ -2447,7 +2468,7 @@ function renderMonth() {
       var stE = out ? null : store.stock(it, pi, me_ < td ? me_ : td);
       var endC = '<td class="num ptot">' + (tot ? (out || buy ? '<b class="' + (buy ? 'buyc' : 'erpc') + '">' + fmt(tot) + '</b>' : fmt(tot)) : '') + '</td>' +
         '<td class="num tot' + (stE != null && stE < 0 ? ' neg' : '') + '">' + (stE == null ? '' : fmt(stE)) + '</td>';
-      h = h.slice(0, hp) + endC + h.slice(hp) + '</tr>';
+      h = hO + h.slice(0, hp) + endC + h.slice(hp) + '</tr>';
     });
   });
   if (!shown.length) h += '<tr><td colspan="' + (days.length + 10) + '" class="empty">조건에 맞는 품목 없음</td></tr>';
@@ -2494,6 +2515,7 @@ function renderMonth() {
     nx = nx && $$('input.bi', $('#view'))[i + dir]; if (nx) { nx.focus(); nx.select(); }
   };
   if ($('#more')) $('#more').onclick = function () { S.ui.page++; renderMonth(); };
+  autoMore(renderMonth);
 }
 
 /* ── 출고 대조 : ERP 출고현황 줄마다 수불관리에 어떻게 들어갔는지 (빠진 줄·이유) ── */
