@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v94">
+<meta name="su-ver" content="v95">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -2027,7 +2027,7 @@ var DAY_COLS = [
 /* 제품번호 : 내부보강 B·레이저 D·자동 S·숫자 6자리 (품목 code → 비고 → 규격 순) */
 function prodCode(it) {
   if (it.code) return String(it.code).toUpperCase();
-  var m = String((it.memo || '') + ' ' + (it.s || '')).toUpperCase().match(/(?:^|[^A-Z0-9])(B\d{4,5}|D\d{4}|S\d{5}|\d{6})(?=$|[^A-Z0-9])/);
+  var m = String((it.memo || '') + ' ' + (it.s || '')).toUpperCase().match(/(?:^|[^A-Z0-9])(B\d{4,5}|D\d{4,5}|[ACGS]\d{5}|\d{6})(?=$|[^A-Z0-9])/);   /* v95 : 출고매칭 v62 수불 번호 A·B·C·D·G + 5자리 */
   if (m) return m[1];
   /* 부자재·유통 : 품목에 번호가 없음 → 출고매칭이 출고 줄마다 붙인 제품번호(S00001…) */
   var L = shipCodes(it); if (L.length) return L[L.length - 1] + (L.length > 1 ? ' 외 ' + (L.length - 1) : '');
@@ -2075,7 +2075,7 @@ function fixCode(id) {
     var msg = $('#fxMsg', w), used = usedCodes(), seen = {}, todo = [], bad = '';
     ins.forEach(function (inp) {
       var v = inp.value.trim().toUpperCase().replace(/\s+/g, ''); inp.classList.remove('err'); if (!v) return;
-      if (!/^(B\d{4,5}|D\d{4})$/.test(v)) { bad = bad || v + ' : 형식 오류 (예: ' + ex + ')'; inp.classList.add('err'); return; }
+      if (!/^(B\d{4,5}|D\d{4,5})$/.test(v)) { bad = bad || v + ' : 형식 오류 (예: ' + ex + ')'; inp.classList.add('err'); return; }
       if (v[0] !== pre && !bad) { bad = v + ' : ' + (it.cat === 'laser' ? '레이저는 D' : '내부보강은 B') + '번호'; inp.classList.add('err'); return; }
       if (used[v]) { bad = bad || v + ' : 이미 씀 (' + used[v] + ')'; inp.classList.add('err'); return; }
       if (seen[v]) { bad = bad || v + ' : 두 줄에 같은 번호'; inp.classList.add('err'); return; }
@@ -3070,7 +3070,8 @@ async function impSave() {
   try {
     await sync({ quiet: true });
     var recs = [];
-    I.P.items.forEach(function (it) { var v = SU.cleanForSave(it); v.cby = '가져오기'; v.imp = I.tab; recs.push({ k: 'i:' + it.id, v: v }); });
+    I.P.items.forEach(function (it) { var v = SU.cleanForSave(it); v.cby = '가져오기'; v.imp = I.tab;
+      var old = store.items.get(it.id); if (old && !old._v) { if (old.code && !v.code) { v.code = old.code; if (old.pcBy) v.pcBy = old.pcBy; } if (old.cust && !v.cust) { v.cust = old.cust; if (old.cfill) v.cfill = old.cfill; } if (old.ord && !v.ord) v.ord = old.ord; }   /* v95 : 출고매칭에서 넣은 제품번호·고객사는 시트에 없으면 유지 */ recs.push({ k: 'i:' + it.id, v: v }); });
     /* 이 품목들의 기존 입력 중 시트에 없는 날은 지움(다시 가져올 때 시트와 같게) */
     var want = {}; I.P.ents.forEach(function (e) { want[e.k] = 1; recs.push(e); });
     var ids = {}; I.P.items.forEach(function (it) { ids[it.id] = 1; });
