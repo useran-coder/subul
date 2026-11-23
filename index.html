@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v95">
+<meta name="su-ver" content="v96">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -235,6 +235,8 @@ td.yr{color:#1e40af;font-weight:700}
 .grid.month td,.grid.month th,.grid.month input.bi,.grid.month input.mi{font-size:11.5px}
 .grid.day td.in{padding:1px 4px}.grid.day td.in input.qi{width:100%;min-width:64px;box-sizing:border-box}
 .grid.day thead th:nth-last-child(-n+9),.grid.day tbody td:not(.empty):nth-last-child(-n+9){width:100px;min-width:100px;max-width:100px;box-sizing:border-box}.grid.day thead th:nth-last-child(-n+9) small{white-space:normal}
+.mbar .pfw{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:6px;align-items:center;max-height:30px;overflow:hidden}.mbar .pfw.open{max-height:none}.mbar .pfmore{white-space:nowrap;border-color:#93c5fd!important;color:#1e40af!important;background:#eff6ff!important}.mbar .pfmore:hover{background:#dbeafe!important}.mbar .mtools{display:flex;gap:6px;align-items:center;white-space:nowrap;align-self:flex-start}.mbar:has(.pfw){flex-wrap:nowrap;align-items:flex-start}.mbar:has(.pfw)>b{line-height:28px;white-space:nowrap}.mbar .mtools .sreset{margin-right:0}
+.mbar .pfl{line-height:28px;white-space:nowrap;color:#475569;font-size:13px}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -2404,8 +2406,8 @@ function renderMonth() {
   base.forEach(function (it) { (it.procs || []).forEach(function (p) { pset[p.n] = (pset[p.n] || 0) + 1; }); });
   store.items.forEach(function (it) { if (u.cat !== 'all' && it.cat !== u.cat) return; (it.procs || []).forEach(function (p) { pall[p.n] = 1; }); });
   var pnames = store.procList().filter(function (n) { return pall[n] || pset[n]; });
-  var h = '<div class="mbar"><b>' + ms.slice(0, 4) + '년 ' + Number(ms.slice(5, 7)) + '월</b> 공정: <button data-pf="" class="' + (!u.proc ? 'on' : '') + '">전체</button><span class="vsep"></span>' + pnames.map(function (n, ni) { var c = pset[n] || 0; return (SU.isBuy(n) && ni && !SU.isBuy(pnames[ni - 1]) ? '<span class="vsep"></span>' : '') + '<button data-pf="' + esc(n) + '" class="' + (u.proc === n ? 'on' : '') + '"' + (c || u.proc === n ? '' : ' disabled') + ' title="' + (c ? c.toLocaleString() + '품목' : '지금 표에 이 공정 없음') + '">' + esc(n) + '</button>'; }).join('') +
-    '<span class="spacer"></span>' + sortResetBtn() + '<button type="button" id="delMode" class="delm' + (DEL.on ? ' on' : '') + '" title="품목 삭제 — 체크해서 개별 · 전체 선택">🗑 삭제</button><button type="button" id="baseZero" class="bz" title="지금 표에 보이는 조건의 기초재고를 모두 0으로 (개별 칸은 기초 칸에서 직접 수정)">기초재고 모두 0</button></div>' + delBar(list);
+  var h = '<div class="mbar"><b>' + ms.slice(0, 4) + '년 ' + Number(ms.slice(5, 7)) + '월</b><span class="pfl">공정:</span><div class="pfw' + (u.pfOpen ? ' open' : '') + '" id="pfw"><button data-pf="" class="' + (!u.proc ? 'on' : '') + '">전체</button><span class="vsep"></span>' + pnames.map(function (n, ni) { var c = pset[n] || 0; return (SU.isBuy(n) && ni && !SU.isBuy(pnames[ni - 1]) ? '<span class="vsep"></span>' : '') + '<button data-pf="' + esc(n) + '" class="' + (u.proc === n ? 'on' : '') + '"' + (c || u.proc === n ? '' : ' disabled') + ' title="' + (c ? c.toLocaleString() + '품목' : '지금 표에 이 공정 없음') + '">' + esc(n) + '</button>'; }).join('') +
+    '</div><button type="button" id="pfMore" class="pfmore" hidden>' + (u.pfOpen ? '접기 ▲' : '더보기 ▼') + '</button><span class="mtools">' + sortResetBtn() + '<button type="button" id="delMode" class="delm' + (DEL.on ? ' on' : '') + '" title="품목 삭제 — 체크해서 개별 · 전체 선택">🗑 삭제</button><button type="button" id="baseZero" class="bz" title="지금 표에 보이는 조건의 기초재고를 모두 0으로 (개별 칸은 기초 칸에서 직접 수정)">기초재고 모두 0</button></span></div>' + delBar(list);
   h += '<div class="tbl-wrap"><table class="grid month"><thead><tr>' + sortTh('cat', 'c-cat', '구분') + sortTh('p', 'c-p', '품번') + sortTh('pc', 'c-pc', '제품번호') + sortTh('n', 'c-n', '품명') + sortTh('s', 'c-s', '규격') + sortTh('memo', 'c-memo', '비고') + sortTh('proc', 'c-proc', '공정') + sortTh('prod', 'num c-prod', '이달<br>생산') + sortTh('tot', 'num c-st', '재고<small>' + (me_ < td ? dlabel(me_) : '오늘') + '</small>') + sortTh('base', 'num c-base', '기초<br>재고') +
     days.map(function (dd) { var w = new Date(dd + 'T00:00:00').getDay(); return sortTh('d' + dd, 'num day' + (w === 0 ? ' sun' : w === 6 ? ' sat' : '') + (dd === td ? ' today' : ''), Number(dd.slice(8)) + '<span class="dgo" title="그날 입력 화면으로">↗</span>', ' data-d="' + dd + '"'); }).join('') + '</tr></thead><tbody>';
   var before = SU.addDays(ms, -1);
@@ -2456,6 +2458,11 @@ function renderMonth() {
   $$('.mbar [data-mm]').forEach(function (b) { b.onclick = function () { S.ui.mIn = b.dataset.mm === '1'; try { localStorage.setItem('suMIn', S.ui.mIn ? '1' : '0'); } catch (e) {} renderMonth(); }; });
   if ($('#baseZero')) $('#baseZero').onclick = baseZeroAll;
   delBind(list);
+  (function () {   /* v96 : 공정 버튼 한 줄 · 넘치면 더보기 */
+    var w = $('#pfw'), b = $('#pfMore'); if (!w || !b) return;
+    w.classList.toggle('open', false); var over = w.scrollHeight > w.clientHeight + 2; w.classList.toggle('open', !!S.ui.pfOpen);
+    b.hidden = !over && !S.ui.pfOpen; b.onclick = function () { S.ui.pfOpen = !S.ui.pfOpen; w.classList.toggle('open', S.ui.pfOpen); b.textContent = S.ui.pfOpen ? '접기 ▲' : '더보기 ▼'; };
+  })();
   $$('#view .padd').forEach(function (b) { b.onclick = function (ev) { ev.stopPropagation(); procAddRow(b); }; });
   bindProcDrag($('#view'));
   $$('#view .pname').forEach(function (b) { b.onclick = function (ev) { ev.stopPropagation(); procEditMenu(b); }; });
