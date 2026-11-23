@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v99">
+<meta name="su-ver" content="v100">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -238,6 +238,7 @@ td.yr{color:#1e40af;font-weight:700}
 .mbar .pfw{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:6px;align-items:center;max-height:30px;overflow:hidden}.mbar .pfw.open{max-height:none}.mbar .pfmore{white-space:nowrap;border-color:#93c5fd!important;color:#1e40af!important;background:#eff6ff!important}.mbar .pfmore:hover{background:#dbeafe!important}.mbar .mtools{display:flex;gap:6px;align-items:center;white-space:nowrap;align-self:flex-start}.mbar:has(.pfw){flex-wrap:nowrap;align-items:flex-start}.mbar:has(.pfw)>b{line-height:28px;white-space:nowrap}.mbar .mtools .sreset{margin-right:0}
 .mbar .pfl{line-height:28px;white-space:nowrap;color:#475569;font-size:13px}
 .grid.month td.ptot,.grid.month td.ptot b{font-weight:400}.grid.month td.bcell.mid input.bi{background:#fffbeb}
+.nm-ban{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 8px;padding:7px 12px;border:1px solid #fca5a5;border-radius:8px;background:#fef2f2;font-size:13px;color:#7f1d1d}.nm-ban a{color:#1d4ed8;font-weight:700}.nm-ban button{margin-left:auto;height:26px;padding:0 10px;border:1px solid #fca5a5;border-radius:6px;background:#fff;color:#b91c1c;font-weight:700;cursor:pointer}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -1494,7 +1495,8 @@ function notShipped(it) {
   return !store.sum(it.id, pr.id, '0000-00-00', '9999-12-31').g;
 }
 /* 제품번호 없음 : 제품번호 칸이 비어 있음 (아직 출고 안 된 부자재·유통/OEM «출고 전»은 뺌 — 출고되면 번호가 붙음) */
-function noNum(it) { if (prodCode(it)) return false; if (notShipped(it)) return false; return true; }   // 출고 전(번호 대기·출고 전)은 뺌 — 출고됐는데 번호 없는 품목만
+function noNum(it) { return !prodCode(it); }   // v100 : 출고 전 «번호 대기»도 포함 (표의 «번호 대기»·«번호 없음» 개수와 같게)
+function nmBanner() { if (!S.ui.nm) return ''; return '<div class="nm-ban">🔢 제품번호 없는 품목만 보는 중 · 번호 칸(<b>✎</b>)을 누르면 바로 입력 · <a href="' + CM_URL + '" target="_blank" rel="noopener">출고매칭 «수불현황»</a>에서 자동 부여하면 여기에도 바로 반영 <button type="button" id="nmOff">해제</button></div>'; }
 function nsTag(it) { return notShipped(it) ? '<span class="ns-tag" title="아직 출고 없음">출고 전</span>' : ''; }
 function scopeOk(it, sc, d) {
   if (sc === 'chk') return !!(it.chk && it.chk.length) || ((it.cat === 'inner' || it.cat === 'laser') && !prodCode(it));
@@ -1512,7 +1514,7 @@ function renderShell() {
         '<button data-v="dash">📊 현황판</button><button data-v="month">📅 월 현황</button><button data-v="day">📝 일일 입력</button><button data-v="order">➕ 수주 입력</button><button data-v="audit" title="월마다 현장 실사재고 입력 · 데이터 재고와 차이 확인 · 역추적">📋 실사재고</button>' +
       '</div>' +
       '<span class="vsep"></span><button type="button" id="nsBtn" class="ns-btn" title="출고가 한 번도 없는 제품만 보기 (ERP 출고·직접 입력 출고 모두 없음) · 한 번 더 누르면 해제">출고 전 제품 <small id="nsCnt"></small></button>' +
-      '<button type="button" id="nmBtn" class="nm-btn" title="출고됐는데 제품번호가 없는 제품만 보기 (출고 전 «번호 대기»는 뺌) · 누르면 먼저 출고매칭 자료를 다시 받아 번호를 다시 매칭함 · 한 번 더 누르면 해제">제품번호 없음 <small id="nmCnt"></small></button>' +
+      '<button type="button" id="nmBtn" class="nm-btn" title="제품번호가 없는 제품만 보기 (출고 전 «번호 대기» 포함) · 누르면 먼저 출고매칭 자료를 다시 받아 번호를 다시 매칭함 · 한 번 더 누르면 해제">제품번호 없음 <small id="nmCnt"></small></button>' +
 
       '<span class="spacer"></span>' +
       '<div class="datebox" id="dateBox"><button id="dPrev" title="전날">◀</button><input type="date" id="dDate"><button id="dNext" title="다음 날">▶</button><button id="dToday" class="small">오늘</button></div>' +
@@ -2176,7 +2178,7 @@ function shownProcs(it) { var f = S.ui.proc; return f ? it.procs.filter(function
 function renderDay() {
   var u = S.ui, d = u.date, list = filtered(), shown = list.slice(0, u.page * PAGE), cols = usedCols(shown);
   var qkTools = sortResetBtn() + '<button type="button" id="baseZero" class="bz" title="지금 표에 보이는 조건의 전일 재고(' + SU.addDays(d, -1) + ' 끝)를 모두 0으로 · 개별 칸은 전일 재고 칸에서 직접 수정">전일 재고 모두 0</button>', qkOpen = lsGet('subul.qk', '1') === '1';
-  var h = quickBox(qkOpen ? qkTools : '') + (qkOpen ? '' : '<div class="mbar"><span class="spacer"></span>' + qkTools + '</div>') + '<div class="tbl-wrap"><table class="grid day"><thead><tr>' + sortTh('cat', 'c-cat', '구분') + cols.map(function (c) { return sortTh(c.k, 'c-' + c.k, c.t); }).join('') +
+  var h = nmBanner() + quickBox(qkOpen ? qkTools : '') + (qkOpen ? '' : '<div class="mbar"><span class="spacer"></span>' + qkTools + '</div>') + '<div class="tbl-wrap"><table class="grid day"><thead><tr>' + sortTh('cat', 'c-cat', '구분') + cols.map(function (c) { return sortTh(c.k, 'c-' + c.k, c.t); }).join('') +
     sortTh('proc', 'c-proc', '공정') + sortTh('prev', 'num', '전일 재고<small>출고: 수주</small>') + sortTh('g', 'num in', '양품<small>출고: 직접 입력</small>') + sortTh('b', 'num in', '불량<small>출고: ERP</small>') + sortTh('p', 'num', '생산') + sortTh('r', 'num', '불량율') + sortTh('s', 'num st', '재고<small>' + dlabel(d) + ' · 출고: 잔량</small>') + sortTh('ms', 'num', '이달 생산<small>출고: 이달 출고</small>') + sortTh('now', 'num', '현 재고<small>오늘 · 출고: 누계</small>') + '</tr></thead><tbody>';
   if (!shown.length) h += '<tr><td colspan="' + (cols.length + 10) + '" class="empty">' + (store.items.size ? '조건에 맞는 품목 없음. 위 «진행 중 품목» → «전체 품목», «모든 공정»으로 바꿔 볼 것' : '아직 품목 없음. «➕ 수주 입력»에서 등록하거나 관리자가 «⚙ 설정 → 구글시트에서 가져오기» 실행. ERP 수주현황·출고현황은 출고매칭에 올리면 자동 반영') + '</td></tr>';
   shown.forEach(function (it) {
@@ -2209,6 +2211,7 @@ function renderDay() {
   autoMore(renderDay);
   bindSort(renderDay);
   bindDayInputs();
+  if ($('#nmOff')) $('#nmOff').onclick = function () { S.ui.nm = false; S.ui.page = 1; render(); };
   $('#baseZero').onclick = baseZeroAll;
   bindQuick();
 }
@@ -2434,7 +2437,7 @@ function renderMonth() {
   base.forEach(function (it) { (it.procs || []).forEach(function (p) { pset[p.n] = (pset[p.n] || 0) + 1; }); });
   store.items.forEach(function (it) { if (u.cat !== 'all' && it.cat !== u.cat) return; (it.procs || []).forEach(function (p) { pall[p.n] = 1; }); });
   var pnames = store.procList().filter(function (n) { return pall[n] || pset[n]; });
-  var h = '<div class="mbar"><b>' + ms.slice(0, 4) + '년 ' + Number(ms.slice(5, 7)) + '월</b><span class="pfl">공정:</span><div class="pfw' + (u.pfOpen ? ' open' : '') + '" id="pfw"><button data-pf="" class="' + (!u.proc ? 'on' : '') + '">전체</button><span class="vsep"></span>' + pnames.map(function (n, ni) { var c = pset[n] || 0; return (SU.isBuy(n) && ni && !SU.isBuy(pnames[ni - 1]) ? '<span class="vsep"></span>' : '') + '<button data-pf="' + esc(n) + '" class="' + (u.proc === n ? 'on' : '') + '"' + (c || u.proc === n ? '' : ' disabled') + ' title="' + (c ? c.toLocaleString() + '품목' : '지금 표에 이 공정 없음') + '">' + esc(n) + '</button>'; }).join('') +
+  var h = nmBanner() + '<div class="mbar"><b>' + ms.slice(0, 4) + '년 ' + Number(ms.slice(5, 7)) + '월</b><span class="pfl">공정:</span><div class="pfw' + (u.pfOpen ? ' open' : '') + '" id="pfw"><button data-pf="" class="' + (!u.proc ? 'on' : '') + '">전체</button><span class="vsep"></span>' + pnames.map(function (n, ni) { var c = pset[n] || 0; return (SU.isBuy(n) && ni && !SU.isBuy(pnames[ni - 1]) ? '<span class="vsep"></span>' : '') + '<button data-pf="' + esc(n) + '" class="' + (u.proc === n ? 'on' : '') + '"' + (c || u.proc === n ? '' : ' disabled') + ' title="' + (c ? c.toLocaleString() + '품목' : '지금 표에 이 공정 없음') + '">' + esc(n) + '</button>'; }).join('') +
     '</div><button type="button" id="pfMore" class="pfmore" hidden>' + (u.pfOpen ? '접기 ▲' : '더보기 ▼') + '</button><span class="mtools">' + sortResetBtn() + '<button type="button" id="delMode" class="delm' + (DEL.on ? ' on' : '') + '" title="품목 삭제 — 체크해서 개별 · 전체 선택">🗑 삭제</button><button type="button" id="baseZero" class="bz" title="지금 표에 보이는 조건의 기초재고를 모두 0으로 (개별 칸은 기초 칸에서 직접 수정)">기초재고 모두 0</button></span></div>' + delBar(list);
   h += '<div class="tbl-wrap"><table class="grid month"><thead><tr>' + sortTh('cat', 'c-cat', '구분') + sortTh('p', 'c-p', '품번') + sortTh('pc', 'c-pc', '제품번호') + sortTh('n', 'c-n', '품명') + sortTh('s', 'c-s', '규격') + sortTh('memo', 'c-memo', '비고') + sortTh('proc', 'c-proc', '공정') + sortTh('prod', 'num c-prod', '이달<br>생산') + sortTh('tot', 'num c-st', '재고<small>' + (me_ < td ? dlabel(me_) : '오늘') + '</small>') + sortTh('base', 'num c-base', '기초<br>재고') +
     days.map(function (dd) { var w = new Date(dd + 'T00:00:00').getDay(); return sortTh('d' + dd, 'num day' + (w === 0 ? ' sun' : w === 6 ? ' sat' : '') + (dd === td ? ' today' : ''), Number(dd.slice(8)) + '<span class="dgo" title="그날 입력 화면으로">↗</span>', ' data-d="' + dd + '"'); }).join('') + '</tr></thead><tbody>';
@@ -2488,6 +2491,7 @@ function renderMonth() {
   $$('.mbar [data-mm]').forEach(function (b) { b.onclick = function () { S.ui.mIn = b.dataset.mm === '1'; try { localStorage.setItem('suMIn', S.ui.mIn ? '1' : '0'); } catch (e) {} renderMonth(); }; });
   if ($('#baseZero')) $('#baseZero').onclick = baseZeroAll;
   delBind(list);
+  if ($('#nmOff')) $('#nmOff').onclick = function () { S.ui.nm = false; S.ui.page = 1; render(); };
   (function () {   /* v96 : 공정 버튼 한 줄 · 넘치면 더보기 */
     var w = $('#pfw'), b = $('#pfMore'); if (!w || !b) return;
     w.classList.toggle('open', false); var over = w.scrollHeight > w.clientHeight + 2; w.classList.toggle('open', !!S.ui.pfOpen);
