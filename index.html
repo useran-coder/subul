@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v90">
+<meta name="su-ver" content="v91">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -230,6 +230,8 @@ td.yr{color:#1e40af;font-weight:700}
 .grid.month thead th:nth-child(10),.grid.month tbody tr:not(.empty-row) td:nth-child(10){border-right:2px solid #94a3b8}.grid.month thead th:nth-child(8),.grid.month tbody tr td:nth-child(8){border-left:2px solid #94a3b8}
 .grid.month th.c-base{width:52px;min-width:52px;padding-left:2px;padding-right:4px}.grid.month td.bcell{width:52px}.grid.month input.bi{width:52px;padding:0 3px}
 .grid.month th.c-prod{width:58px;min-width:58px;white-space:nowrap;padding-left:2px;padding-right:4px}.grid.month td.ptot{width:58px}
+.grid.month th.c-prod,.grid.month th.c-st,.grid.month th.c-base{text-align:center;line-height:1.25}.grid.month th.c-st small{text-align:center}
+.grid.month thead th.c-st,.grid.month thead th.c-st small,.grid.month thead th.c-prod,.grid.month thead th.c-base{text-align:center!important}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -2401,7 +2403,7 @@ function renderMonth() {
   var pnames = store.procList().filter(function (n) { return pall[n] || pset[n]; });
   var h = '<div class="mbar"><b>' + ms.slice(0, 4) + '년 ' + Number(ms.slice(5, 7)) + '월</b> 공정: <button data-pf="" class="' + (!u.proc ? 'on' : '') + '">전체</button><span class="vsep"></span>' + pnames.map(function (n, ni) { var c = pset[n] || 0; return (SU.isBuy(n) && ni && !SU.isBuy(pnames[ni - 1]) ? '<span class="vsep"></span>' : '') + '<button data-pf="' + esc(n) + '" class="' + (u.proc === n ? 'on' : '') + '"' + (c || u.proc === n ? '' : ' disabled') + ' title="' + (c ? c.toLocaleString() + '품목' : '지금 표에 이 공정 없음') + '">' + esc(n) + '</button>'; }).join('') +
     '<span class="spacer"></span>' + sortResetBtn() + '<button type="button" id="delMode" class="delm' + (DEL.on ? ' on' : '') + '" title="품목 삭제 — 체크해서 개별 · 전체 선택">🗑 삭제</button><button type="button" id="baseZero" class="bz" title="지금 표에 보이는 조건의 기초재고를 모두 0으로 (개별 칸은 기초 칸에서 직접 수정)">기초재고 모두 0</button></div>' + delBar(list);
-  h += '<div class="tbl-wrap"><table class="grid month"><thead><tr>' + sortTh('cat', 'c-cat', '구분') + sortTh('p', 'c-p', '품번') + sortTh('pc', 'c-pc', '제품번호') + sortTh('n', 'c-n', '품명') + sortTh('s', 'c-s', '규격') + sortTh('memo', 'c-memo', '비고') + sortTh('proc', 'c-proc', '공정') + sortTh('prod', 'num c-prod', '이달 생산') + sortTh('tot', 'num', '재고<small>' + (me_ < td ? dlabel(me_) : '오늘') + '</small>') + sortTh('base', 'num c-base', '기초') +
+  h += '<div class="tbl-wrap"><table class="grid month"><thead><tr>' + sortTh('cat', 'c-cat', '구분') + sortTh('p', 'c-p', '품번') + sortTh('pc', 'c-pc', '제품번호') + sortTh('n', 'c-n', '품명') + sortTh('s', 'c-s', '규격') + sortTh('memo', 'c-memo', '비고') + sortTh('proc', 'c-proc', '공정') + sortTh('prod', 'num c-prod', '이달<br>생산') + sortTh('tot', 'num c-st', '재고<small>' + (me_ < td ? dlabel(me_) : '오늘') + '</small>') + sortTh('base', 'num c-base', '기초<br>재고') +
     days.map(function (dd) { var w = new Date(dd + 'T00:00:00').getDay(); return sortTh('d' + dd, 'num day' + (w === 0 ? ' sun' : w === 6 ? ' sat' : '') + (dd === td ? ' today' : ''), Number(dd.slice(8)) + '<span class="dgo" title="그날 입력 화면으로">↗</span>', ' data-d="' + dd + '"'); }).join('') + '</tr></thead><tbody>';
   var before = SU.addDays(ms, -1);
   function rowOn(pr) { return !(u.proc && pr.n !== u.proc); }
