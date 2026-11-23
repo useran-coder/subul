@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v116">
+<meta name="su-ver" content="v117">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -258,6 +258,8 @@ main{padding-bottom:6px}.more{padding:6px 0 0}.more button{padding:5px 16px}
 .grid.month tr.rep td:is(.c-cat,.c-p,.c-pc,.c-n,.c-s,.c-memo),.grid.month tr.rep td:is(.c-cat,.c-p,.c-pc,.c-n,.c-s,.c-memo) *{font-weight:400}
 td.yr{font-weight:400!important}td.num.pa{font-weight:700;color:#0f172a}
 .gr-b{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:700;white-space:nowrap}td.gr-c,th.gr-h{text-align:center}td.rk{white-space:nowrap;color:#334155}
+.grid.month td.c-proc .fold-t,.grid.month td.c-proc .fold-sp,.grid.month td.c-proc .padd{float:none;display:inline-block;vertical-align:middle}.grid td.c-proc{white-space:nowrap}.grid td.c-proc .pname{vertical-align:middle}
+.grid.month td.c-proc .padd{margin:0 4px 0 0!important}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -2523,10 +2525,10 @@ function renderMonth() {
       var out = SU.isOut(pr.n), buy = it.cat === 'oem' && SU.isBuy(pr.n), pin = false;   // v59 : 공정 줄 바로 입력 되돌림 (사용자 요청) — 재고만 표시
       if (!rowOn(pr)) return;
       if (!open && pi !== showPi) return;
-      var ft = !canFold ? '' : !open ? '<button type="button" class="fold-t" data-fold="' + it.id + '" title="공정 ' + n + '줄 펼치기">▸</button>' : pi === 0 ? '<button type="button" class="fold-t on" data-fold="' + it.id + '" title="접기 (출고 줄만)">▾</button>' : (pi === lastPi && it.cat !== 'oem') ? '' : '<span class="fold-sp"></span>';   /* ＋ 버튼 줄은 빈칸 없이 (출고·＋ 줄바꿈 방지) */
+      var ft = !canFold ? '' : !open ? '<button type="button" class="fold-t" data-fold="' + it.id + '" title="공정 ' + n + '줄 펼치기">▸</button>' : pi === 0 ? '<button type="button" class="fold-t on" data-fold="' + it.id + '" title="접기 (출고 줄만)">▾</button>' : '<span class="fold-sp"></span>';   /* ＋ 버튼 줄은 빈칸 없이 (출고·＋ 줄바꿈 방지) */
       var rep = canFold && open && pi > 0;
       var hO = h; h = '';   /* v97 : 이 줄만 따로 만든 뒤 붙임 (전체 문자열 복사 없앰) */
-      h += '<tr class="' + (pi === 0 || !open ? 'first' : '') + (!open ? ' fold' : '') + (rep ? ' rep' : '') + (out ? ' outrow' : buy ? ' buyrow' : pin ? ' inrow' : '') + '" data-i="' + it.id + '" data-p="' + pi + '"><td class="c-cat">' + delChk(it) + '<span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span>' + nst + '</td><td class="c-p link" data-open="' + it.id + '">' + esc(it.p) + '</td><td class="c-pc" title="' + esc(prodTitle(it)) + '">' + prodCell(it) + '</td><td class="c-n" title="' + esc([it.it || it.n, it.cust ? '고객사 ' + it.cust : ''].filter(Boolean).join('\n')) + '">' + esc(it.it || it.n || '') + '</td><td class="c-s" title="' + esc(it.s || '') + '">' + esc(it.s || '') + '</td><td class="c-memo" title="' + esc(it.memo || '') + '">' + esc(it.memo || '') + '</td><td class="c-proc">' + ft + (it.cat === 'oem' ? '<span class="pname">' + esc(pr.n) + '</span>' : '<span class="pname' + (out || pi === lastPi ? '' : ' drag') + '" data-pm="' + it.id + '" data-pi="' + pi + '"' + (out || pi === lastPi ? '' : ' draggable="true"') + ' title="' + (out ? '눌러서 공정 메뉴' : pi === lastPi ? '눌러서 메뉴 (앞으로 이동·삭제)' : '끌어서 순서 바꾸기 · 눌러서 메뉴 (앞뒤 이동·삭제)') + '">' + esc(pr.n) + '</span>') + (pi === lastPi && it.cat !== 'oem' ? '<button type="button" class="padd" data-add="' + it.id + '" title="이 품목에 공정 추가">＋</button>' : '') + '</td>';
+      h += '<tr class="' + (pi === 0 || !open ? 'first' : '') + (!open ? ' fold' : '') + (rep ? ' rep' : '') + (out ? ' outrow' : buy ? ' buyrow' : pin ? ' inrow' : '') + '" data-i="' + it.id + '" data-p="' + pi + '"><td class="c-cat">' + delChk(it) + '<span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span>' + nst + '</td><td class="c-p link" data-open="' + it.id + '">' + esc(it.p) + '</td><td class="c-pc" title="' + esc(prodTitle(it)) + '">' + prodCell(it) + '</td><td class="c-n" title="' + esc([it.it || it.n, it.cust ? '고객사 ' + it.cust : ''].filter(Boolean).join('\n')) + '">' + esc(it.it || it.n || '') + '</td><td class="c-s" title="' + esc(it.s || '') + '">' + esc(it.s || '') + '</td><td class="c-memo" title="' + esc(it.memo || '') + '">' + esc(it.memo || '') + '</td><td class="c-proc">' + ft + (pi === lastPi && it.cat !== 'oem' ? '<button type="button" class="padd" data-add="' + it.id + '" title="이 품목에 공정 추가">＋</button>' : '') + (it.cat === 'oem' ? '<span class="pname">' + esc(pr.n) + '</span>' : '<span class="pname' + (out || pi === lastPi ? '' : ' drag') + '" data-pm="' + it.id + '" data-pi="' + pi + '"' + (out || pi === lastPi ? '' : ' draggable="true"') + ' title="' + (out ? '눌러서 공정 메뉴' : pi === lastPi ? '눌러서 메뉴 (앞으로 이동·삭제)' : '끌어서 순서 바꾸기 · 눌러서 메뉴 (앞뒤 이동·삭제)') + '">' + esc(pr.n) + '</span>') + '</td>';
       var hp = h.length;   /* v87 : 이달 생산·재고 칸은 다 만든 뒤 공정 칸 바로 뒤에 끼움 */
       var bAt = !out && it.d0 && before < it.d0 && it.d0 <= me_ ? it.d0 : before;   /* v99 : 달 중간에 시작한 품목(ERP·엑셀 반영일 뒤)은 시작일 기초재고를 여기서 입력 */
       var b0 = out ? null : store.stock(it, pi, bAt);
