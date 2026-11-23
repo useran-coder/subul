@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v98">
+<meta name="su-ver" content="v99">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -237,6 +237,7 @@ td.yr{color:#1e40af;font-weight:700}
 .grid.day thead th:nth-last-child(-n+9),.grid.day tbody td:not(.empty):nth-last-child(-n+9){width:100px;min-width:100px;max-width:100px;box-sizing:border-box}.grid.day thead th:nth-last-child(-n+9) small{white-space:normal}
 .mbar .pfw{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:6px;align-items:center;max-height:30px;overflow:hidden}.mbar .pfw.open{max-height:none}.mbar .pfmore{white-space:nowrap;border-color:#93c5fd!important;color:#1e40af!important;background:#eff6ff!important}.mbar .pfmore:hover{background:#dbeafe!important}.mbar .mtools{display:flex;gap:6px;align-items:center;white-space:nowrap;align-self:flex-start}.mbar:has(.pfw){flex-wrap:nowrap;align-items:flex-start}.mbar:has(.pfw)>b{line-height:28px;white-space:nowrap}.mbar .mtools .sreset{margin-right:0}
 .mbar .pfl{line-height:28px;white-space:nowrap;color:#475569;font-size:13px}
+.grid.month td.ptot,.grid.month td.ptot b{font-weight:400}.grid.month td.bcell.mid input.bi{background:#fffbeb}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -2448,10 +2449,11 @@ function renderMonth() {
       var hO = h; h = '';   /* v97 : 이 줄만 따로 만든 뒤 붙임 (전체 문자열 복사 없앰) */
       h += '<tr class="' + (pi === 0 ? 'first' : '') + (out ? ' outrow' : buy ? ' buyrow' : pin ? ' inrow' : '') + '" data-i="' + it.id + '" data-p="' + pi + '"><td class="c-cat">' + delChk(it) + '<span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span>' + nst + '</td><td class="c-p link" data-open="' + it.id + '">' + esc(it.p) + '</td><td class="c-pc" title="' + esc(prodTitle(it)) + '">' + prodCell(it) + '</td><td class="c-n" title="' + esc([it.it || it.n, it.cust ? '고객사 ' + it.cust : ''].filter(Boolean).join('\n')) + '">' + esc(it.it || it.n || '') + '</td><td class="c-s" title="' + esc(it.s || '') + '">' + esc(it.s || '') + '</td><td class="c-memo" title="' + esc(it.memo || '') + '">' + esc(it.memo || '') + '</td><td class="c-proc">' + (it.cat === 'oem' ? '<span class="pname">' + esc(pr.n) + '</span>' : '<span class="pname' + (out || pi === lastPi ? '' : ' drag') + '" data-pm="' + it.id + '" data-pi="' + pi + '"' + (out || pi === lastPi ? '' : ' draggable="true"') + ' title="' + (out ? '눌러서 공정 메뉴' : pi === lastPi ? '눌러서 메뉴 (앞으로 이동·삭제)' : '끌어서 순서 바꾸기 · 눌러서 메뉴 (앞뒤 이동·삭제)') + '">' + esc(pr.n) + '</span>') + (pi === lastPi && it.cat !== 'oem' ? '<button type="button" class="padd" data-add="' + it.id + '" title="이 품목에 공정 추가">＋</button>' : '') + '</td>';
       var hp = h.length;   /* v87 : 이달 생산·재고 칸은 다 만든 뒤 공정 칸 바로 뒤에 끼움 */
-      var b0 = out ? null : store.stock(it, pi, before);
+      var bAt = !out && it.d0 && before < it.d0 && it.d0 <= me_ ? it.d0 : before;   /* v99 : 달 중간에 시작한 품목(ERP·엑셀 반영일 뒤)은 시작일 기초재고를 여기서 입력 */
+      var b0 = out ? null : store.stock(it, pi, bAt);
       if (b0 == null) h += '<td class="num muted"></td>';
-      else { var ak = store.adj.get(it.id + '|' + pr.id + '|' + before), ar = ak ? store.recs.get('a:' + it.id + '|' + pr.id + '|' + before) : null;
-        h += '<td class="num bcell' + (ak ? ' adj' : '') + '"><input class="bi" data-i="' + it.id + '" data-p="' + pi + '" inputmode="decimal" value="' + (b0 ? b0.toLocaleString() : '0') + '" title="' + esc(before <= (it.d0 || '') ? '기초재고 (' + before + ' 끝) — 고치면 품목 기초재고가 바뀜' : '전월말 재고 (' + before + ' 끝) — 고치면 차이만큼 재고 조정으로 기록' + (ak ? '\n조정 ' + fmt(SU.num(ak.a)) + (ar && ar.by ? ' · ' + ar.by : '') : '')) + '"></td>'; }
+      else { var ak = store.adj.get(it.id + '|' + pr.id + '|' + bAt), ar = ak ? store.recs.get('a:' + it.id + '|' + pr.id + '|' + bAt) : null;
+        h += '<td class="num bcell' + (ak ? ' adj' : '') + (bAt !== before ? ' mid' : '') + '"><input class="bi" data-i="' + it.id + '" data-p="' + pi + '" data-at="' + bAt + '" inputmode="decimal" value="' + (b0 ? b0.toLocaleString() : '0') + '" title="' + esc(bAt <= (it.d0 || '') ? '기초재고 (' + bAt + ' 끝' + (bAt !== before ? ' · 이 품목 시작일' : '') + ') — 고치면 품목 기초재고가 바뀜' : '전월말 재고 (' + before + ' 끝) — 고치면 차이만큼 재고 조정으로 기록' + (ak ? '\n조정 ' + fmt(SU.num(ak.a)) + (ar && ar.by ? ' · ' + ar.by : '') : '')) + '"></td>'; }
       var tot = 0, sd = {};
       if (out) (store.erpShip.get(it.id) || []).forEach(function (s) { var y = SU.ymd(s.d); (sd[y] = sd[y] || []).push(s); });
       var ngd = {}; if (out) (store.erpNeg.get(it.id) || []).forEach(function (s) { var y = SU.ymd(s.d); (ngd[y] = ngd[y] || []).push(s); });
@@ -2752,7 +2754,7 @@ function setBase(inp, keepView) {
   var it = store.items.get(inp.dataset.i), pi = Number(inp.dataset.p), pr = it && it.procs[pi]; if (!pr) return;
   var raw = inp.value.trim(), x = SU.num(raw);
   if (raw && !x && raw !== '0') { inp.classList.add('err'); toast('숫자로 읽을 수 없음: ' + raw, 'warn'); return; }
-  var msg = setBaseVal(it.id, pi, x); if (!msg) return; toast(msg);
+  var msg = setBaseVal(it.id, pi, x, inp.dataset.at || undefined); if (!msg) return; toast(msg);
   schedulePush(); inp.defaultValue = inp.value;
   if (S.ui.view === 'day') { refreshDay(); return; }
   if (!keepView) renderMonth(); else { var y = window.scrollY, foc = document.activeElement; renderMonth(); window.scrollTo(0, y); }
