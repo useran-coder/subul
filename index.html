@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v100">
+<meta name="su-ver" content="v101">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -1496,7 +1496,7 @@ function notShipped(it) {
 }
 /* 제품번호 없음 : 제품번호 칸이 비어 있음 (아직 출고 안 된 부자재·유통/OEM «출고 전»은 뺌 — 출고되면 번호가 붙음) */
 function noNum(it) { return !prodCode(it); }   // v100 : 출고 전 «번호 대기»도 포함 (표의 «번호 대기»·«번호 없음» 개수와 같게)
-function nmBanner() { if (!S.ui.nm) return ''; return '<div class="nm-ban">🔢 제품번호 없는 품목만 보는 중 · 번호 칸(<b>✎</b>)을 누르면 바로 입력 · <a href="' + CM_URL + '" target="_blank" rel="noopener">출고매칭 «수불현황»</a>에서 자동 부여하면 여기에도 바로 반영 <button type="button" id="nmOff">해제</button></div>'; }
+function nmBanner() { if (!S.ui.nm) return ''; return '<div class="nm-ban">🔢 제품번호 없는 품목만 보는 중 · 번호 칸(<b>✎</b>)을 누르면 바로 입력 · <a href="' + CM_URL + '#subul-missing" target="_blank" rel="noopener">출고매칭 «수불현황 · 제품번호 없음»</a>에서 자동 부여하면 여기에도 바로 반영 <button type="button" id="nmOff">해제</button></div>'; }
 function nsTag(it) { return notShipped(it) ? '<span class="ns-tag" title="아직 출고 없음">출고 전</span>' : ''; }
 function scopeOk(it, sc, d) {
   if (sc === 'chk') return !!(it.chk && it.chk.length) || ((it.cat === 'inner' || it.cat === 'laser') && !prodCode(it));
