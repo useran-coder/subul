@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v110">
+<meta name="su-ver" content="v111">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -249,6 +249,7 @@ td.yr{color:#1e40af;font-weight:700}
 .grid td.c-proc .fold-t,.grid td.c-proc .fold-sp{float:left;margin:0 4px 0 0;font-size:13px;font-weight:800}.grid td.c-proc .fold-sp{width:18px;height:18px}.grid.month tr.fold td.c-proc .padd{display:none}
 .grid.month tr.outrow td.today,.grid.month tr.outrow.fold td.today,.grid.month tr.buyrow td.today{background:#eef4ff}.grid.month tr.outrow:not(.fold) td.today{background:#fdf3d0}
 main{padding-bottom:6px}.more{padding:6px 0 0}.more button{padding:5px 16px}
+.grid.month tr.fold td.c-pc,.grid.month tr.fold td.c-n,.grid.month tr.fold td.c-s,.grid.month tr.fold td.c-memo{cursor:pointer}.grid.month tr.fold:hover td{background:#f8fafc}.grid.month tr.fold:hover td.today{background:#e3ecff}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -2529,8 +2530,10 @@ function renderMonth() {
   $$('th.day .dgo').forEach(function (a) { a.onclick = function (ev) { ev.stopPropagation(); S.ui.date = a.closest('th').dataset.d; S.ui.view = 'day'; render(); }; });
   bindSort(renderMonth);
   $('#view').onclick = function (ev) {
-    var f = ev.target.closest('[data-fold]'), cc = !f && ev.target.closest('td.c-cat'); if (cc && ev.target.closest('input,label')) cc = null;
-    if (f || cc) { var id = f ? f.dataset.fold : cc.closest('tr').dataset.i, tr = (f || cc).closest('tr'); if (!f && !tr.classList.contains('fold') && !tr.querySelector('.fold-t')) return; mFold(id); return; }
+    /* v111 : 구분·제품번호·품명·규격·비고 칸을 눌러도 펼침 (펼친 품목은 구분 칸·▾ 로 접음 — 다른 칸은 긴 글자 보기용) */
+    var f = ev.target.closest('[data-fold]'), cc = !f && ev.target.closest('td.c-cat, td.c-pc, td.c-n, td.c-s, td.c-memo'); if (cc && ev.target.closest('input,label,button,a,[data-fix]')) cc = null;
+    if (f || cc) { var tr = (f || cc).closest('tr'), id = f ? f.dataset.fold : tr.dataset.i, fd = tr.classList.contains('fold');
+      if (f || fd || (cc.classList.contains('c-cat') && tr.querySelector('.fold-t'))) { mFold(id); return; } }
     var c = ev.target.closest('td.pgc'); if (c) { pgOpen(c); return; } var o = ev.target.closest('[data-open]'); if (o) openItem(o.dataset.open); };
   if ($('#mAllT')) $('#mAllT').onclick = function () { S.ui.mAll = !S.ui.mAll; S.ui.mOpen = {}; lsSet('subul.mAll', S.ui.mAll ? '1' : '0'); mKeep(renderMonth); };
   $('#view').onmouseover = function (ev) { var c = ev.target.closest('td.pgc'); if (c && !c.title) c.title = pgTitle(c.dataset.k); };
