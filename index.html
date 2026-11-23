@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v107">
+<meta name="su-ver" content="v108">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -1538,7 +1538,7 @@ function renderShell() {
       '<div class="views" id="viewsR"><button data-v="set">⚙ 설정</button></div>' +
     '</div>' +
     '<div id="view"></div><div id="status" class="status"></div>';
-  $$('.views button').forEach(function (b) { b.onclick = function () { S.ui.view = b.dataset.v; S.ui.page = 1; lsSet('subul.view', S.ui.view); render(); }; });
+  $$('.views button').forEach(function (b) { b.onclick = function () { if (b.dataset.v === 'dash') { goHome(); return; } S.ui.view = b.dataset.v; S.ui.page = 1; lsSet('subul.view', S.ui.view); render(); }; });
   $('#procF').onchange = function () { S.ui.proc = this.value; S.ui.page = 1; render(); };
   $('#nmBtn').onclick = nmToggle;
   $('#nsBtn').onclick = function () { S.ui.ns = !S.ui.ns; S.ui.nm = false; S.ui.page = 1; if (S.ui.ns && S.ui.view !== 'day' && S.ui.view !== 'month') { S.ui.view = 'month'; lsSet('subul.view', 'month'); } render(); };
@@ -1615,7 +1615,7 @@ window.addEventListener('popstate', function (ev) {
   S.ui.view = st.view; S.ui.date = st.date || S.ui.date; S.ui.proc = st.proc || ''; S.ui.scope = st.scope || S.ui.scope; S.ui.page = 1;
   lsSet('subul.view', S.ui.view); NAV.pop = true; render();
 });
-function goHome() { if (!dataStarted) return; S.ui.view = 'dash'; S.ui.page = 1; lsSet('subul.view', 'dash'); render(); scrollTo(0, 0); }
+function goHome() { if (!dataStarted) return; S.ui.cat = 'all'; S.ui.ns = false; S.ui.nm = false; S.ui.view = 'dash';   /* v108 : 제목·현황판 누르면 «전체» 구분으로 */ S.ui.page = 1; lsSet('subul.view', 'dash'); render(); scrollTo(0, 0); }
 function render() {
   if (!dataStarted) return;
   var u = S.ui;
