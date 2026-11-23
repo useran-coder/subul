@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v123">
+<meta name="su-ver" content="v124">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -264,6 +264,7 @@ td.yr{font-weight:400!important}td.num.pa{font-weight:700;color:#0f172a}
 .grid td[rowspan]{vertical-align:top;padding-top:7px}
 .grid.month tr.rep td:is(.c-cat,.c-p,.c-pc,.c-n,.c-s,.c-memo){color:transparent!important;text-decoration-color:transparent!important;border-bottom-color:inherit}.grid.month tr.rep td:is(.c-cat,.c-p,.c-pc,.c-n,.c-s,.c-memo) *{visibility:hidden}
 .grid.day td.rs-out{background:linear-gradient(to top,#fffaf0 var(--oh,30px),transparent var(--oh,30px))}
+.grid.month td.pday,.grid.month td.pgc,.grid.month input.mi,.grid.month tr.inrow input.mi,.grid.month input.mi::placeholder,.grid.month tr.outrow td.num,.grid.month tr.outrow td.num b{font-weight:400}.grid.month td.ed-t,.grid.month td.ed-t b,.grid.month td.ed-t input.mi{font-weight:800!important}.grid.month td.ed-t{background:#fff1f2!important}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -1335,6 +1336,13 @@ function materialize(it) {
   var v = SU.cleanForSave(it); v.cat_at = SU.today();
   setRec('i:' + it.id, v);
 }
+/* v124 : 오늘 고친 생산·출고 칸 (기록 시각이 오늘) → 굵게 + 연한 붉은 칸 */
+function edToday(k) {
+  var rc = store.recs.get(k); if (!rc || !rc.v || !rc.at || !(SU.num(rc.v.g) || SU.num(rc.v.b))) return false;
+  var x = new Date(rc.at); if (isNaN(x)) return false;
+  return x.getFullYear() + '-' + ('0' + (x.getMonth() + 1)).slice(-2) + '-' + ('0' + x.getDate()).slice(-2) === SU.today();
+}
+function edC(id, pid, d) { return edToday('e:' + id + '|' + pid + '|' + d) ? ' ed-t' : ''; }
 /* 한 칸 고치기 (화면에 바로 반영, 잠시 뒤 서버로) */
 function setRec(k, v) {
   histRec(k);
@@ -1344,6 +1352,7 @@ function setRec(k, v) {
   store.set(k, v, { by: me(), at: new Date().toISOString() });
   S.pending.set(k, { k: k, v: v, base: base });
   savePending();
+  if (k.charAt(0) === 'e') $$('#view [data-k="' + k + '"]').forEach(function (el) { var c = el.closest('td'); if (c) c.classList.toggle('ed-t', edToday(k)); });
 }
 
 /* ───────── 되돌리기 (Ctrl+Z 취소 · Ctrl+Y / Ctrl+Shift+Z 다시) ─────────
@@ -2551,18 +2560,18 @@ function renderMonth() {
       days.forEach(function (dd) {
         var v;
         var e = store.day(it.id, pr.id, dd) || {}; v = SU.num(e.g); tot += v; v = v || null; var er = (out || buy) && e.erp;
-        if (!out && !buy && (v || SU.num(e.b))) { var dst = dd > td ? null : store.stock(it, pi, dd); h += '<td class="num pday' + (dd === td ? ' today' : '') + (dst != null && dst < 0 ? ' negst' : '') + '" title="' + esc(dd.slice(5).replace('-', '/') + ' 양품 ' + fmt(v || 0, false) + (SU.num(e.b) ? ' · 불량 ' + fmt(SU.num(e.b), false) : '') + (dst != null ? '\n그날 끝 재고 ' + fmt(dst, false) : '')) + '">' + (v ? fmt(v) : '') + '</td>'; return; }
+        if (!out && !buy && (v || SU.num(e.b))) { var dst = dd > td ? null : store.stock(it, pi, dd); h += '<td class="num pday' + (dd === td ? ' today' : '') + edC(it.id, pr.id, dd) + (dst != null && dst < 0 ? ' negst' : '') + '" title="' + esc(dd.slice(5).replace('-', '/') + ' 양품 ' + fmt(v || 0, false) + (SU.num(e.b) ? ' · 불량 ' + fmt(SU.num(e.b), false) : '') + (dst != null ? '\n그날 끝 재고 ' + fmt(dst, false) : '')) + '">' + (v ? fmt(v) : '') + '</td>'; return; }
         if (pin) {   /* 공정 줄 바로 입력 : 그날 양품 (불량은 그대로 둠) · 칸 설명에 그날 끝 재고 */
           var pe = store.manual(it.id, pr.id, dd), pg = pe ? SU.num(pe.g) : 0, pst = dd > td ? null : store.stock(it, pi, dd); tot += pg;
-          h += '<td class="num mcell pgc' + (dd === td ? ' today' : '') + (pst != null && pst < 0 ? ' negst' : '') + '" data-k="e:' + it.id + '|' + pr.id + '|' + dd + '">' + (pe && pe.g != null && pe.g !== '' && pg ? fmt(pg) : '') + '</td>';
+          h += '<td class="num mcell pgc' + (dd === td ? ' today' : '') + edC(it.id, pr.id, dd) + (pst != null && pst < 0 ? ' negst' : '') + '" data-k="e:' + it.id + '|' + pr.id + '|' + dd + '">' + (pe && pe.g != null && pe.g !== '' && pg ? fmt(pg) : '') + '</td>';
           return;
         }
         if (buy) {   /* 매입 줄 : 바로 입력 (비우면 매입분석도구 값) */
           var man = store.manual(it.id, pr.id, dd), bq = (store.erpBuy.get(it.id) || new Map()).get(dd);
-          h += '<td class="num mcell' + (dd === td ? ' today' : '') + '"><input class="mi" data-k="e:' + it.id + '|' + pr.id + '|' + dd + '" inputmode="decimal" value="' + (man ? fmtIn(SU.num(man.g)) : '') + '" placeholder="' + (bq ? fmt(bq, false) : '') + '"' + (function () { var L = Math.max(String(man ? fmtIn(SU.num(man.g)) : '').length, String(bq ? fmt(bq, false) : '').length); return L > 4 ? ' style="min-width:' + (L * 8 + 12) + 'px"' : ''; })() + ' title="' + esc(dd.slice(5).replace('-', '/') + ' 매입' + (bq ? '\n매입분석도구 ' + fmt(bq, false) + (bd[dd] || []).map(function (r) { return '\n' + (r.vendor || '') + ' · ' + fmt(SU.num(r.qty)) + (SU.num(r.price) ? ' × ' + fmt(SU.num(r.price)) : ''); }).join('') : '') + '\n숫자를 넣으면 그 값을 씀 · 지우면 매입분석도구 값') + '"></td>';
+          h += '<td class="num mcell' + (dd === td ? ' today' : '') + edC(it.id, pr.id, dd) + '"><input class="mi" data-k="e:' + it.id + '|' + pr.id + '|' + dd + '" inputmode="decimal" value="' + (man ? fmtIn(SU.num(man.g)) : '') + '" placeholder="' + (bq ? fmt(bq, false) : '') + '"' + (function () { var L = Math.max(String(man ? fmtIn(SU.num(man.g)) : '').length, String(bq ? fmt(bq, false) : '').length); return L > 4 ? ' style="min-width:' + (L * 8 + 12) + 'px"' : ''; })() + ' title="' + esc(dd.slice(5).replace('-', '/') + ' 매입' + (bq ? '\n매입분석도구 ' + fmt(bq, false) + (bd[dd] || []).map(function (r) { return '\n' + (r.vendor || '') + ' · ' + fmt(SU.num(r.qty)) + (SU.num(r.price) ? ' × ' + fmt(SU.num(r.price)) : ''); }).join('') : '') + '\n숫자를 넣으면 그 값을 씀 · 지우면 매입분석도구 값') + '"></td>';
           return;
         }
-        h += '<td class="num' + (v < 0 ? ' neg' : '') + (dd === td ? ' today' : '') + (er && v ? ' erpc' : '') + '"' + (er && v && buy ? ' title="' + esc('매입분석도구 매입현황' + (bd[dd] || []).map(function (r) { return '\n' + (r.vendor || '') + ' · ' + fmt(SU.num(r.qty)) + (SU.num(r.price) ? ' × ' + fmt(SU.num(r.price)) : ''); }).join('')) + '"' : er && v ? ' title="' + esc('ERP 출고현황' + (sd[dd] || []).map(function (s) { return '\n' + scode(s) + (s._lc ? ' (다시 매칭, 출고매칭 ' + (s.code || s.ac || '') + ')' : '') + ' · ' + (s.o || '') + ' · ' + fmt(SU.num(s.q)); }).join('')) + '"' : '') + '>' + (v == null ? '' : fmt(v)) + (ngd && ngd[dd] ? '<span class="negmk" title="' + esc('반품·차감 (재고 제외)' + ngd[dd].map(function (s) { return '\n' + (s.o || '') + ' · ' + fmt(SU.num(s.q)) + (s.r ? ' · ' + s.r : ''); }).join('')) + '">' + fmt(ngd[dd].reduce(function (a, s) { return a + SU.num(s.q); }, 0)) + '</span>' : '') + '</td>'; er = false;
+        h += '<td class="num' + (v < 0 ? ' neg' : '') + (dd === td ? ' today' : '') + edC(it.id, pr.id, dd) + (er && v ? ' erpc' : '') + '"' + (er && v && buy ? ' title="' + esc('매입분석도구 매입현황' + (bd[dd] || []).map(function (r) { return '\n' + (r.vendor || '') + ' · ' + fmt(SU.num(r.qty)) + (SU.num(r.price) ? ' × ' + fmt(SU.num(r.price)) : ''); }).join('')) + '"' : er && v ? ' title="' + esc('ERP 출고현황' + (sd[dd] || []).map(function (s) { return '\n' + scode(s) + (s._lc ? ' (다시 매칭, 출고매칭 ' + (s.code || s.ac || '') + ')' : '') + ' · ' + (s.o || '') + ' · ' + fmt(SU.num(s.q)); }).join('')) + '"' : '') + '>' + (v == null ? '' : fmt(v)) + (ngd && ngd[dd] ? '<span class="negmk" title="' + esc('반품·차감 (재고 제외)' + ngd[dd].map(function (s) { return '\n' + (s.o || '') + ' · ' + fmt(SU.num(s.q)) + (s.r ? ' · ' + s.r : ''); }).join('')) + '">' + fmt(ngd[dd].reduce(function (a, s) { return a + SU.num(s.q); }, 0)) + '</span>' : '') + '</td>'; er = false;
       });
       var stE = out ? null : store.stock(it, pi, me_ < td ? me_ : td);
       var endC = '<td class="num ptot">' + (tot ? (out || buy ? '<b class="' + (buy ? 'buyc' : 'erpc') + '">' + fmt(tot) + '</b>' : fmt(tot)) : '') + '</td>' +
