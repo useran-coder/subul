@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v117">
+<meta name="su-ver" content="v118">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -260,6 +260,7 @@ td.yr{font-weight:400!important}td.num.pa{font-weight:700;color:#0f172a}
 .gr-b{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:700;white-space:nowrap}td.gr-c,th.gr-h{text-align:center}td.rk{white-space:nowrap;color:#334155}
 .grid.month td.c-proc .fold-t,.grid.month td.c-proc .fold-sp,.grid.month td.c-proc .padd{float:none;display:inline-block;vertical-align:middle}.grid td.c-proc{white-space:nowrap}.grid td.c-proc .pname{vertical-align:middle}
 .grid.month td.c-proc .padd{margin:0 4px 0 0!important}
+.grid td.c-proc .padd{float:none!important;display:inline-block;vertical-align:middle;margin:0 4px 0 0!important}.grid td.c-proc{white-space:nowrap}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -2262,7 +2263,7 @@ function renderDay() {
         h += '<td rowspan="' + n + '" class="c-cat"><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || it.cat) + '</span>' + (it.src === 'erp' ? '<span class="erp-tag" title="ERP 수주·출고로 자동 생긴 품목">ERP</span>' : '') + nsTag(it) + (it.chk && it.chk.length ? '<span class="warn-dot" title="' + esc(it.chk.join('\n')) + '">!</span>' : '') + '</td>';
         cols.forEach(function (c) { var cv = colVal(it, c.k); h += '<td rowspan="' + n + '" class="c-' + c.k + (c.k === 'p' || c.k === 'n' ? ' link' : '') + '" data-open="' + it.id + '" title="' + esc(c.k === 'pc' ? prodTitle(it) : cv) + '">' + (c.k === 'pc' ? prodCell(it) : esc(cv)) + '</td>'; });
       }
-      h += '<td class="c-proc" title="' + esc(out ? '' : '재고를 빼 가는 곳: ' + (store.usedBy(it, pi).join(', ') || '없음')) + '">' + (it.cat === 'oem' ? '<span class="pname">' + esc(pr.n) + '</span>' : '<span class="pname' + (out || si === n - 1 ? '' : ' drag') + '" data-pm="' + it.id + '" data-pi="' + pi + '"' + (out || si === n - 1 ? '' : ' draggable="true"') + ' title="' + (out ? '눌러서 공정 메뉴' : si === n - 1 ? '눌러서 메뉴 (앞으로 이동·삭제)' : '끌어서 순서 바꾸기 · 눌러서 메뉴 (앞뒤 이동·삭제)') + '">' + esc(pr.n) + '</span>') + (pr.out && pr.out.length ? ' <span class="lk">🔗</span>' : '') + (si === n - 1 && it.cat !== 'oem' ? '<button type="button" class="padd" data-add="' + it.id + '" title="이 품목에 공정 추가">＋</button>' : '') + '</td>';
+      h += '<td class="c-proc" title="' + esc(out ? '' : '재고를 빼 가는 곳: ' + (store.usedBy(it, pi).join(', ') || '없음')) + '">' + (si === n - 1 && it.cat !== 'oem' ? '<button type="button" class="padd" data-add="' + it.id + '" title="이 품목에 공정 추가">＋</button>' : '') + (it.cat === 'oem' ? '<span class="pname">' + esc(pr.n) + '</span>' : '<span class="pname' + (out || si === n - 1 ? '' : ' drag') + '" data-pm="' + it.id + '" data-pi="' + pi + '"' + (out || si === n - 1 ? '' : ' draggable="true"') + ' title="' + (out ? '눌러서 공정 메뉴' : si === n - 1 ? '눌러서 메뉴 (앞으로 이동·삭제)' : '끌어서 순서 바꾸기 · 눌러서 메뉴 (앞뒤 이동·삭제)') + '">' + esc(pr.n) + '</span>') + (pr.out && pr.out.length ? ' <span class="lk">🔗</span>' : '') + '' + '</td>';
       if (out) {
         h += '<td class="num muted" data-c="oq"></td><td class="num in"><input class="qi" data-k="' + k + '" data-f="g" inputmode="decimal" value="' + fmtIn(e.g) + '" placeholder="출고"></td><td class="num" data-c="erp"></td><td class="num"></td><td></td>' +
           '<td class="num st" data-c="rem"></td><td class="num" data-c="ms"></td><td class="num muted" data-c="cum"></td>';
