@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v115">
+<meta name="su-ver" content="v116">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -256,6 +256,8 @@ main{padding-bottom:6px}.more{padding:6px 0 0}.more button{padding:5px 16px}
 .grid.month tr.rep td.c-p{color:rgb(29 78 216/.5)}.grid.month tr.rep td.c-pc{color:rgb(51 65 85/.5)}.grid.month tr.rep td.c-memo{color:rgb(71 85 105/.5)}
 .grid.month tr:has(.fold-t.on) td:is(.c-p,.c-pc,.c-n,.c-s,.c-memo){font-weight:700}.grid.month tr:has(.fold-t.on) td.c-memo{color:#334155}
 .grid.month tr.rep td:is(.c-cat,.c-p,.c-pc,.c-n,.c-s,.c-memo),.grid.month tr.rep td:is(.c-cat,.c-p,.c-pc,.c-n,.c-s,.c-memo) *{font-weight:400}
+td.yr{font-weight:400!important}td.num.pa{font-weight:700;color:#0f172a}
+.gr-b{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:700;white-space:nowrap}td.gr-c,th.gr-h{text-align:center}td.rk{white-space:nowrap;color:#334155}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -1017,6 +1019,11 @@ async function auBoot(){
   if(auValid())appStart(); else auShowGate();
 }
 
+/* 신용등급 기본표 — 매출분석도구 v1705 GRADE 에서 등급만 (서버 gradeOverride 가 덮어씀) */
+var GRADE_BASE={"(주)경동원":"A+","바른창호(주)/성호전자(주)":"A+","바른창호(주)":"A+","성호전자(주)":"A+","동방노보펌(주) 화성지점":"A+","(주)제일방화문":"A+","(주)신원에이스도어":"A+","(주)안전방화문":"A+","대동방화문(주)(포천)":"A+","(주)벽두도어":"A+","다우도어앤스틸":"A+","(주)우창":"A-","(주)동원창호":"B+","(주)더굿도어":"B+","(주)진성산업":"A+","아주스틸 주식회사":"A+","(주)이지스 FSD":"A-","국일도어테크(주)":"B+","주식회사 동우이엠씨":"B-","(주)일조":"A+","주식회사 창진금속":"C+","주식회사 미건도어":"B+","금강건영(구리,동서울)":"C+","주식회사 정일방화문":"B+","건영방화문":"C+","동원방화문 주식회사":"C+","(주)동성산업":"A+","(주)무등방화문":"B-","주식회사 해광방화문":"B+","(주)동광명품도어 구미지사":"B+","다우방화문":"A+","세기에프에스디(주)":"B+","(주)한국방화문":"B-","(주)성광특수금속":"B-","주식회사 스마트도어":"B-","(주)제이에스":"B+","신영방화문 주식회사":"B+","(주)동해공영":"C+","전진샤링":"C+","(주)마메든도어":"C+","주식회사 세호방화문":"C+","주식회사 에스테크(화인엠텍)":"선결","주식회사 금풍앤에프":"C-","(주)금강이엠씨":"C+","진호정밀":"C+","화성방화문":"C+","회승강건주식회사":"C+","(주)우리에스디테크방화문":"C+","주식회사 천문":"C+","경남스텐주식회사":"C-","주식회사 무등스텐방화문":"C-","고려하드웨어주식회사":"C+","주식회사 태광방화방음문":"C+","주식회사 서울내장기업":"C+","세화테크주식회사":"C+","주식회사 한림도어":"B+","더문이엔씨":"B+","주식회사 금강방화문":"B+","주식회사 세한이엔지":"C+","화성산업개발":"C+","주식회사 가온스틸":"선결","(주) 더어울림":"C+","삼성기업":"B+","(주)금천":"C-","(주)삼진방화문":"C+","고신ENG":"C+","화성강건":"C+","세움":"선결","주식회사 와이즈메탈라인":"C+","(주)의성방화문":"C+","주식회사 정원산업":"C+","세종방화문":"C-","광영방화문(장지동)":"C-","삼삼금속":"C-","진양":"C+","테라스틸 주식회사(의성산업)":"C+","주식회사강남산업":"C+","이레방화문 (26.5월말 영업종료)":"C-","(주)세광금속":"선결","도랜하우스 코리아":"선결","갑성산업(주)":"C+","성진산업":"C+","(주)은우":"선결","(주)유신테크":"C+","(신)고려산업":"C-","인성건철":"C+","주식회사 웅진방화문":"C+","주식회사 솔리드방화문":"C-","(주)동방테크":"C+","주식회사우노도어하드웨어":"C+","(주)네써쎄리 (폐업)":"C+","조스튜디오":"선결","주식회사 금성방화문":"선결","창일산업개발(주)":"C+","동방패밀리주식회사":"C+","주식회사 지음":"선결","가온도어":"선결","주식회사 목현도어":"A-","주식회사 나인":"선결","삼일방화문(이상영)":"선결","한성FSD":"C+","진영실업":"C+","(주)도어리안(구 경인에스디)":"C+","(주)신흥방화문":"C+","주식회사 현주스틸도어":"C+","금진에스디방화문":"선결","주식회사 우성도어":"C+","대림산업":"C+","대동방화문(대동FSD)":"C-","운천방화문":"선결","봉화산업":"C-","(주)매트프라자":"C+","현진스텐":"C+","주식회사 유신테크 화원지점":"C+","주식회사태영방음":"C-","용문방화문":"선결","우진방화문(광주)":"C+","한국방화문(광탄)":"C+","(주)제3스틸":"선결","금강기업(대구)":"C-","(주)태광피앤티":"C+","(주)성광":"C-","(주) 성창금속":"선결","(주)아린엠에이치씨":"선결","주식회사 화인엠텍":"선결","진주방화문":"C+","광건티앤엠(주)":"C+","주식회사하나이엔씨":"선결","주식회사 나운자동문":"선결","디와이트레이딩":"선결","유한회사 현주산업":"C-","(주)엘제이기업":"선결","성산테크":"선결","뚝딱철물장식":"선결","금호스틸방화문":"C+","신진DMB":"C+","대영방화문(구.대영공업사)":"선결","한국메탈 주식회사":"선결","태광방음문":"C+","주식회사 대성명품도어":"선결","주식회사 월드스틸":"선결","주식회사 코아텍":"선결","주원인터내셔널(주)":"C+","주식회사 우경메탈":"선결","주식회사 무진메탈":"선결","B&P 파트너스":"선결","선한도어":"선결","(주)신생":"C+","리치도어":"선결","주식회사 현대방음문":"선결","(주)한라에프에스디":"C+","주식회사 유림축산":"선결","디자인재성":"선결","(주)벽두엔에이치티 (NHT)":"C+","케이인터내셔널":"선결","(주)유신테크 지점(구미)":"C+","(주)동호엔지니어링":"선결","주식회사 조은이엔디":"선결","중부창호산업":"선결","미래금속":"선결","명성금속(명성방화문)":"C+","주식회사 동서스텐":"C+","(주)시원금속":"선결","(주)네오플러스엠":"선결","주식회사 지원":"선결","(주)진관개발":"선결","케이에스 메탈(KS metal)":"선결","두리하드웨어(두리 하드웨어)":"C+","(주)신흥이앤씨":"C+","금강건철산업(강북)":"C+","최서방하우징":"선결","혜성ENC":"선결","혜성방음문":"선결","주식회사 중용방화문":"선결","송광방화문":"선결","주식회사 두산금속":"선결","아사아블로이코리아 주식회사":"C+","(주)디라인":"선결","주식회사 용금에스티디":"선결","주식회사 용금":"선결","가온금속":"선결","베스트 방음문":"선결","주식회사 나인인터내셔널":"선결","(주)이레앤엘피스":"C-","동방강업":"C+","우주상사":"선결","개인매출":"선결","(주)남경":"선결","아주이엔지(ENG)":"선결","(주)대성하이텍":"C+","경인스텐":"선결","금정역2차SKV1타워관리단":"선결","(주)엔젤엠엘":"C+","에프이에스":"선결","주식회사 나루금속(구.안전금속)":"선결","발해이앤씨 주식회사":"선결","주식회사 원스":"선결","스틸앤글라스":"선결","주식회사 한국부건마메든도어":"C+","오투메탈":"C+","예맥금속주식회사":"선결","대흥건철(주)":"선결","디에이치":"선결","조은현관문(부평)":"C+","홈앤코 주식회사":"선결","아이언(IRON)":"선결","대명방화문(한상윤)":"선결","오케이집수리":"선결","주식회사 쿨잇":"선결","유진디에스 주식회사":"선결","디씨하드웨어 주식회사":"선결","삼월기업(신광철강)":"선결","진성산업주식회사":"선결","(주)신화시스템":"선결","굿센하드웨어 주식회사":"C+","(주)대정엠테크":"선결","(주)이앤에이디자인":"선결","대동방화문":"C+","주식회사 리필리":"선결","안동홈케어":"선결","신명스카이뷰주얼리아파트입주자대표회의":"선결","스카이하드웨어 주식회사":"선결","주식회사 라스메탈":"선결","(주)오토메탈라인":"선결","(주)진성금속레이져":"선결","(주)동방파스텍 광주지점(폐업)":"A+","(주)우리도어":"C+","(주)패럼인프라":"C+","우진방화문(부산)":"C+","주식회사 강산금속":"C+","(주)대동이엔지":"C+","화인텍도어하드웨어(주)":"선결","정우스틸산업(주)":"선결","(주)한서에프에스디":"C+","(주)에스에이앤테크":"선결","주식회사 대건에프앤씨(서산)":"C-","주식회사 신우금속":"선결","(주)정원이엔지":"C+","신원테크":"C+","대건방화문":"C-","태영아이앤디":"C-","혜성금속":"선결","동방방화문":"C+","세진하이텍":"C-","주식회사 일진방화문":"C+","대흥엔지니어링":"선결","도스템 주식회사":"선결","을지하드웨어":"선결","미림내장건설":"선결","동그린&마메든도어":"C+","(주)예건":"선결","주식회사 경원메탈":"선결","신광철강 (구 신광ENG)":"선결","성문방화문":"C+","(주)성원기업":"C-","엠제이메탈":"선결","(주)이화메탈":"선결","주식회사 주원방화문":"C+","(주)동영산업":"선결","유하":"선결","주식회사 금호노블셔터":"선결","(주)미코인더스트리":"선결","우진산업":"C+","주식회사 에이치에스패널":"C+","데시벨산업 주식회사":"선결","(주)에이원메탈":"선결","주식회사 무진인터내셔날":"선결","대성산업":"C+","하남 방화문(구.엘피스방화문)":"선결","주식회사 메탈라인":"선결","(주)정우":"선결","공영이엔씨(주)":"C+","주식회사 동화에스피디":"선결","골드핸즈":"선결","미래도어(구.전통방화문)":"선결","국민도어(구.소리엔 방음)":"C-","미성방음테크":"선결","신형공영(주)":"선결","(주)고려건장":"선결","천하산업":"선결","주식회사 페타케이디도어":"C+","에이치디 테크":"선결","주식회사 성신금속":"선결","주식회사 대종건설":"선결","금진패션방화문":"C+","이룸 디엔씨":"선결","OK금속":"선결","주식회사 오케이 M.W.D":"선결","오경상사":"C+","아이언ENG":"선결","메리트도어":"C+","태호금속":"선결","일주금속":"선결","케이비엔지니어링(주)":"선결","주식회사 명품건설":"선결","전국방화문":"C+","위즈컴":"선결","롯데건설 (주)":"선결","신진철물":"선결","메탈라인":"선결","문수리 문앤리코":"선결","(주)한터아이앤에스":"선결","(주)현진산업":"선결","주식회사 스튜디오디원":"선결","에이스병원":"선결","케이티엠지":"선결","에이치디(HD)하드웨어":"선결","마산웰메이드시티":"선결","세로E&C":"선결","광명공업사":"선결","(주)에바(EVAR)":"선결","홍원상사 주식회사":"선결","(주)에스엔건설":"선결","주식회사 사운드방음문":"C+","더플랫":"선결","대림종합상사":"선결","세원공구(공구백화점)":"선결","성문종합개발주식회사":"선결","엠시스 주식회사":"C+","뉴딜테크":"C-","(주)우주도어하드웨어":"선결","주식회사 뷰텍이에스":"선결","일흥상사":"선결","주식회사 하영엔지니어링":"선결","(주)만경테크":"선결","제이앤제이유통 주식회사":"선결","씨에이이큐브(주)":"선결","현대테크":"선결","상일방화문 태양광발전소":"선결","나진방화문(서울)":"선결","대광종합건재":"선결","디자인 해윰":"선결","코리아산업":"선결","(주)야무진":"C+","아주엠씨엠(주)":"A+","주식회사 신성방화문(폐업)":"중지","(주)태양FSD(폐업)":"C-","(주)메리트현관도어":"선결","일진방화문(김포공장)/폐업":"C+","일진방화문(김포공장)":"C+","폐업":"C+","(주)아이하드웨어":"선결","주식회사 태광아이엔티":"선결","주식회사 동방도어테크":"중지","경기패션방화문":"C+","진원픽스 주식회사":"선결","(주)형제메탈":"C+","월드시스템":"C+","이루메탈":"선결","(주)동영엔지니어링":"C+","(주)한양금속":"C+","주식회사 비앤에스산업":"선결","한신부속":"선결","대양산업":"선결","명품방화문(인천)":"C+","우진하우징(주)":"선결","대아금속주식회사":"선결","주식회사 삼성테크":"선결","(주)삼화금속":"선결","홍은산업개발":"선결","남서방하우징":"선결","더 좋은사람 하우징":"선결","(주)예성":"선결","주식회사 인텍티에스":"C+","진성산업(구.진진산업)":"선결","메탈리어":"선결","안성정일방화문":"선결","주식회사 범성":"선결","에이엠테크":"선결","(주)대진건업 정선공장":"선결","거성산업":"C+","(주)화인씨앤씨":"선결","주식회사 영진형제금속":"선결","동성건설(주)":"선결","성석이엔디":"선결","주식회사 예원테크":"선결","경진방화문":"C-","(주)원앤에프기술산업":"선결","(주)에이스시스템":"선결","삼성공사":"선결","삼일스텐레이저":"선결","금진에스디":"C+","주식회사 협성이앤지":"선결","손서방 하우징":"선결","세종방화문(서주영)":"선결","모세금속":"선결","주식회사 한국방화문":"C+","(주)토탈방화문":"선결","수도":"선결","(주)선진테크":"선결","대림하드웨어":"선결","주식회사 데코메탈":"선결","주식회사 유진메이커스":"선결","주식회사델타이엔지":"선결","99클린":"선결","(주)대성아트메탈":"선결","주식회사 신성건설":"선결","(주)현대정밀하드웨어":"선결","(주)유림팜스토어":"선결","지원종합개발":"선결","성보":"C+","프론트도어(이테크도어)":"선결","아줌마공구":"선결","의료법인 승민의료재단(화성초록병원)":"선결","태양금속":"선결","대덕종합상사":"선결","일등도어":"선결","거성건철":"C+","한라메탈":"선결","삼백인테리어장식철물":"선결","주식회사 삼신이엔씨":"선결","금강방화문 천안대리점":"선결","한국도어":"선결","신성부속":"선결","국제종합상사":"선결","동부방음문":"선결","주식회사 삼일엠앤디":"선결","한국샷시부속":"선결","알라딘홈케어":"선결","주식회사 용림엘디디":"선결","에이케이머티리얼(AK marterial)":"C+","집수리이웃":"선결","친구도어":"선결","전국열쇠 이마트 천호점":"선결","구일철물 건재 골재":"선결","성실금속":"선결","테크와이드 주식회사":"선결","장원종합상사":"선결","큐테크금속":"선결","태송 메탈":"선결","집수리 A to Z":"선결","주식회사 케이에스씨플러스":"선결","(주)삼선CSA":"C+","에스엠금속":"선결","안동방화문":"선결","(주)경남금속":"선결","신광ENG":"선결","상계건축철물":"선결","서안동농업협동조합":"선결","청우산업주식회사":"선결","주식회사 드림테크":"선결","(주)사스티에스":"선결","(주)제이디메탈":"선결","오이통상":"선결","공간 자동문":"선결","원호개발(주)":"선결","협동 프라임":"선결","대덕테크노밸리푸르지오하임입주자대표회의":"선결","강산금속":"선결","신흥아트":"선결","주원산업":"선결","대성산업(대구)":"C+","동양강철 중앙대리점":"선결","제이컴퓨터":"선결","(주)엠투엔 전장사업부":"선결","보화방화문":"선결","(주)오앤씨테크":"선결","형제금속(김민호)":"선결","(주)우선산업관리":"선결","서울티엔에스 주식회사":"선결","주식회사 더굿스틸":"C+","용인행정타운 두산위브1단지 입주자대표회의":"선결","미래건업":"선결","(주)덕산토건":"선결","청년부부집 수리":"선결","일성종합상사":"선결","(주)원보건설":"선결","(주)거호산업":"선결","대명방화문":"선결","에이치엘디앤아이한라 주식회사":"선결","동방강업(부산)":"선결","덕신건업주식회사":"선결","원메탈":"선결","주식회사 서진메탈":"선결","범아상사":"선결","범일방호기술산업":"선결","천성산업주식회사":"선결","한양기업":"선결","우리방화문":"C+","(주)동광명품도어":"B+","아리공사":"선결","영화진흥위원회":"선결","일신방화문":"선결","금강테크":"선결","북면초등학교":"선결","경일하드웨어":"선결","금화금속":"선결","이노텍트":"선결","새한하이텍(주)":"선결","동국씨엠(주) 도성센터":"C+","주식회사 진성코리아건설":"선결","문수리 도어맨":"선결","한마기업":"선결","에스케이홈닥터":"선결","준 디자인연구소":"선결","태일사":"선결","농심엔지니어링(주)":"선결","주식회사 현우엠앤에스":"선결","고기리막국수 주식회사":"선결","재진금속":"선결","주식회사 오성메탈":"선결","디피씨 주식회사":"선결","주식회사 오키드호텔":"선결","(주)로보티즈":"선결","바이스틸":"선결","강의메탈":"선결","동방산업(주)":"선결","삼성방음문":"선결","시알매니지먼트 주식회사":"선결","(유)일광창호":"선결","대성집수리":"선결","금천 피에스아이":"선결","제일이엠씨 주식회사":"선결","신세기유통":"선결","이루자 컴퍼니":"선결","(주)다화산업":"선결","(주)창성인더스트리":"선결","동휘철강(주)":"선결","주식회사 유진씨엔씨":"선결","에이티티코리아":"선결","(주)신한티앤에스":"선결","금성스틸도어":"선결","모드니도어":"선결","(주)그린주의":"선결","주식회사 오투알앤디":"선결","하나공구":"선결","게이트":"선결","현대내장건설":"선결","부산문수리":"선결"};
+var GRADE_CAT={'A+':'정상','B+':'정상','C+':'정상','A-':'관리','B-':'관리','C-':'관리','선결':'선결제','선결제':'선결제','제한':'거래제한','거래제한':'거래제한','중지':'거래중지','거래중지':'거래중지','보류':'주의','D':'정상','F':'위험'};
+var GRADE_COL={'정상':{bg:'#dcfce7',tx:'#15803d'},'관리':{bg:'#ffedd5',tx:'#c2410c'},'주의':{bg:'#fef3c7',tx:'#b45309'},'위험':{bg:'#fee2e2',tx:'#dc2626'},'선결제':{bg:'#dbeafe',tx:'#1d4ed8'},'거래제한':{bg:'#f3e8ff',tx:'#7e22ce'},'거래중지':{bg:'#e5e7eb',tx:'#334155'}};
+
 /* ═══════════════════════════════════════════════════════════
    수불관리 (GitHub 웹 버전) — 화면
    - 로그인: 매출분석도구·출고매칭과 같은 계정(dpt_auth_*)
@@ -1220,6 +1227,40 @@ async function yrPull() {
   } catch (e) { S.yr.err = e.message || String(e); }
   finally { S.yr.busy = false; }
 }
+/* v116 : 신용등급 (매출분석도구 기본표 GRADE_BASE + 서버 gradeOverride) · 매출순위 (올해 매출 자료 기준) */
+S.gr = { ov: {}, last: null, map: null };
+function grNm(x) { return String(x == null ? '' : x).trim().replace(/（/g, '(').replace(/）/g, ')').replace(/　/g, ' ').replace(/㈜/g, '(주)').replace(/\s+/g, ' '); }
+function grLn(x) { return grNm(x).replace(/주식회사/g, '(주)').replace(/유한회사/g, '(유)').replace(/\([^)]*폐업[^)]*\)/g, '').replace(/\([^)]*영업종료[^)]*\)/g, '').replace(/\s+/g, ''); }
+function grMap() {
+  if (S.gr.map) return S.gr.map;
+  var m = { nm: {}, ln: {}, yk: {} };
+  function put(k, g) { if (!g) return; m.nm[grNm(k)] = g; m.ln[grLn(k)] = g; var y = yrNk(k); if (!(y in m.yk)) m.yk[y] = g; }
+  Object.keys(GRADE_BASE).forEach(function (k) { put(k, GRADE_BASE[k]); });
+  Object.keys(S.gr.ov || {}).forEach(function (k) { var o = S.gr.ov[k]; if (o && o.grade) put(k, o.grade); });
+  return (S.gr.map = m);
+}
+function gradeOf(c, hq) { if (!c) return ''; var m = grMap(), g = m.nm[grNm(c)] || m.ln[grLn(c)] || m.yk[yrNk(c)] || '';
+  if (!g && !hq) { var b = grNm(c).replace(/\s+\S*(지점|점|공장|현장|청라|본사|센터)$/, ''); if (b !== grNm(c)) { g = gradeOf(b, 1); if (g) return g + '*'; } }   /* 지점명 붙은 곳은 본사 등급 (*) */
+  return g; }
+function gradeBadge(c) {
+  var g = gradeOf(c), hq = /\*$/.test(g); g = g.replace(/\*$/, ''); if (!g) return '<span class="muted">-</span>';
+  var gd = ({ '선결': '선결제', '중지': '거래중지', '제한': '거래제한' })[g] || g, cat = GRADE_CAT[g] || GRADE_CAT[gd] || '기타', col = GRADE_COL[cat] || { bg: '#eef2f8', tx: '#475569' };
+  return '<span class="gr-b" style="background:' + col.bg + ';color:' + col.tx + '" title="신용등급 ' + esc(gd) + ' (' + esc(cat) + ') · 매출분석도구 기준' + (hq ? ' · 지점 등급 없어 본사 등급' : '') + '">' + esc(gd) + (hq ? '*' : '') + '</span>';
+}
+function grKey() { return 'grov:' + (AU.id || ''); }
+async function loadGrCache() { try { var c = await idb.get(grKey()); if (c && c.ov) { S.gr.ov = c.ov; S.gr.map = null; } } catch (e) {} }
+async function grPull() {
+  try { var d = await auCall({ action: 'get', fields: 'gradeOverride' }, 60000); var ov = d && (d.gradeOverride || (d.data && d.data.gradeOverride));
+    if (ov && typeof ov === 'object') { var ch = JSON.stringify(ov) !== JSON.stringify(S.gr.ov); S.gr.ov = ov; S.gr.last = new Date(); S.gr.map = null; if (ch) { idb.set(grKey(), { at: new Date().toISOString(), ov: ov }).catch(function () {}); softRefresh(); } } } catch (e) {}
+}
+var YR_RANK = { k: '', m: {}, n: 0 };
+function yrRank(c) {
+  if (!S.yr.last || !c || c.charAt(0) === '(') return null;
+  var key = Object.keys(S.yr.months).join() + '|' + Object.keys(S.yr.by).length;
+  if (YR_RANK.k !== key) { var L = Object.keys(S.yr.by).filter(function (k) { return S.yr.by[k] > 0; }).sort(function (a, b) { return S.yr.by[b] - S.yr.by[a]; }), m = {}; L.forEach(function (k, i) { m[k] = i + 1; }); YR_RANK = { k: key, m: m, n: L.length }; }
+  return YR_RANK.m[yrNk(c)] || null;
+}
+function rankCell(c) { var r = yrRank(c); return '<td class="num rk"' + (r ? ' title="' + S.yr.y + '년 매출 ' + r + '위 / ' + YR_RANK.n + '곳"' : '') + '>' + (r ? r + '위' : '<span class="muted">-</span>') + '</td>'; }
 function yrCell(c) { var v = yrAmt(c); return '<td class="num yr"' + (S.yr.err && !S.yr.last ? ' title="매출 자료 받기 오류: ' + esc(S.yr.err) + '"' : '') + '>' + (v == null ? '-' : won(v)) + '</td>'; }
 
 /* ───────── 서버 ───────── */
@@ -1760,8 +1801,8 @@ function renderDash() {
     (pr.slice(0, 14).map(function (x) { var P = x[1]; return '<tr class="go" data-proc="' + esc(x[0]) + '"><td>' + esc(x[0]) + '</td><td class="num">' + fmt(P.p) + '</td><td class="barc"><span class="hbar" style="width:' + (maxP ? Math.max(1, P.p / maxP * 100) : 0).toFixed(1) + '%"></span></td><td class="num">' + fmt(P.b) + '</td><td class="num' + (P.p && P.b / P.p > 0.02 ? ' neg' : '') + '">' + pct(P.b, P.p) + '</td><td class="num' + (P.st < 0 ? ' neg' : '') + '">' + fmt(P.st) + '</td></tr>'; }).join('') || '<tr><td colspan="6" class="muted">이 기간 생산 입력 없음</td></tr>') + '</tbody></table></div>';
   /* 고객사별 출고 */
   var cu = Object.keys(D.byCust).map(function (k) { return [k, D.byCust[k]]; }).sort(function (a, b) { return (a[0].charAt(0) === '(') - (b[0].charAt(0) === '(') || (b[1].a - a[1].a) || (b[1].q - a[1].q); });
-  h += '<div class="card"><h3 class="card-h">고객사별 출고 <small class="muted">TOP 10 · ' + perLabel(D.R) + '</small><button type="button" class="card-more" data-more="cust" title="모든 고객사·고객사별 품목 자세히">더보기 ›</button></h3><table class="grid small"><thead><tr><th>고객사</th><th class="num">출고 수량</th><th class="num" title="기간 ERP 출고 공급가">매출액</th><th class="num" title="매출분석도구 서버 매출 자료 · ' + S.yr.y + '년 1월부터 공급가 합">' + S.yr.y + '년 매출액</th><th class="num">건</th></tr></thead><tbody>' +
-    (cu.slice(0, 10).map(function (x) { return '<tr><td>' + esc(x[0]) + '</td><td class="num">' + fmt(x[1].q) + '</td><td class="num">' + won(x[1].a) + '</td>' + yrCell(x[0]) + '<td class="num">' + x[1].n + '</td></tr>'; }).join('') || '<tr><td colspan="5" class="muted">이 기간 출고 없음</td></tr>') + '</tbody></table>' + (cu.length > 10 ? '<div class="muted small">외 ' + (cu.length - 10) + '곳</div>' : '') + '</div>';
+  h += '<div class="card"><h3 class="card-h">고객사별 출고 <small class="muted">TOP 10 · ' + perLabel(D.R) + '</small><button type="button" class="card-more" data-more="cust" title="모든 고객사·고객사별 품목 자세히">더보기 ›</button></h3><table class="grid small"><thead><tr><th>고객사</th><th class="gr-h">신용등급</th><th class="num" title="' + S.yr.y + '년 매출 순위 (매출분석 자료)">매출순위</th><th class="num">출고 수량</th><th class="num" title="기간 ERP 출고 공급가">기간 매출액</th><th class="num" title="매출분석도구 서버 매출 자료 · ' + S.yr.y + '년 1월부터 공급가 합">' + S.yr.y + '년 매출액</th><th class="num">건</th></tr></thead><tbody>' +
+    (cu.slice(0, 10).map(function (x) { return '<tr><td>' + esc(x[0]) + '</td><td class="gr-c">' + gradeBadge(x[0]) + '</td>' + rankCell(x[0]) + '<td class="num">' + fmt(x[1].q) + '</td><td class="num pa">' + won(x[1].a) + '</td>' + yrCell(x[0]) + '<td class="num">' + x[1].n + '</td></tr>'; }).join('') || '<tr><td colspan="7" class="muted">이 기간 출고 없음</td></tr>') + '</tbody></table>' + (cu.length > 10 ? '<div class="muted small">외 ' + (cu.length - 10) + '곳</div>' : '') + '</div>';
   /* 완제품 재고 많은 품목 */
   T.top.sort(function (a, b) { return b.st - a.st; });
   h += '<div class="card"><h3 class="card-h">완제품 재고 많은 품목 <small class="muted">TOP 12</small><button type="button" class="card-more" data-more="topst" title="완제품 재고 있는 품목 모두 자세히">더보기 ›</button></h3><table class="grid small"><thead><tr><th>구분</th><th>품번</th><th>품명</th><th>규격</th><th title="그 품목 ERP 출고 중 가장 최근 고객사 (출고 없으면 품목 고객사)">최근 매출 고객사</th><th class="num">재고</th><th class="num">수주 잔량</th></tr></thead><tbody>' +
@@ -1843,15 +1884,16 @@ function renderCustPage() {
   var totA = D.list.reduce(function (s, x) { return s + x.a; }, 0), totQ = D.list.reduce(function (s, x) { return s + x.q; }, 0), totN = D.list.reduce(function (s, x) { return s + x.n; }, 0);
   var rows = D.list.filter(function (x) { return !q || x.c.toLowerCase().indexOf(q) >= 0 || x.items.some(function (I) { return (itemText(I.it) + ' ' + Object.keys(I.codes).join(' ').toLowerCase()).indexOf(q) >= 0; }); });
   rows.sort(function (a, b) { return (a.c.charAt(0) === '(') - (b.c.charAt(0) === '(') || (b.a - a.a) || (b.q - a.q); });
-  var cols = [{ k: 'c', t: '고객사', v: function (x) { return x.c; } }, { k: 'q', t: '출고 수량', num: 1, v: function (x) { return x.q; } }, { k: 'a', t: '매출액', num: 1, v: function (x) { return x.a; } }, { k: 'r', t: '매출액 비중', num: 1, v: function (x) { return x.a; } }, { k: 'y', t: S.yr.y + '년 매출액', num: 1, v: function (x) { var v = yrAmt(x.c); return v == null ? -1 : v; } }, { k: 'n', t: '건', num: 1, v: function (x) { return x.n; } }, { k: 'ni', t: '품목 수', num: 1, v: function (x) { return x.ni; } }, { k: 'last', t: '마지막 출고', v: function (x) { return x.last; } }];
+  var GR_O = { 'A+': 1, 'A-': 2, 'B+': 3, 'B-': 4, 'C+': 5, 'C-': 6, 'D': 7, '보류': 8, '선결': 9, '선결제': 9, '제한': 10, '거래제한': 10, 'F': 11, '중지': 12, '거래중지': 12 };
+  var cols = [{ k: 'c', t: '고객사', v: function (x) { return x.c; } }, { k: 'g', t: '신용등급', v: function (x) { var g = gradeOf(x.c).replace(/\*$/, ''); return g ? (GR_O[g] || 50) : 99; } }, { k: 'rk', t: '매출순위', num: 1, v: function (x) { var r = yrRank(x.c); return r ? -r : -1e9; } }, { k: 'q', t: '출고 수량', num: 1, v: function (x) { return x.q; } }, { k: 'a', t: '기간 매출액', num: 1, v: function (x) { return x.a; } }, { k: 'r', t: '매출액 비중', num: 1, v: function (x) { return x.a; } }, { k: 'y', t: S.yr.y + '년 매출액', num: 1, v: function (x) { var v = yrAmt(x.c); return v == null ? -1 : v; } }, { k: 'n', t: '건', num: 1, v: function (x) { return x.n; } }, { k: 'ni', t: '품목 수', num: 1, v: function (x) { return x.ni; } }, { k: 'last', t: '마지막 출고', v: function (x) { return x.last; } }];
   rows = pgSort(rows, cols);
   var maxA = D.list.reduce(function (m, x) { return Math.max(m, x.a); }, 0);
-  var h = pgHead('고객사별 출고 <b>' + D.list.length.toLocaleString() + '</b>곳', perLabel(D.R) + ' · 매출액 = ERP 출고 공급가 · ' + S.yr.y + '년 매출액 = 매출분석 자료 · 위 구분 탭으로 구분별 · 줄 누르면 품목별', true) +
-    '<div class="pg-sum">출고 수량 <b>' + fmt(totQ, false) + '</b> · 매출액 <b>' + won(totA) + '</b> · ' + totN.toLocaleString() + '건' + (q ? ' · 검색 결과 ' + rows.length + '곳' : '') + '</div>' +
+  var h = pgHead('고객사별 출고 <b>' + D.list.length.toLocaleString() + '</b>곳', perLabel(D.R) + ' · 기간 매출액 = ERP 출고 공급가 · 신용등급 = 매출분석도구 · 매출순위 = ' + S.yr.y + '년 매출 · ' + S.yr.y + '년 매출액 = 매출분석 자료 · 위 구분 탭으로 구분별 · 줄 누르면 품목별', true) +
+    '<div class="pg-sum">출고 수량 <b>' + fmt(totQ, false) + '</b> · 기간 매출액 <b>' + won(totA) + '</b> · ' + totN.toLocaleString() + '건' + (q ? ' · 검색 결과 ' + rows.length + '곳' : '') + '</div>' +
     '<div class="tbl-wrap"><table class="grid pg-tbl"><thead><tr><th class="num">#</th>' + pgTh(cols) + '</tr></thead><tbody>';
   rows.forEach(function (x, i) {
     var op = P.open === x.c;
-    h += '<tr class="pg-row' + (op ? ' open' : '') + '" data-pc="' + esc(x.c) + '"><td class="num muted">' + (i + 1) + '</td><td><b>' + esc(x.c) + '</b></td><td class="num">' + fmt(x.q) + '</td><td class="num">' + won(x.a) + '</td><td class="num"><span class="pbar"><i style="width:' + (maxA ? Math.max(0.5, x.a / maxA * 100) : 0).toFixed(1) + '%"></i></span>' + (totA ? (x.a / totA * 100).toFixed(1) + '%' : '-') + '</td>' + yrCell(x.c) + '<td class="num">' + x.n.toLocaleString() + '</td><td class="num">' + x.ni + '</td><td>' + esc(x.last ? x.last.slice(5).replace('-', '/') : '') + '</td></tr>';
+    h += '<tr class="pg-row' + (op ? ' open' : '') + '" data-pc="' + esc(x.c) + '"><td class="num muted">' + (i + 1) + '</td><td><b>' + esc(x.c) + '</b></td><td class="gr-c">' + gradeBadge(x.c) + '</td>' + rankCell(x.c) + '<td class="num">' + fmt(x.q) + '</td><td class="num pa">' + won(x.a) + '</td><td class="num"><span class="pbar"><i style="width:' + (maxA ? Math.max(0.5, x.a / maxA * 100) : 0).toFixed(1) + '%"></i></span>' + (totA ? (x.a / totA * 100).toFixed(1) + '%' : '-') + '</td>' + yrCell(x.c) + '<td class="num">' + x.n.toLocaleString() + '</td><td class="num">' + x.ni + '</td><td>' + esc(x.last ? x.last.slice(5).replace('-', '/') : '') + '</td></tr>';
     if (op) {
       var dc = [{ k: 'cat', t: '구분', v: function (l) { return l.it.cat; } }, { k: 'd', t: '출고일', v: function (l) { return l.d; } }, { k: 'p', t: '품번', v: function (l) { return l.it.p || l.it.n; } }, { k: 'pc', t: '제품번호', v: function (l) { return (!isSCode(l.code) && l.code) || prodCode(l.it); } },
         { k: 'n', t: '품명', v: function (l) { return l.it.it || l.it.n || ''; } }, { k: 's', t: '규격', v: function (l) { return l.it.s || ''; } }, { k: 'r', t: '비고', v: function (l) { return l.r || ''; } },
@@ -1859,12 +1901,12 @@ function renderCustPage() {
       var L = x.lines.slice().sort(function (a, b) { return String(b.d).localeCompare(String(a.d)) || b.a - a.a; });
       var dk = dc.filter(function (c) { return c.k === P.dk; })[0];
       if (dk && P.dd) L.sort(function (a, b) { var u = dk.v(a), w = dk.v(b); return P.dd * (typeof u === 'number' && typeof w === 'number' ? u - w : String(u).localeCompare(String(w), 'ko')); });
-      h += '<tr class="pg-detail"><td colspan="9"><div class="muted small" style="margin-bottom:4px">출고 ' + L.length.toLocaleString() + '줄 · 품목 ' + x.ni + '개 · 머리글 누르면 정렬</div><table class="grid small pg-dt"><thead><tr>' +
+      h += '<tr class="pg-detail"><td colspan="11"><div class="muted small" style="margin-bottom:4px">출고 ' + L.length.toLocaleString() + '줄 · 품목 ' + x.ni + '개 · 머리글 누르면 정렬</div><table class="grid small pg-dt"><thead><tr>' +
         dc.map(function (c) { var on = P.dk === c.k && P.dd; return '<th class="' + (c.num ? 'num ' : '') + 'sortable' + (on ? ' sorted' : '') + '" data-dk="' + c.k + '" title="눌러서 정렬">' + c.t + (on ? '<span class="sa">' + (P.dd > 0 ? '▲' : '▼') + '</span>' : '') + '</th>'; }).join('') + '</tr></thead><tbody>' +
         L.map(function (l) { var it = l.it; return '<tr><td><span class="cb cat-' + it.cat + '">' + esc(SU.CAT_NAME[it.cat] || '') + '</span></td><td class="nowrap">' + esc(l.d ? l.d.slice(2).replace(/-/g, '/') : '') + '</td><td class="link" data-open="' + it.id + '">' + esc(it.p || it.n) + '</td><td class="c-pc">' + esc((!isSCode(l.code) && l.code) || prodCode(it)) + '</td><td class="c-n">' + esc(it.it || it.n || '') + '</td><td class="c-s">' + esc(it.s || '') + '</td><td class="c-memo" title="' + esc((l.o ? '주문번호 ' + l.o + '\n' : '') + (l.r || '')) + '">' + esc(l.r || '') + '</td><td class="num">' + fmt(l.q) + '</td><td class="num">' + (l.up ? won(l.up) : '') + '</td><td class="num">' + (l.a ? won(l.a) : '') + '</td></tr>'; }).join('') + '</tbody></table></td></tr>';
     }
   });
-  if (!rows.length) h += '<tr><td colspan="9" class="empty">' + (D.list.length ? '조건에 맞는 고객사 없음' : '이 기간 출고 없음') + '</td></tr>';
+  if (!rows.length) h += '<tr><td colspan="11" class="empty">' + (D.list.length ? '조건에 맞는 고객사 없음' : '이 기간 출고 없음') + '</td></tr>';
   h += '</tbody></table></div>';
   $('#view').innerHTML = h;
   pgBind(renderCustPage);
@@ -3195,8 +3237,8 @@ async function appStart() {
   B(90, '화면 그리는 중', 3);
   render();
   setTimeout(function () { B(100); }, 120);
-  buyPull(); yrPull();
-  setInterval(function () { if (document.visibilityState === 'visible') { buyPull(); yrPull(); } }, 300000);
+  buyPull(); yrPull(); loadGrCache().then(grPull);
+  setInterval(function () { if (document.visibilityState === 'visible') { buyPull(); yrPull(); grPull(); } }, 300000);
   setInterval(function () { if (document.visibilityState === 'visible') erpPull(); }, 60000);
   setInterval(function () { if (document.visibilityState === 'visible' && !S.sync.busy) sync({ quiet: true }); }, 20000);
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') sync({ quiet: true }); });
