@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v121">
+<meta name="su-ver" content="v122">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -3116,6 +3116,8 @@ function renderSettings() {
     ' <button type="button" id="buyNow">매입 지금 받기</button><div class="muted small">매입분석도구가 서버에 올린 매입현황에서 유통/OEM 품번과 같은 줄을 «매입» 공정에 날짜별로 넣음 · 그날 직접 넣은 매입이 있으면 그 값을 씀 · 5분마다 자동 확인</div></div></div>';
   h += '<div class="card"><h3>구글시트에서 가져오기 <small class="muted">생산1·2·3파트 수불현황 → 품목·기초재고·생산·출고 (관리자)</small></h3>' +
     (adm ? '<div id="impBox"><button type="button" id="impList">시트 목록 불러오기</button></div>' : '<div class="muted small">관리자 계정만 가능</div>') + '</div>';
+  h += '<div class="card" id="lostCard"><h3>🩹 지워진 입력 찾기·되살리기 <small class="muted">서버 기록(덧붙이기 방식)에서 지워진 생산·출고 입력을 찾아 지운 시각·사람별로 보여줌</small></h3>' +
+    '<div class="act"><button type="button" id="lostScan" class="primary">지워진 입력 찾기</button><span class="msg" id="lostMsg"></span></div><div id="lostBox"></div></div>';
   h += '<div class="card"><h3>서버 · 이 PC</h3><div class="kv">화면 ' + SUB_VER + ' · 서버 ' + esc(S.sync.srv || '확인 전') + ' · 받은 기록 ' + S.sync.pos.toLocaleString() + '줄 · 품목 ' + store.items.size.toLocaleString() + ' · 입력 칸 ' + store.ent.size.toLocaleString() + ' · 보낼 것 ' + S.pending.size + '</div>' +
     '<div class="act"><button type="button" id="diag">🩺 서버 점검</button>' + (adm ? '<button type="button" id="compact">기록 정리 (옛 기록 줄이기)</button>' : '') + '<button type="button" id="reload">이 PC 자료 다시 받기</button></div><pre id="diagOut" class="diag"></pre></div></div>';
   $('#view').innerHTML = h;
@@ -3127,6 +3129,7 @@ function renderSettings() {
   if ($('#tplSave')) $('#tplSave').onclick = function () { var v = { list: (cfg.list || []), tpl: tpls }; setRec('c:procs', v); schedulePush(); $('#tplMsg').textContent = '저장함'; };
   if ($('#impList')) $('#impList').onclick = impList;
   $('#diag').onclick = runDiag;
+  $('#lostScan').onclick = lostScan;
   $('#erpNow').onclick = async function () { await erpPull(true); renderSettings(); };
   $('#erpOrph').onclick = function () { var L = erpOrphans(); if (!L.length) { toast('정리할 품목 없음 — ERP 품목 모두 출고매칭 자료와 연결됨'); return; } if (erpPurgeAsk(L, 'ERP에 없는 품목 정리.')) { erpPurge(L); renderSettings(); } };
   $('#buyNow').onclick = async function () { await buyPull(true); renderSettings(); };
@@ -3206,7 +3209,9 @@ async function impSave() {
     /* 이 품목들의 기존 입력 중 시트에 없는 날은 지움(다시 가져올 때 시트와 같게) */
     var want = {}; I.P.ents.forEach(function (e) { want[e.k] = 1; recs.push(e); });
     var ids = {}; I.P.items.forEach(function (it) { ids[it.id] = 1; });
-    var dset = {}; I.P.dates.forEach(function (d) { dset[d] = 1; });
+    /* v122 : 시트에 입력이 있는 마지막 날까지만 지움 — 그 뒤 날짜(웹에서 새로 넣은 생산·출고)는 남김 */
+    var lastD = ''; I.P.ents.forEach(function (e) { var dd = e.k.split('|')[2]; if (dd > lastD) lastD = dd; });
+    var dset = {}; I.P.dates.forEach(function (d) { if (lastD && d <= lastD) dset[d] = 1; });
     store.ent.forEach(function (v, k) { var a = k.split('|'); if (ids[a[0]] && dset[a[2]] && !want['e:' + k]) recs.push({ k: 'e:' + k, v: null }); });
     for (var i = 0; i < recs.length; i += 2500) {
       msg.textContent = '저장 중… ' + Math.min(recs.length, i + 2500).toLocaleString() + ' / ' + recs.length.toLocaleString();
@@ -3725,6 +3730,60 @@ document.addEventListener('click', function (ev) { var t = ev.target.closest && 
 /* v106 : 월 현황 품목 접기·펼치기 (스크롤 자리 유지) */
 function mKeep(fn) { var w = $('#view .tbl-wrap'), st = w ? w.scrollTop : 0, sl = w ? w.scrollLeft : 0, y = window.scrollY, x = window.scrollX; fn(); window.scrollTo(x, y); var w2 = $('#view .tbl-wrap'); if (w2) { w2.scrollTop = st; w2.scrollLeft = sl; } }
 function mFold(id) { var u = S.ui, it = store.items.get(id); if (!u.mOpen) u.mOpen = {}; var cur = id in u.mOpen ? u.mOpen[id] : u.mAll; u.mOpen[id] = !cur; mKeep(renderMonth); }
+
+/* v122 : 지워진 입력 찾기·되살리기 — 서버 기록을 처음부터 받아, 마지막 값이 «지움»인 칸을 지운 시각(분)·사람별로 묶음
+   · 되살리기 = 지우기 바로 전 값으로 다시 저장 (base = 지운 기록 rev → 그 뒤 다른 사람이 고친 칸은 건너뜀)
+   · 원인 예: 출고매칭 «수불 엑셀 올리기»가 엑셀에 없는 그달 입력을 지움, 품목 삭제, 출고매칭 초기화 뒤 정리 */
+var LOST = null;
+async function lostScan() {
+  var msg = $('#lostMsg'), box = $('#lostBox'), btn = $('#lostScan'); btn.disabled = true; box.innerHTML = '';
+  try {
+    var H = new Map(), pos = 0, ep = S.sync.epoch || '', guard = 0;
+    while (guard++ < 400) {
+      msg.textContent = '서버 기록 받는 중… ' + pos.toLocaleString() + '줄';
+      var d = await api({ action: 'suGet', pos: pos, epoch: ep }, 180000);
+      if (d.reset && pos) { H.clear(); }
+      ep = d.epoch || ep;
+      (d.recs || []).forEach(function (x) { var L = H.get(x.k); if (!L) H.set(x.k, L = []); L.push(x); });
+      pos = d.pos; if (!d.more) break;
+    }
+    var G = {};
+    H.forEach(function (L, k) {
+      var last = L[L.length - 1]; if (last.v != null) return;
+      var t = k.slice(0, 2); if (t !== 'e:' && t !== 'a:' && t !== 'r:' && t !== 'i:') return;
+      var prev = null; for (var i = L.length - 2; i >= 0; i--) if (L[i].v != null) { prev = L[i]; break; }
+      if (!prev) return;
+      var gk = String(last.at || '').slice(0, 16) + '|' + (last.by || '');
+      var g = G[gk] || (G[gk] = { at: String(last.at || '').slice(0, 16), by: last.by || '', list: [], n: { e: 0, a: 0, r: 0, i: 0 }, g: 0, ids: {} });
+      g.list.push({ k: k, v: prev.v, base: last.r }); g.n[t[0]]++;
+      if (t === 'e:') { g.g += SU.num(prev.v && prev.v.g); g.ids[k.slice(2).split('|')[0]] = 1; } else if (t === 'i:') g.ids[k.slice(2)] = 1;
+    });
+    LOST = Object.keys(G).map(function (k) { return G[k]; }).sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); });
+    msg.textContent = '서버 기록 ' + pos.toLocaleString() + '줄 확인 · 지워진 칸 묶음 ' + LOST.length + '개';
+    if (!LOST.length) { box.innerHTML = '<div class="muted">지워진 입력 없음 (기록 정리를 한 뒤라면 그 전 기록은 남아 있지 않음)</div>'; return; }
+    box.innerHTML = '<table class="grid small"><thead><tr><th>지운 시각</th><th>누가</th><th class="num">생산·출고 입력</th><th class="num">양품 합</th><th class="num">기초 조정</th><th class="num">실사</th><th class="num">품목</th><th>예 (품목)</th><th></th></tr></thead><tbody>' +
+      LOST.map(function (g, i) {
+        var ex = Object.keys(g.ids).slice(0, 4).map(function (id) { var it = store.items.get(id); return it ? (it.p || it.n || id) + (it.s ? ' ' + it.s : '') : id; }).join(', ');
+        return '<tr><td class="nowrap">' + esc(g.at.replace('T', ' ')) + '</td><td>' + esc(g.by) + '</td><td class="num">' + g.n.e.toLocaleString() + '</td><td class="num">' + fmt(g.g) + '</td><td class="num">' + g.n.a + '</td><td class="num">' + g.n.r + '</td><td class="num">' + g.n.i + '</td><td class="c-memo" title="' + esc(ex) + '">' + esc(ex) + (Object.keys(g.ids).length > 4 ? ' 외 ' + (Object.keys(g.ids).length - 4) : '') + '</td><td>' + (isAdmin() ? '<button type="button" class="small" data-lost="' + i + '">되살리기</button>' : '') + '</td></tr>';
+      }).join('') + '</tbody></table><div class="muted small">되살리기 = 지우기 바로 전 값으로 다시 저장 · 그 뒤 다른 사람이 다시 고친 칸은 건너뜀 · 관리자만</div>';
+    box.onclick = async function (ev) {
+      var b = ev.target.closest('[data-lost]'); if (!b) return; var g = LOST[+b.dataset.lost]; if (!g) return;
+      if (!confirm(g.at + ' · ' + g.by + ' 가 지운 칸 ' + g.list.length.toLocaleString() + '개를 지우기 전 값으로 되살릴까요?\n(생산·출고 입력 ' + g.n.e + ' · 품목 ' + g.n.i + ' · 기초 조정 ' + g.n.a + ' · 실사 ' + g.n.r + ')')) return;
+      b.disabled = true; b.textContent = '되살리는 중…';
+      try {
+        var ok = 0, conf = 0;
+        for (var i = 0; i < g.list.length; i += 2000) {
+          var part = g.list.slice(i, i + 2000), r = await api({ action: 'suPush', recs: part }, 300000);
+          var bad = {}; (r.conflicts || []).forEach(function (c) { bad[c.k] = 1; }); conf += Object.keys(bad).length;
+          part.forEach(function (x) { if (!bad[x.k]) { store.set(x.k, x.v, { r: r.rev, by: me() }); ok++; } });
+        }
+        store.erpDirty = true; await sync({ quiet: true });
+        b.textContent = '되살림 ' + ok.toLocaleString(); toast('지워진 칸 ' + ok.toLocaleString() + '개 되살림' + (conf ? ' · 그 뒤 다른 사람이 고친 ' + conf + '개는 건너뜀' : ''), 'long');
+      } catch (e) { b.disabled = false; b.textContent = '되살리기'; toast('되살리기 오류: ' + (e.message || e), 'bad'); }
+    };
+  } catch (e) { msg.textContent = '오류: ' + (e.message || e); }
+  finally { btn.disabled = false; }
+}
 
 </script>
 <script id="su-new-version-popup">
