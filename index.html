@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v82">
+<meta name="su-ver" content="v83">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -325,7 +325,7 @@ var SU = (function () {
     oem:   ['매입', OUT]  // 유통/OEM : 매입(매입분석도구 자동) → 출고(ERP 자동)
   };
   /* 공정 이름 표기 통일 (지금 시트에서 섞여 쓰인 것) */
-  var PROC_ALIAS = { '텝핑': '탭핑', '타공2차': '타공(2차)', '타공)국산오)': '타공(국산오)' };
+  var PROC_ALIAS = { '텝핑': '탭핑', '타공2차': '타공(2차)', '타공)국산오)': '타공(국산오)', '타공 2차': '타공(2차)', '포징': '포장', '타공)하부)': '타공(하부)' };   /* 바꾸면 출고매칭(codematch) index.html script#su-core 복사본도 같이 */
   function normProc(n) {
     n = String(n == null ? '' : n).replace(/\s+/g, ' ').trim();
     return PROC_ALIAS[n] || n;
