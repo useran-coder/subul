@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v97">
+<meta name="su-ver" content="v98">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -1038,15 +1038,16 @@ function erpUpLine(short) {
 function lsGet(k, d) { try { return localStorage.getItem(k) || d; } catch (e) { return d; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 var PAGE = 40;   /* v97 : 처음엔 40품목만 그리고 아래로 내리면 자동으로 40품목씩 더 (표 그리기가 가장 느림) */
-var MORE_IO = null;
-function autoMore(fn) {
-  if (MORE_IO) { MORE_IO.disconnect(); MORE_IO = null; }
-  var b = $('#more'); if (!b || !('IntersectionObserver' in window)) return;
-  MORE_IO = new IntersectionObserver(function (es) { if (!es.some(function (e) { return e.isIntersecting; })) return; MORE_IO.disconnect(); MORE_IO = null;
-    var w = $('#view .tbl-wrap'), st = w ? w.scrollTop : 0, sl = w ? w.scrollLeft : 0, y = window.scrollY; S.ui.page++; fn();
-    var w2 = $('#view .tbl-wrap'); if (w2) { w2.scrollTop = st; w2.scrollLeft = sl; } window.scrollTo(window.scrollX, y); }, { rootMargin: '800px 0px' });
-  MORE_IO.observe(b);
+var MORE_FN = null, MORE_RAF = 0;
+function moreCheck() {   /* v98 : 사람이 스크롤해서 «더 보기» 가까이 오면 다음 40품목 (그리자마자 연달아 불러오지 않음) */
+  MORE_RAF = 0; var b = $('#more'); if (!MORE_FN || !b || b.tagName !== 'BUTTON') return;
+  var w = $('#view .tbl-wrap'), inner = w && w.scrollHeight > w.clientHeight + 5;   /* 표가 자기 칸 안에서 스크롤되면 그 칸 바닥 근처, 아니면 화면 바닥 근처 */
+  if (inner ? w.scrollTop + w.clientHeight < w.scrollHeight - 600 : b.getBoundingClientRect().top > innerHeight + 400) return;
+  var fn = MORE_FN; MORE_FN = null; var y = window.scrollY, x = window.scrollX, st = w ? w.scrollTop : 0, sl = w ? w.scrollLeft : 0; S.ui.page++; fn(); window.scrollTo(x, y);
+  var w2 = $('#view .tbl-wrap'); if (w2) { w2.scrollTop = st; w2.scrollLeft = sl; }
 }
+addEventListener('scroll', function () { if (MORE_FN && !MORE_RAF) MORE_RAF = requestAnimationFrame(moreCheck); }, { passive: true, capture: true });
+function autoMore(fn) { MORE_FN = $('#more') ? fn : null; }
 
 /* ───────── 이 PC 저장 (IndexedDB) ───────── */
 var idb = (function () {
@@ -1074,7 +1075,10 @@ function saveCache() {
   }, 800);
 }
 function pendKey() { return 'subul.pending:' + (AU.id || ''); }
-function savePending() { try { localStorage.setItem(pendKey(), JSON.stringify(Array.from(S.pending.values()))); } catch (e) {} }
+var SP_T = 0;
+function savePending0() { if (SP_T) { clearTimeout(SP_T); SP_T = 0; } try { localStorage.setItem(pendKey(), JSON.stringify(Array.from(S.pending.values()))); } catch (e) {} }
+function savePending() { if (!SP_T) SP_T = setTimeout(savePending0, 0); }   /* v98 : 많이 지우거나 바꿀 때 칸마다 전체 저장하던 것(멈춤 원인) → 한 동작 끝에 한 번 */
+addEventListener('beforeunload', function () { if (SP_T) savePending0(); });
 function loadPending() { try { (JSON.parse(localStorage.getItem(pendKey()) || '[]') || []).forEach(function (p) { if (p && p.k) S.pending.set(p.k, p); }); } catch (e) {} }
 
 /* ───────── ERP 자료 (출고현황 제품번호 매칭 프로그램이 서버에 모은 수주현황·출고현황) ───────── */
@@ -1284,8 +1288,8 @@ function recNow(k) {
 }
 function histRec(k) {
   if (H.mute) return;
-  if (!H.cur) { H.cur = []; H.u.push(H.cur); if (H.u.length > 100) H.u.shift(); H.r = []; setTimeout(function () { H.cur = null; }, 0); }
-  if (H.cur.some(function (x) { return x.k === k; })) return;
+  if (!H.cur) { H.cur = []; H.cs = new Set(); H.u.push(H.cur); if (H.u.length > 100) H.u.shift(); H.r = []; setTimeout(function () { H.cur = null; }, 0); }
+  if (H.cs.has(k)) return; H.cs.add(k);
   H.cur.push({ k: k, b: recNow(k) });
 }
 function histApply(from, to, word) {
@@ -2386,11 +2390,13 @@ var METRICS = { stock: '재고', p: '생산', g: '양품', b: '불량', out: '�
    품목 + 그 품목에 넣은 생산·조정·실사 입력 같이 지움 · 관리자 = 모두, 일반 = 내가 등록한 품목만 · Ctrl+Z 로 되돌림 */
 var DEL = { on: false, sel: new Set() };
 function canDelIt(it) { return isAdmin() || (!it._v && it.cby && it.cby === me()); }
+function delAllList() { var u = S.ui, sc = u.scope; u.scope = 'all'; try { return filtered(); } finally { u.scope = sc; } }
 function delBar(list) {
   if (!DEL.on) return '';
+  var full = S.ui.scope !== 'all' ? delAllList().filter(canDelIt) : null, fullBtn = full && full.length > list.filter(canDelIt).length ? '<button type="button" id="delFull" title="«진행 중 품목»에 안 보이는 품목(재고 0 · 이달 입력 없음)까지 지금 구분·검색 조건의 모든 품목">진행 중 아닌 품목까지 전체 선택 (' + full.length.toLocaleString() + '품목)</button>' : '';
   var ok = list.filter(canDelIt), all = ok.length && ok.every(function (it) { return DEL.sel.has(it.id); });
   return '<div class="delbar"><label><input type="checkbox" id="delAll"' + (all ? ' checked' : '') + (ok.length ? '' : ' disabled') + '> 전체 선택 <span class="muted">(지금 조건 ' + ok.length.toLocaleString() + '품목' + (ok.length < list.length ? ' · 지울 권한 없는 ' + (list.length - ok.length) + '품목 제외' : '') + ')</span></label>' +
-    '<b>' + DEL.sel.size.toLocaleString() + '품목 선택</b><button type="button" id="delGo" class="danger"' + (DEL.sel.size ? '' : ' disabled') + '>🗑 선택 품목 삭제</button><button type="button" id="delClr"' + (DEL.sel.size ? '' : ' disabled') + '>선택 해제</button><button type="button" id="delOff">닫기</button>' +
+    fullBtn + '<b>' + DEL.sel.size.toLocaleString() + '품목 선택</b><button type="button" id="delGo" class="danger"' + (DEL.sel.size ? '' : ' disabled') + '>🗑 선택 품목 삭제</button><button type="button" id="delClr"' + (DEL.sel.size ? '' : ' disabled') + '>선택 해제</button><button type="button" id="delOff">닫기</button>' +
     '<span class="muted small">품목과 그 품목의 생산·조정·실사 입력 같이 지움 · 모든 PC 반영 · Ctrl+Z 로 되돌림</span></div>';
 }
 function delRun() {
@@ -2401,7 +2407,7 @@ function delRun() {
   if (!confirm('선택한 ' + ids.length.toLocaleString() + '품목 · 입력 ' + ks.length.toLocaleString() + '칸 지울까?\n' + ex + (ids.length > 6 ? '\n… 외 ' + (ids.length - 6) + '품목' : '') + '\n\n모든 PC에서 지워짐 · ERP 품목은 다시 안 생김 · 바로 Ctrl+Z 로 되돌림 가능')) return;
   ks.forEach(function (k) { setRec(k, null); });
   ids.forEach(function (id) { setRec('i:' + id, null); });
-  schedulePush(); DEL.sel.clear(); render();
+  savePending0(); schedulePush(); DEL.sel.clear(); render();
   toast('지움: ' + ids.length.toLocaleString() + '품목 · 입력 ' + ks.length.toLocaleString() + '칸 (Ctrl+Z 로 되돌림)');
 }
 function delBind(list) {
@@ -2409,6 +2415,7 @@ function delBind(list) {
   if (!DEL.on) return;
   $('#delAll').onchange = function () { var on = this.checked; list.forEach(function (it) { if (!canDelIt(it)) return; if (on) DEL.sel.add(it.id); else DEL.sel.delete(it.id); }); renderMonth(); };
   $('#delGo').onclick = delRun;
+  if ($('#delFull')) $('#delFull').onclick = function () { delAllList().forEach(function (it) { if (canDelIt(it)) DEL.sel.add(it.id); }); renderMonth(); };
   $('#delClr').onclick = function () { DEL.sel.clear(); renderMonth(); };
   $('#delOff').onclick = function () { DEL.on = false; DEL.sel.clear(); renderMonth(); };
 }
