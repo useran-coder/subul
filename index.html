@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v104">
+<meta name="su-ver" content="v105">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -2100,12 +2100,15 @@ function fixCode(id) {
       ol.map(function (o, i) { return '<tr><td>' + esc(SU.ymd(o.od)) + '</td><td>' + esc(o.o) + '</td><td>' + esc(o.r || '') + '</td><td class="num">' + fmt(SU.num(o.q)) + '</td><td><input class="fx-in" data-i="' + i + '" placeholder="' + ex + '" autocomplete="off"></td></tr>'; }).join('') + '</tbody></table>' +
       '<ul class="fx-note"><li>저장하면 출고매칭 서버의 이 수주 줄 비고 끝에 « / 번호»를 붙임 → 출고매칭·수불관리 같이 반영</li><li>출고매칭은 다음 동기화 때 이 주문 출고 줄을 이 번호로 다시 매칭함</li><li>ERP 수주 비고에도 같은 번호를 넣을 것 (안 넣고 수주현황을 다시 올리면 번호가 빠짐)</li></ul>'
     : '<div class="fg"><label>제품번호<input class="fx-in" data-i="-1" placeholder="' + ex + '" autocomplete="off"></label></div><ul class="fx-note"><li>ERP 수주 줄이 없는 품목 → 수불관리 품목에만 저장 (출고매칭에는 반영 안 됨)</li></ul>') +
-    '<div class="act"><button type="button" class="primary" id="fxGo">저장</button><button type="button" id="fxNext" title="이전 번호와 겹치지 않는 다음 번호(' + nx + ')를 빈 칸에 넣음 · 저장은 따로">🔢 다음 번호 ' + nx + '</button><span class="msg" id="fxMsg"></span></div></div>';
+    '<div class="act"><button type="button" class="primary" id="fxGo">저장</button><button type="button" id="fxNext" title="빈 칸마다 이전 번호와 겹치지 않는 다음 번호를 차례로 넣음 (' + nx + '부터) · 저장은 따로">🔢 다음 번호 넣기</button><span class="msg" id="fxMsg"></span></div></div>';
   document.body.appendChild(w);
   var ins = $$('.fx-in', w); if (ins[0]) ins[0].focus();
   w.onkeydown = function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); go(); } else if (ev.key === 'Escape') w.remove(); };
   w.onclick = function (ev) { if (ev.target.dataset.close != null || ev.target === w) w.remove(); else if (ev.target.id === 'fxGo') go();
-    else if (ev.target.id === 'fxNext') { ins.forEach(function (inp) { if (!inp.value.trim()) inp.value = nx; }); } };
+    else if (ev.target.id === 'fxNext') {   /* v105 : 수주 줄마다 따로 번호 (이미 쓴 번호·이 창에 넣은 번호 건너뜀) */
+      var u = pcUsed(); ins.forEach(function (inp) { var c = inp.value.trim().toUpperCase(); if (c) u[c] = '이 창'; });
+      var n = pcNext(pre, u); ins.forEach(function (inp) { if (inp.value.trim()) return; while (u[pcFmt(pre, n)]) n++; inp.value = pcFmt(pre, n); u[inp.value] = '이 창'; n++; });
+    } };
   var busy = false;
   async function go() {
     if (busy) return;
@@ -2116,7 +2119,8 @@ function fixCode(id) {
       if (!/^[ABCDG]\d{4,5}$/.test(v)) { bad = bad || v + ' : 형식 오류 (예: ' + ex + ')'; inp.classList.add('err'); return; }
       if (v[0] !== pre && !bad) { bad = v + ' : ' + (SU.CAT_NAME[it.cat] || '') + '는 ' + pre + '번호'; inp.classList.add('err'); return; }
       if (used[v]) { bad = bad || v + ' : 이미 씀 (' + used[v] + ')'; inp.classList.add('err'); return; }
-      seen[v] = 1; todo.push({ i: +inp.dataset.i, code: v });   /* v104 : 같은 품목의 여러 수주 줄은 같은 번호 가능 */
+      if (seen[v]) { bad = bad || v + ' : 두 줄에 같은 번호 (수주 줄마다 다른 번호)'; inp.classList.add('err'); return; }
+      seen[v] = 1; todo.push({ i: +inp.dataset.i, code: v });
     });
     if (bad) { msg.textContent = bad; msg.className = 'msg neg'; return; }
     if (!todo.length) { msg.textContent = '번호를 넣을 것'; msg.className = 'msg neg'; return; }
@@ -2131,7 +2135,7 @@ function fixCode(id) {
         if (!res || res.ok === false) throw new Error((res && res.error) || '서버 응답 없음');
         if ((res.orderUpdated || 0) < lines.length) throw new Error('출고매칭 서버가 ' + (res.orderUpdated || 0) + '/' + lines.length + '줄만 고침');
       }
-      if (!it._v && Object.keys(seen).length === 1) { var v = SU.cleanForSave(it); v.code = todo[0].code; v.pcBy = '입력 ' + me() + ' ' + SU.today(); setRec('i:' + it.id, v); schedulePush(); }
+      if (!it._v && !prodCode(it)) { var v = SU.cleanForSave(it); v.code = todo[0].code; v.pcBy = '입력 ' + me() + ' ' + SU.today(); setRec('i:' + it.id, v); schedulePush(); }
       try { await api({ action: 'smPush', upload: pcUpload(Object.keys(seen), '수불관리 제품번호 입력 ' + todo[0].code) }, 60000); } catch (_e) {}
       if (lines.length) await erpPull(false);
       store.erpDirty = true; w.remove(); render();
@@ -3579,25 +3583,26 @@ async function pcAutoRun() {
     var ol = (store.erpOrd.get(it.id) || []).filter(function (o) { return !o.code && !SU.codesOf((o.r || '') + ' ' + (o.s || '')).length && SU.num(o.q) > 0; });
     if (it._v && !ol.length) { plan.push({ it: it, v: '', ol: ol }); return; }   /* 번호를 저장할 곳이 없는 품목은 번호를 쓰지 않음 */
     var P = pcPre(it); if (!next[P]) next[P] = pcNext(P, used);
-    while (used[pcFmt(P, next[P])]) next[P]++;
-    var v = pcFmt(P, next[P]++); used[v] = '자동';
-    plan.push({ it: it, v: v, ol: ol });
+    function take() { while (used[pcFmt(P, next[P])]) next[P]++; var c = pcFmt(P, next[P]++); used[c] = '자동'; return c; }
+    var vs = ol.length ? ol.map(take) : [take()];   /* v105 : 수주 줄마다 따로 번호 (품목 code 는 첫 번호) */
+    plan.push({ it: it, v: vs[0], vs: vs, ol: ol });
   });
   var ok = plan.filter(function (x) { return x.v; }), skip = plan.length - ok.length;
   if (!ok.length) { toast('번호를 붙일 수 있는 품목 없음 (ERP 수주 줄 없음)', 'warn'); return; }
-  var rng = {}; ok.forEach(function (x) { var P = x.v[0]; if (!rng[P]) rng[P] = [x.v, x.v, 0]; rng[P][1] = x.v; rng[P][2]++; });
+  var rng = {}; ok.forEach(function (x) { x.vs.forEach(function (c) { var P = c[0]; if (!rng[P]) rng[P] = [c, c, 0]; rng[P][1] = c; rng[P][2]++; }); });
   var rs = Object.keys(rng).map(function (P) { var r = rng[P]; return '· ' + P + ' ' + r[2] + '개 : ' + r[0] + (r[2] > 1 ? ' ~ ' + r[1] : ''); }).join('\n');
-  if (!confirm('제품번호 없는 품목 ' + ok.length.toLocaleString() + '개에 번호를 붙일까요?\n\n' + rs + '\n\n· 이전 번호(출고매칭·주문·출고·수불 품목)와 겹치지 않는 다음 번호\n· 출고매칭 수주 줄 비고 끝에도 « / 번호»를 붙임 → 출고매칭에 바로 반영\n· ERP 수주 비고에도 같은 번호를 넣을 것' + (skip ? '\n· ERP 수주 줄 없는 출고 전 품목 ' + skip + '개는 건너뜀' : ''))) return;
+  var nCode = 0; ok.forEach(function (x) { nCode += x.vs.length; });
+  if (!confirm('제품번호 없는 품목 ' + ok.length.toLocaleString() + '개에 번호 ' + nCode.toLocaleString() + '개를 붙일까요? (수주 줄마다 따로)\n\n' + rs + '\n\n· 이전 번호(출고매칭·주문·출고·수불 품목)와 겹치지 않는 다음 번호\n· 출고매칭 수주 줄 비고 끝에도 « / 번호»를 붙임 → 출고매칭에 바로 반영\n· ERP 수주 비고에도 같은 번호를 넣을 것' + (skip ? '\n· ERP 수주 줄 없는 출고 전 품목 ' + skip + '개는 건너뜀' : ''))) return;
   PC_BUSY = true; var b = $('#pcAuto'); if (b) { b.disabled = true; b.textContent = '번호 붙이는 중…'; }
   try {
     var lines = [];
     ok.forEach(function (x) {
-      x.ol.forEach(function (ol) { var o = {}; Object.keys(ol).forEach(function (k) { if (k[0] !== '_') o[k] = ol[k]; });
-        o.r = (String(o.r || '').trim() ? String(o.r).trim() + ' / ' : '') + x.v; o.code = x.v; o.upd = 1; lines.push(o); });
+      x.ol.forEach(function (ol, j) { var o = {}, c = x.vs[j]; Object.keys(ol).forEach(function (k) { if (k[0] !== '_') o[k] = ol[k]; });
+        o.r = (String(o.r || '').trim() ? String(o.r).trim() + ' / ' : '') + c; o.code = c; o.upd = 1; lines.push(o); });
       if (!x.it._v) { var nv = SU.cleanForSave(x.it); nv.code = x.v; nv.pcBy = '자동 ' + by; setRec('i:' + x.it.id, nv); }
     });
     schedulePush();
-    var codes = ok.map(function (x) { return x.v; }), upd = 0;
+    var codes = [].concat.apply([], ok.map(function (x) { return x.vs; })), upd = 0;
     for (var i = 0; i < Math.max(1, lines.length); i += 500) {
       var pl = { action: 'smPush', order: lines.slice(i, i + 500) };
       if (i === 0) pl.upload = pcUpload(codes, '수불관리 제품번호 자동부여 ' + SU.today());
