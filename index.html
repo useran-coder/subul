@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v102">
+<meta name="su-ver" content="v103">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -239,6 +239,8 @@ td.yr{color:#1e40af;font-weight:700}
 .mbar .pfl{line-height:28px;white-space:nowrap;color:#475569;font-size:13px}
 .grid.month td.ptot,.grid.month td.ptot b{font-weight:400}.grid.month td.bcell.mid input.bi{background:#fffbeb}
 .nm-ban{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 8px;padding:7px 12px;border:1px solid #fca5a5;border-radius:8px;background:#fef2f2;font-size:13px;color:#7f1d1d}.nm-ban a{color:#1d4ed8;font-weight:700}.nm-ban button{margin-left:auto;height:26px;padding:0 10px;border:1px solid #fca5a5;border-radius:6px;background:#fff;color:#b91c1c;font-weight:700;cursor:pointer}
+.cell-pop{position:fixed;z-index:9999;max-width:min(560px,calc(100vw - 16px));padding:4px 8px;background:#fff;color:#0f172a;border:1px solid #3b82f6;border-radius:6px;box-shadow:0 6px 20px rgba(15,23,42,.22);white-space:pre-wrap;word-break:break-all;line-height:1.45;cursor:text;user-select:text}
+.grid td.c-s,.grid td.c-memo,.grid td.c-n,.grid td.c-cust,.pg-dt td.c-memo{cursor:pointer}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -3493,6 +3495,46 @@ function asBind() {
     var o = ev.target.closest('[data-open]'); if (o) openItem(o.dataset.open);
   };
 }
+/* v103 : «…»으로 잘린 칸을 누르면 칸 밖으로 전체 글자 표시 (화면 전체 공통) — 다른 곳 누르거나 Esc·스크롤하면 닫힘 */
+(function () {
+  var pop = null, cur = null;
+  function cut(el) {
+    if (!el || el.nodeType !== 1 || !el.textContent.trim()) return false;
+    var cs = getComputedStyle(el);
+    if (cs.textOverflow !== 'ellipsis' && cs.overflow !== 'hidden' && cs.overflowX !== 'hidden') return false;
+    return el.scrollWidth > el.clientWidth + 1;
+  }
+  function find(t) {
+    for (var el = t, n = 0; el && el !== document.body && n < 4; el = el.parentElement, n++) {
+      if (cut(el)) return el;
+      if (/^(TD|TH|LI)$/.test(el.tagName)) break;
+    }
+    return null;
+  }
+  function close() { if (pop) { pop.remove(); pop = null; } cur = null; }
+  function open(el) {
+    close(); cur = el;
+    pop = document.createElement('div'); pop.className = 'cell-pop';
+    pop.textContent = el.textContent.replace(/\s+/g, ' ').trim();
+    var r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+    pop.style.font = cs.font; pop.style.minWidth = Math.max(60, r.width) + 'px';
+    document.body.appendChild(pop);
+    var w = pop.offsetWidth, h = pop.offsetHeight, x = Math.min(r.left - 1, innerWidth - w - 8), y = r.top - 1;
+    if (y + h > innerHeight - 8) y = Math.max(8, innerHeight - h - 8);
+    pop.style.left = Math.max(8, x) + 'px'; pop.style.top = y + 'px';
+  }
+  document.addEventListener('click', function (ev) {
+    var t = ev.target;
+    if (pop && pop.contains(t)) return;
+    if (t.closest && t.closest('input,textarea,select,button,a,label,[data-fix],[data-open],.link')) { close(); return; }
+    var el = find(t);
+    if (!el || el === cur) { close(); return; }
+    setTimeout(function () { if (document.contains(el)) open(el); }, 0);
+  });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') close(); });
+  addEventListener('scroll', function () { if (pop) close(); }, { passive: true, capture: true });
+  addEventListener('resize', close);
+})();
 
 </script>
 <script id="su-new-version-popup">
