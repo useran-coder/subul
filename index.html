@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v124">
+<meta name="su-ver" content="v125">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -3807,6 +3807,30 @@ async function lostScan() {
   } catch (e) { msg.textContent = '오류: ' + (e.message || e); }
   finally { btn.disabled = false; }
 }
+/* 맨위로 버튼 (수불관리 v125) — 창 스크롤·표 안 스크롤 모두. 많이 내려가면(화면 높이의 절반 이상) 오른쪽 아래에 나타남 */
+(function () {
+  var css = '#toTop{position:fixed;right:18px;bottom:18px;z-index:9000;width:38px;height:38px;border:1px solid #cbd5e1;border-radius:50%;background:#fff;color:#334155;font-size:18px;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(15,23,42,.15);opacity:0;pointer-events:none;transition:opacity .2s}#toTop.on{opacity:.85;pointer-events:auto}#toTop:hover{opacity:1;background:#1e3a5f;color:#fff;border-color:#1e3a5f}@media print{#toTop{display:none}}';
+  var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
+  var b = document.createElement('button'); b.type = 'button'; b.id = 'toTop'; b.title = '맨 위로'; b.textContent = '↑';
+  function add() { if (!document.getElementById('toTop')) document.body.appendChild(b); }
+  if (document.body) add(); else document.addEventListener('DOMContentLoaded', add);
+  var last = null;   /* 마지막으로 많이 내려간 스크롤 칸 (표 안 스크롤) */
+  function top(el) { return el === document || el === window ? (window.scrollY || document.documentElement.scrollTop || 0) : el.scrollTop; }
+  function chk() {
+    var lim = Math.max(300, window.innerHeight / 2);
+    if (last && (!last.isConnected || last.scrollTop < lim)) last = null;
+    b.classList.toggle('on', top(window) > lim || !!last);
+  }
+  document.addEventListener('scroll', function (ev) {
+    var el = ev.target; if (el && el.nodeType === 1 && el.scrollHeight > el.clientHeight + 50 && el.scrollTop > Math.max(300, window.innerHeight / 2)) last = el;
+    chk();
+  }, true);
+  b.onclick = function () {
+    if (last && last.isConnected) last.scrollTo({ top: 0, behavior: 'smooth' });
+    document.querySelectorAll('*').forEach(function (el) { if (el !== last && el.scrollTop > 0 && el.scrollHeight > el.clientHeight + 50 && getComputedStyle(el).overflowY !== 'visible') el.scrollTo({ top: 0, behavior: 'smooth' }); });
+    window.scrollTo({ top: 0, behavior: 'smooth' }); last = null; setTimeout(chk, 600);
+  };
+})();
 
 </script>
 <script id="su-new-version-popup">
