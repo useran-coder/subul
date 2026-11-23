@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v108">
+<meta name="su-ver" content="v109">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -1615,7 +1615,7 @@ window.addEventListener('popstate', function (ev) {
   S.ui.view = st.view; S.ui.date = st.date || S.ui.date; S.ui.proc = st.proc || ''; S.ui.scope = st.scope || S.ui.scope; S.ui.page = 1;
   lsSet('subul.view', S.ui.view); NAV.pop = true; render();
 });
-function goHome() { if (!dataStarted) return; S.ui.cat = 'all'; S.ui.ns = false; S.ui.nm = false; S.ui.view = 'dash';   /* v108 : 제목·현황판 누르면 «전체» 구분으로 */ S.ui.page = 1; lsSet('subul.view', 'dash'); render(); scrollTo(0, 0); }
+function goHome() { if (!dataStarted) return; S.ui.cat = 'all'; S.ui.per = 'month'; S.ui.ns = false; S.ui.nm = false; S.ui.view = 'dash';   /* v108 : 제목·현황판 누르면 «전체» 구분으로 */ S.ui.page = 1; lsSet('subul.view', 'dash'); render(); scrollTo(0, 0); }
 function render() {
   if (!dataStarted) return;
   var u = S.ui;
