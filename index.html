@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v103">
+<meta name="su-ver" content="v104">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -241,6 +241,8 @@ td.yr{color:#1e40af;font-weight:700}
 .nm-ban{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 8px;padding:7px 12px;border:1px solid #fca5a5;border-radius:8px;background:#fef2f2;font-size:13px;color:#7f1d1d}.nm-ban a{color:#1d4ed8;font-weight:700}.nm-ban button{margin-left:auto;height:26px;padding:0 10px;border:1px solid #fca5a5;border-radius:6px;background:#fff;color:#b91c1c;font-weight:700;cursor:pointer}
 .cell-pop{position:fixed;z-index:9999;max-width:min(560px,calc(100vw - 16px));padding:4px 8px;background:#fff;color:#0f172a;border:1px solid #3b82f6;border-radius:6px;box-shadow:0 6px 20px rgba(15,23,42,.22);white-space:pre-wrap;word-break:break-all;line-height:1.45;cursor:text;user-select:text}
 .grid td.c-s,.grid td.c-memo,.grid td.c-n,.grid td.c-cust,.pg-dt td.c-memo{cursor:pointer}
+.modal-head{cursor:move;user-select:none}.modal-head button,.modal-head input,.modal-head select{cursor:pointer}.modal-box.dragging{box-shadow:0 26px 60px #0f172a55}
+.pcauto{height:28px;padding:0 10px;border:1px solid #93c5fd;border-radius:6px;background:#eff6ff;color:#1d4ed8;font-weight:700;font-size:12.5px;cursor:pointer;white-space:nowrap}.pcauto b{margin-left:3px;padding:0 6px;border-radius:9px;background:#1d4ed8;color:#fff;font-size:11px}.pcauto:hover:not(:disabled){background:#dbeafe}.pcauto:disabled{opacity:.45;cursor:default}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -508,6 +510,8 @@ var SU = (function () {
     if (res.epoch != null) E.epoch = String(res.epoch);
     ['ship', 'order'].forEach(function (kind) { (res[kind] || []).forEach(function (x) { if (!x || !x.k) return; if (x.del) E[kind].delete(x.k); else E[kind].set(x.k, x); n++; }); });
     (res.upload || []).forEach(function (u) { if (u && u.id) E.up.set(u.id, u); });
+    if (res.counters && !res.reset) E.counters = Object.assign({}, E.counters || {}, res.counters);   /* v104 : 출고매칭 구분별 마지막 번호 (제품번호 자동부여용) */
+    if (res.manualP && !res.reset) E.manualP = res.manualP;
     if (res.rev != null) E.rev = Number(res.rev) || 0;
     if (n) { this.erpDirty = true; this.dirtyIx = true; }
     return n;
@@ -1119,6 +1123,7 @@ async function erpPull(loud) {
     var E = store.erp, ep0 = E.epoch || '';
     var d = await api({ action: 'smGet', since: E.rev || 0, epoch: E.epoch || '' }, 180000);
     var n = d.unchanged ? 0 : store.setErp(d);
+    if (d.counters) store.erp.counters = Object.assign({}, store.erp.counters || {}, d.counters); if (d.manualP) store.erp.manualP = d.manualP;   /* v104 */
     S.erp.err = ''; S.erp.last = new Date();
     if (n) { saveErpCache(); softRefresh(); }
     /* 출고매칭에서 «초기화»(서버 epoch 바뀜) → 관련 입력 같이 지울지 한 번 물음 */
@@ -2087,7 +2092,7 @@ function usedCodes() {
 }
 function fixCode(id) {
   var it = store.items.get(id); if (!it) return;
-  var pre = it.cat === 'laser' ? 'D' : 'B', ex = it.cat === 'laser' ? 'D1234' : 'B12345';
+  var pre = pcPre(it), used0 = pcUsed(), nx = pcFmt(pre, pcNext(pre, used0)), ex = nx;
   var ol = (store.erpOrd.get(id) || []).filter(function (o) { return !o.code && !SU.codesOf((o.r || '') + ' ' + (o.s || '')).length && SU.num(o.q) > 0; });
   var w = document.createElement('div'); w.className = 'modal'; w.style.zIndex = 120;
   w.innerHTML = '<div class="modal-box fx-box"><div class="modal-head"><h2>제품번호 넣기 <small class="muted">' + esc([it.p, it.n, it.s, it.cust].filter(Boolean).join(' · ')) + '</small></h2><button class="modal-x" data-close>×</button></div>' +
@@ -2095,22 +2100,23 @@ function fixCode(id) {
       ol.map(function (o, i) { return '<tr><td>' + esc(SU.ymd(o.od)) + '</td><td>' + esc(o.o) + '</td><td>' + esc(o.r || '') + '</td><td class="num">' + fmt(SU.num(o.q)) + '</td><td><input class="fx-in" data-i="' + i + '" placeholder="' + ex + '" autocomplete="off"></td></tr>'; }).join('') + '</tbody></table>' +
       '<ul class="fx-note"><li>저장하면 출고매칭 서버의 이 수주 줄 비고 끝에 « / 번호»를 붙임 → 출고매칭·수불관리 같이 반영</li><li>출고매칭은 다음 동기화 때 이 주문 출고 줄을 이 번호로 다시 매칭함</li><li>ERP 수주 비고에도 같은 번호를 넣을 것 (안 넣고 수주현황을 다시 올리면 번호가 빠짐)</li></ul>'
     : '<div class="fg"><label>제품번호<input class="fx-in" data-i="-1" placeholder="' + ex + '" autocomplete="off"></label></div><ul class="fx-note"><li>ERP 수주 줄이 없는 품목 → 수불관리 품목에만 저장 (출고매칭에는 반영 안 됨)</li></ul>') +
-    '<div class="act"><button type="button" class="primary" id="fxGo">저장</button><span class="msg" id="fxMsg"></span></div></div>';
+    '<div class="act"><button type="button" class="primary" id="fxGo">저장</button><button type="button" id="fxNext" title="이전 번호와 겹치지 않는 다음 번호(' + nx + ')를 빈 칸에 넣음 · 저장은 따로">🔢 다음 번호 ' + nx + '</button><span class="msg" id="fxMsg"></span></div></div>';
   document.body.appendChild(w);
   var ins = $$('.fx-in', w); if (ins[0]) ins[0].focus();
   w.onkeydown = function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); go(); } else if (ev.key === 'Escape') w.remove(); };
-  w.onclick = function (ev) { if (ev.target.dataset.close != null || ev.target === w) w.remove(); else if (ev.target.id === 'fxGo') go(); };
+  w.onclick = function (ev) { if (ev.target.dataset.close != null || ev.target === w) w.remove(); else if (ev.target.id === 'fxGo') go();
+    else if (ev.target.id === 'fxNext') { ins.forEach(function (inp) { if (!inp.value.trim()) inp.value = nx; }); } };
   var busy = false;
   async function go() {
     if (busy) return;
-    var msg = $('#fxMsg', w), used = usedCodes(), seen = {}, todo = [], bad = '';
+    var msg = $('#fxMsg', w), used = pcUsed(), seen = {}, todo = [], bad = '';
     ins.forEach(function (inp) {
       var v = inp.value.trim().toUpperCase().replace(/\s+/g, ''); inp.classList.remove('err'); if (!v) return;
-      if (!/^(B\d{4,5}|D\d{4,5})$/.test(v)) { bad = bad || v + ' : 형식 오류 (예: ' + ex + ')'; inp.classList.add('err'); return; }
-      if (v[0] !== pre && !bad) { bad = v + ' : ' + (it.cat === 'laser' ? '레이저는 D' : '내부보강은 B') + '번호'; inp.classList.add('err'); return; }
+      if (/^\d{1,6}$/.test(v)) v = pcFmt(pre, +v);
+      if (!/^[ABCDG]\d{4,5}$/.test(v)) { bad = bad || v + ' : 형식 오류 (예: ' + ex + ')'; inp.classList.add('err'); return; }
+      if (v[0] !== pre && !bad) { bad = v + ' : ' + (SU.CAT_NAME[it.cat] || '') + '는 ' + pre + '번호'; inp.classList.add('err'); return; }
       if (used[v]) { bad = bad || v + ' : 이미 씀 (' + used[v] + ')'; inp.classList.add('err'); return; }
-      if (seen[v]) { bad = bad || v + ' : 두 줄에 같은 번호'; inp.classList.add('err'); return; }
-      seen[v] = 1; todo.push({ i: +inp.dataset.i, code: v });
+      seen[v] = 1; todo.push({ i: +inp.dataset.i, code: v });   /* v104 : 같은 품목의 여러 수주 줄은 같은 번호 가능 */
     });
     if (bad) { msg.textContent = bad; msg.className = 'msg neg'; return; }
     if (!todo.length) { msg.textContent = '번호를 넣을 것'; msg.className = 'msg neg'; return; }
@@ -2125,7 +2131,8 @@ function fixCode(id) {
         if (!res || res.ok === false) throw new Error((res && res.error) || '서버 응답 없음');
         if ((res.orderUpdated || 0) < lines.length) throw new Error('출고매칭 서버가 ' + (res.orderUpdated || 0) + '/' + lines.length + '줄만 고침');
       }
-      if (!it._v && todo.length === 1) { var v = SU.cleanForSave(it); v.code = todo[0].code; setRec('i:' + it.id, v); schedulePush(); }
+      if (!it._v && Object.keys(seen).length === 1) { var v = SU.cleanForSave(it); v.code = todo[0].code; v.pcBy = '입력 ' + me() + ' ' + SU.today(); setRec('i:' + it.id, v); schedulePush(); }
+      try { await api({ action: 'smPush', upload: pcUpload(Object.keys(seen), '수불관리 제품번호 입력 ' + todo[0].code) }, 60000); } catch (_e) {}
       if (lines.length) await erpPull(false);
       store.erpDirty = true; w.remove(); render();
       toast('제품번호 저장: ' + todo.map(function (t) { return t.code; }).join(', ') + (lines.length ? '\n출고매칭 수주 비고에도 넣음 (ERP 비고에도 넣을 것)' : '\n수불관리 품목에만 저장'), 'long');
@@ -2180,7 +2187,7 @@ function usedCols(items) { return DAY_COLS.filter(function (c) { return c.k === 
 function shownProcs(it) { var f = S.ui.proc; return f ? it.procs.filter(function (p) { return p.n === f; }) : it.procs; }
 function renderDay() {
   var u = S.ui, d = u.date, list = filtered(), shown = list.slice(0, u.page * PAGE), cols = usedCols(shown);
-  var qkTools = sortResetBtn() + '<button type="button" id="baseZero" class="bz" title="지금 표에 보이는 조건의 전일 재고(' + SU.addDays(d, -1) + ' 끝)를 모두 0으로 · 개별 칸은 전일 재고 칸에서 직접 수정">전일 재고 모두 0</button>', qkOpen = lsGet('subul.qk', '1') === '1';
+  var qkTools = pcAutoBtn() + sortResetBtn() + '<button type="button" id="baseZero" class="bz" title="지금 표에 보이는 조건의 전일 재고(' + SU.addDays(d, -1) + ' 끝)를 모두 0으로 · 개별 칸은 전일 재고 칸에서 직접 수정">전일 재고 모두 0</button>', qkOpen = lsGet('subul.qk', '1') === '1';
   var h = nmBanner() + quickBox(qkOpen ? qkTools : '') + (qkOpen ? '' : '<div class="mbar"><span class="spacer"></span>' + qkTools + '</div>') + '<div class="tbl-wrap"><table class="grid day"><thead><tr>' + sortTh('cat', 'c-cat', '구분') + cols.map(function (c) { return sortTh(c.k, 'c-' + c.k, c.t); }).join('') +
     sortTh('proc', 'c-proc', '공정') + sortTh('prev', 'num', '전일 재고<small>출고: 수주</small>') + sortTh('g', 'num in', '양품<small>출고: 직접 입력</small>') + sortTh('b', 'num in', '불량<small>출고: ERP</small>') + sortTh('p', 'num', '생산') + sortTh('r', 'num', '불량율') + sortTh('s', 'num st', '재고<small>' + dlabel(d) + ' · 출고: 잔량</small>') + sortTh('ms', 'num', '이달 생산<small>출고: 이달 출고</small>') + sortTh('now', 'num', '현 재고<small>오늘 · 출고: 누계</small>') + '</tr></thead><tbody>';
   if (!shown.length) h += '<tr><td colspan="' + (cols.length + 10) + '" class="empty">' + (store.items.size ? '조건에 맞는 품목 없음. 위 «진행 중 품목» → «전체 품목», «모든 공정»으로 바꿔 볼 것' : '아직 품목 없음. «➕ 수주 입력»에서 등록하거나 관리자가 «⚙ 설정 → 구글시트에서 가져오기» 실행. ERP 수주현황·출고현황은 출고매칭에 올리면 자동 반영') + '</td></tr>';
@@ -2441,7 +2448,7 @@ function renderMonth() {
   store.items.forEach(function (it) { if (u.cat !== 'all' && it.cat !== u.cat) return; (it.procs || []).forEach(function (p) { pall[p.n] = 1; }); });
   var pnames = store.procList().filter(function (n) { return pall[n] || pset[n]; });
   var h = nmBanner() + '<div class="mbar"><b>' + ms.slice(0, 4) + '년 ' + Number(ms.slice(5, 7)) + '월</b><span class="pfl">공정:</span><div class="pfw' + (u.pfOpen ? ' open' : '') + '" id="pfw"><button data-pf="" class="' + (!u.proc ? 'on' : '') + '">전체</button><span class="vsep"></span>' + pnames.map(function (n, ni) { var c = pset[n] || 0; return (SU.isBuy(n) && ni && !SU.isBuy(pnames[ni - 1]) ? '<span class="vsep"></span>' : '') + '<button data-pf="' + esc(n) + '" class="' + (u.proc === n ? 'on' : '') + '"' + (c || u.proc === n ? '' : ' disabled') + ' title="' + (c ? c.toLocaleString() + '품목' : '지금 표에 이 공정 없음') + '">' + esc(n) + '</button>'; }).join('') +
-    '</div><button type="button" id="pfMore" class="pfmore" hidden>' + (u.pfOpen ? '접기 ▲' : '더보기 ▼') + '</button><span class="mtools">' + sortResetBtn() + '<button type="button" id="delMode" class="delm' + (DEL.on ? ' on' : '') + '" title="품목 삭제 — 체크해서 개별 · 전체 선택">🗑 삭제</button><button type="button" id="baseZero" class="bz" title="지금 표에 보이는 조건의 기초재고를 모두 0으로 (개별 칸은 기초 칸에서 직접 수정)">기초재고 모두 0</button></span></div>' + delBar(list);
+    '</div><button type="button" id="pfMore" class="pfmore" hidden>' + (u.pfOpen ? '접기 ▲' : '더보기 ▼') + '</button><span class="mtools">' + pcAutoBtn() + sortResetBtn() + '<button type="button" id="delMode" class="delm' + (DEL.on ? ' on' : '') + '" title="품목 삭제 — 체크해서 개별 · 전체 선택">🗑 삭제</button><button type="button" id="baseZero" class="bz" title="지금 표에 보이는 조건의 기초재고를 모두 0으로 (개별 칸은 기초 칸에서 직접 수정)">기초재고 모두 0</button></span></div>' + delBar(list);
   h += '<div class="tbl-wrap"><table class="grid month"><thead><tr>' + sortTh('cat', 'c-cat', '구분') + sortTh('p', 'c-p', '품번') + sortTh('pc', 'c-pc', '제품번호') + sortTh('n', 'c-n', '품명') + sortTh('s', 'c-s', '규격') + sortTh('memo', 'c-memo', '비고') + sortTh('proc', 'c-proc', '공정') + sortTh('prod', 'num c-prod', u.cat === 'oem' ? '이달<br>입고' : '이달<br>생산') + sortTh('tot', 'num c-st', '재고<small>' + (me_ < td ? dlabel(me_) : '오늘') + '</small>') + sortTh('base', 'num c-base', '기초<br>재고') +
     days.map(function (dd) { var w = new Date(dd + 'T00:00:00').getDay(); return sortTh('d' + dd, 'num day' + (w === 0 ? ' sun' : w === 6 ? ' sat' : '') + (dd === td ? ' today' : ''), Number(dd.slice(8)) + '<span class="dgo" title="그날 입력 화면으로">↗</span>', ' data-d="' + dd + '"'); }).join('') + '</tr></thead><tbody>';
   var before = SU.addDays(ms, -1);
@@ -3534,6 +3541,105 @@ function asBind() {
   document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') close(); });
   addEventListener('scroll', function () { if (pop) close(); }, { passive: true, capture: true });
   addEventListener('resize', close);
+})();
+
+/* v104 : 제품번호 자동부여 — 지금 표 조건의 «번호 없음·번호 대기» 품목에 구분별 다음 번호
+   · 머리글자 : 내부보강 B · 레이저 D · 부자재 A · 유통/OEM G · 문틀 C (숫자 5자리, 출고매칭과 같음)
+   · 다음 번호 = 출고매칭 서버 구분별 마지막 번호·주문/출고/올린 번호·수불 품목 번호 중 가장 큰 것 + 1 (쓴 번호 건너뜀)
+   · 저장 : 수불 품목 code(pcBy 자동) + ERP 수주 줄 비고 « / 번호»(출고매칭 smPush upd) + 출고매칭 «쓴 번호» 등록(upload subul) */
+var PC_PRE = { inner: 'B', laser: 'D', part: 'A', oem: 'G', frame: 'C' };
+function pcPre(it) { return PC_PRE[it && it.cat] || 'A'; }
+function pcFmt(P, n) { return P + String(n).padStart(5, '0'); }
+function pcNum(c, P) { var m = new RegExp('^' + P + '(\\d{4,6})$').exec(String(c || '').trim().toUpperCase()); return m ? +m[1] : 0; }
+function pcUsed() {
+  var m = usedCodes();
+  store.erp.up.forEach(function (u) { (u.sCodes || []).forEach(function (c) { c = String(c || '').toUpperCase(); if (c && !m[c]) m[c] = '출고매칭 «' + (u.name || '') + '»'; }); });
+  store.items.forEach(function (it) { if (it._v) return; var c = prodCode(it); if (c && !m[c]) m[c] = '품목 ' + (it.p || ''); });
+  return m;
+}
+function pcNext(P, used) {
+  var E = store.erp, cnt = Number((E.counters || {})[P] || 0), n = cnt;
+  if (!(E.manualP || {})[P]) Object.keys(used).forEach(function (c) { var k = pcNum(c, P); if (k > n) n = k; });
+  n++; while (used[pcFmt(P, n)]) n++;
+  return n;
+}
+function pcUpload(codes, name) { return { id: 'su' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), kind: 'subul', name: name, rows: codes.length, maxS: 0, sCodes: codes }; }
+function pcAutoList() { return sortedItems().filter(noNum); }
+function pcAutoBtn() {
+  var n = pcAutoList().length;
+  return '<button type="button" id="pcAuto" class="pcauto"' + (n ? '' : ' disabled') + ' title="' + (n ? '지금 표 조건에서 제품번호 없는 품목 ' + n.toLocaleString() + '개에 이전 번호와 겹치지 않는 다음 번호를 붙임 (구분별 B·D·A·G·C) · 출고매칭에도 바로 반영' : '지금 표에 제품번호 없는 품목 없음') + '">🔢 제품번호 자동부여' + (n ? ' <b>' + n.toLocaleString() + '</b>' : '') + '</button>';
+}
+var PC_BUSY = false;
+async function pcAutoRun() {
+  if (PC_BUSY) return;
+  var L = pcAutoList(); if (!L.length) { toast('제품번호 없는 품목 없음'); return; }
+  try { if (AU.token) { toast('출고매칭 번호 확인 중…'); await erpPull(false); store.deriveErp(); L = pcAutoList(); } } catch (_e) {}
+  var used = pcUsed(), next = {}, plan = [], by = me() + ' ' + SU.today();
+  L.forEach(function (it) {
+    var ol = (store.erpOrd.get(it.id) || []).filter(function (o) { return !o.code && !SU.codesOf((o.r || '') + ' ' + (o.s || '')).length && SU.num(o.q) > 0; });
+    if (it._v && !ol.length) { plan.push({ it: it, v: '', ol: ol }); return; }   /* 번호를 저장할 곳이 없는 품목은 번호를 쓰지 않음 */
+    var P = pcPre(it); if (!next[P]) next[P] = pcNext(P, used);
+    while (used[pcFmt(P, next[P])]) next[P]++;
+    var v = pcFmt(P, next[P]++); used[v] = '자동';
+    plan.push({ it: it, v: v, ol: ol });
+  });
+  var ok = plan.filter(function (x) { return x.v; }), skip = plan.length - ok.length;
+  if (!ok.length) { toast('번호를 붙일 수 있는 품목 없음 (ERP 수주 줄 없음)', 'warn'); return; }
+  var rng = {}; ok.forEach(function (x) { var P = x.v[0]; if (!rng[P]) rng[P] = [x.v, x.v, 0]; rng[P][1] = x.v; rng[P][2]++; });
+  var rs = Object.keys(rng).map(function (P) { var r = rng[P]; return '· ' + P + ' ' + r[2] + '개 : ' + r[0] + (r[2] > 1 ? ' ~ ' + r[1] : ''); }).join('\n');
+  if (!confirm('제품번호 없는 품목 ' + ok.length.toLocaleString() + '개에 번호를 붙일까요?\n\n' + rs + '\n\n· 이전 번호(출고매칭·주문·출고·수불 품목)와 겹치지 않는 다음 번호\n· 출고매칭 수주 줄 비고 끝에도 « / 번호»를 붙임 → 출고매칭에 바로 반영\n· ERP 수주 비고에도 같은 번호를 넣을 것' + (skip ? '\n· ERP 수주 줄 없는 출고 전 품목 ' + skip + '개는 건너뜀' : ''))) return;
+  PC_BUSY = true; var b = $('#pcAuto'); if (b) { b.disabled = true; b.textContent = '번호 붙이는 중…'; }
+  try {
+    var lines = [];
+    ok.forEach(function (x) {
+      x.ol.forEach(function (ol) { var o = {}; Object.keys(ol).forEach(function (k) { if (k[0] !== '_') o[k] = ol[k]; });
+        o.r = (String(o.r || '').trim() ? String(o.r).trim() + ' / ' : '') + x.v; o.code = x.v; o.upd = 1; lines.push(o); });
+      if (!x.it._v) { var nv = SU.cleanForSave(x.it); nv.code = x.v; nv.pcBy = '자동 ' + by; setRec('i:' + x.it.id, nv); }
+    });
+    schedulePush();
+    var codes = ok.map(function (x) { return x.v; }), upd = 0;
+    for (var i = 0; i < Math.max(1, lines.length); i += 500) {
+      var pl = { action: 'smPush', order: lines.slice(i, i + 500) };
+      if (i === 0) pl.upload = pcUpload(codes, '수불관리 제품번호 자동부여 ' + SU.today());
+      var res = await api(pl, 120000);
+      if (!res || res.ok === false) throw new Error((res && res.error) || '서버 응답 없음');
+      upd += res.orderUpdated || 0;
+    }
+    await erpPull(false); store.erpDirty = true; render();
+    toast('제품번호 자동부여 ' + ok.length.toLocaleString() + '개\n' + rs + '\n출고매칭 수주 줄 ' + upd.toLocaleString() + '/' + lines.length.toLocaleString() + '줄 반영 · ERP 수주 비고에도 넣을 것', upd < lines.length ? 'warn long' : 'long');
+  } catch (e) { toast('제품번호 자동부여 오류: ' + (e.message || e) + '\n수불관리 품목 번호는 저장됨 · 출고매칭 반영은 다시 누르면 이어서', 'bad long'); render(); }
+  finally { PC_BUSY = false; }
+}
+document.addEventListener('click', function (ev) { var t = ev.target.closest && ev.target.closest('#pcAuto'); if (!t || t.disabled) return; ev.preventDefault(); pcAutoRun(); });
+
+/* v104 : 팝업 창 끌어서 옮기기 — 창 제목줄(.modal-head)을 누른 채 끌기 (버튼·입력칸 제외) */
+(function () {
+  var D = null;
+  document.addEventListener('mousedown', function (ev) {
+    if (ev.button !== 0) return;
+    var h = ev.target.closest && ev.target.closest('.modal-head'); if (!h || ev.target.closest('button,input,select,textarea,a')) return;
+    var box = h.closest('.modal-box'); if (!box) return;
+    var m = /translate\((-?[\d.]+)px, *(-?[\d.]+)px\)/.exec(box.style.transform || '');
+    D = { box: box, x0: ev.clientX, y0: ev.clientY, dx: m ? +m[1] : 0, dy: m ? +m[2] : 0, moved: false };
+    ev.preventDefault();
+  });
+  document.addEventListener('mousemove', function (ev) {
+    if (!D) return;
+    var x = ev.clientX - D.x0, y = ev.clientY - D.y0; if (!D.moved && Math.abs(x) + Math.abs(y) < 3) return;
+    D.moved = true; D.box.classList.add('dragging');
+    var nx = D.dx + x, ny = D.dy + y;
+    D.box.style.transform = 'translate(' + nx + 'px,' + ny + 'px)';
+    var r = D.box.getBoundingClientRect();   /* 제목줄이 화면 밖으로 나가지 않게 */
+    if (r.top < 0) ny -= r.top; else if (r.top > innerHeight - 40) ny -= r.top - (innerHeight - 40);
+    if (r.left > innerWidth - 80) nx -= r.left - (innerWidth - 80); else if (r.right < 80) nx += 80 - r.right;
+    D.box.style.transform = 'translate(' + nx + 'px,' + ny + 'px)';
+  });
+  document.addEventListener('mouseup', function () {
+    if (!D) return; var moved = D.moved; D.box.classList.remove('dragging'); D = null;
+    if (!moved) return;
+    var k = function (ev) { ev.stopPropagation(); ev.preventDefault(); };   /* 끌고 놓은 곳이 바깥이어도 창이 닫히지 않게 (바로 뒤 클릭 한 번만 막음) */
+    addEventListener('click', k, true); setTimeout(function () { removeEventListener('click', k, true); }, 0);
+  });
 })();
 
 </script>
