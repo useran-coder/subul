@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v122">
+<meta name="su-ver" content="v123">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -2484,6 +2484,10 @@ function delRun() {
   var set = {}, ks = []; ids.forEach(function (id) { set[id] = 1; });
   store.recs.forEach(function (rc, k) { var t = k.charAt(0); if ((t === 'e' || t === 'a' || t === 'r') && rc.v != null && set[k.slice(2).split('|')[0]]) ks.push(k); });
   var ex = ids.slice(0, 6).map(function (id) { var it = store.items.get(id); return '· ' + (it.p || it.n) + (it.s ? ' ' + it.s : ''); }).join('\n');
+  if (ids.length > 50) {   /* v123 : 많이 지울 때는 품목 수를 직접 입력해야 지움 (전체 선택 실수 방지) */
+    var typed = prompt('⚠ ' + ids.length.toLocaleString() + '품목 · 생산·출고 입력 ' + ks.length.toLocaleString() + '칸을 모든 PC에서 지움\n' + ex + '\n… 외 ' + (ids.length - 6).toLocaleString() + '품목\n\n정말 지우려면 품목 수 ' + ids.length + ' 를 입력');
+    if (typed == null || String(typed).replace(/[^0-9]/g, '') !== String(ids.length)) { toast('지우지 않음 (품목 수가 맞지 않음)'); return; }
+  } else
   if (!confirm('선택한 ' + ids.length.toLocaleString() + '품목 · 입력 ' + ks.length.toLocaleString() + '칸 지울까?\n' + ex + (ids.length > 6 ? '\n… 외 ' + (ids.length - 6) + '품목' : '') + '\n\n모든 PC에서 지워짐 · ERP 품목은 다시 안 생김 · 바로 Ctrl+Z 로 되돌림 가능')) return;
   ks.forEach(function (k) { setRec(k, null); });
   ids.forEach(function (id) { setRec('i:' + id, null); });
@@ -3747,24 +3751,34 @@ async function lostScan() {
       (d.recs || []).forEach(function (x) { var L = H.get(x.k); if (!L) H.set(x.k, L = []); L.push(x); });
       pos = d.pos; if (!d.more) break;
     }
-    var G = {};
+    var G = {}, DL = [];
     H.forEach(function (L, k) {
       var last = L[L.length - 1]; if (last.v != null) return;
       var t = k.slice(0, 2); if (t !== 'e:' && t !== 'a:' && t !== 'r:' && t !== 'i:') return;
       var prev = null; for (var i = L.length - 2; i >= 0; i--) if (L[i].v != null) { prev = L[i]; break; }
       if (!prev) return;
-      var gk = String(last.at || '').slice(0, 16) + '|' + (last.by || '');
-      var g = G[gk] || (G[gk] = { at: String(last.at || '').slice(0, 16), by: last.by || '', list: [], n: { e: 0, a: 0, r: 0, i: 0 }, g: 0, ids: {} });
-      g.list.push({ k: k, v: prev.v, base: last.r }); g.n[t[0]]++;
-      if (t === 'e:') { g.g += SU.num(prev.v && prev.v.g); g.ids[k.slice(2).split('|')[0]] = 1; } else if (t === 'i:') g.ids[k.slice(2)] = 1;
+      DL.push({ k: k, t: t, last: last, prev: prev });
+    });
+    /* v123 : 같은 사람이 10분 안에 이어서 지운 칸은 한 묶음 (대량 삭제가 1분 넘게 걸려도 한 번에 되살림) */
+    function ltm(a) { var x = tms(a); if (!x) return String(a || '').slice(0, 16); var d = new Date(x); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2) + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+    function tms(a) { var x = Date.parse(String(a || '').replace(' ', 'T')); return isNaN(x) ? 0 : x; }
+    DL.sort(function (a, b) { return a.last.r - b.last.r || tms(a.last.at) - tms(b.last.at); });
+    var curG = null, gi = 0;
+    DL.forEach(function (x) {
+      var by = x.last.by || '', tm = tms(x.last.at);
+      if (!curG || curG.by !== by || Math.abs(tm - curG.tEnd) > 600000) { curG = G['g' + (gi++)] = { at: ltm(x.last.at), to: '', by: by, tEnd: tm, list: [], n: { e: 0, a: 0, r: 0, i: 0 }, g: 0, ids: {} }; }
+      curG.tEnd = tm; curG.to = ltm(x.last.at).slice(11, 16);
+      curG.list.push({ k: x.k, v: x.t === 'i:' ? SU.cleanForSave(x.prev.v) : x.prev.v, base: x.last.r }); curG.n[x.t[0]]++;
+      if (x.t === 'e:') { curG.g += SU.num(x.prev.v && x.prev.v.g); curG.ids[x.k.slice(2).split('|')[0]] = 1; } else if (x.t === 'i:') curG.ids[x.k.slice(2)] = 1;
     });
     LOST = Object.keys(G).map(function (k) { return G[k]; }).sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); });
     msg.textContent = '서버 기록 ' + pos.toLocaleString() + '줄 확인 · 지워진 칸 묶음 ' + LOST.length + '개';
     if (!LOST.length) { box.innerHTML = '<div class="muted">지워진 입력 없음 (기록 정리를 한 뒤라면 그 전 기록은 남아 있지 않음)</div>'; return; }
     box.innerHTML = '<table class="grid small"><thead><tr><th>지운 시각</th><th>누가</th><th class="num">생산·출고 입력</th><th class="num">양품 합</th><th class="num">기초 조정</th><th class="num">실사</th><th class="num">품목</th><th>예 (품목)</th><th></th></tr></thead><tbody>' +
       LOST.map(function (g, i) {
-        var ex = Object.keys(g.ids).slice(0, 4).map(function (id) { var it = store.items.get(id); return it ? (it.p || it.n || id) + (it.s ? ' ' + it.s : '') : id; }).join(', ');
-        return '<tr><td class="nowrap">' + esc(g.at.replace('T', ' ')) + '</td><td>' + esc(g.by) + '</td><td class="num">' + g.n.e.toLocaleString() + '</td><td class="num">' + fmt(g.g) + '</td><td class="num">' + g.n.a + '</td><td class="num">' + g.n.r + '</td><td class="num">' + g.n.i + '</td><td class="c-memo" title="' + esc(ex) + '">' + esc(ex) + (Object.keys(g.ids).length > 4 ? ' 외 ' + (Object.keys(g.ids).length - 4) : '') + '</td><td>' + (isAdmin() ? '<button type="button" class="small" data-lost="' + i + '">되살리기</button>' : '') + '</td></tr>';
+        var pv = {}; g.list.forEach(function (x) { if (x.k.slice(0, 2) === 'i:') pv[x.k.slice(2)] = x.v; });
+        var ex = Object.keys(g.ids).slice(0, 4).map(function (id) { var it = store.items.get(id) || pv[id]; return it ? (it.p || it.n || id) + (it.s ? ' ' + it.s : '') : id; }).join(', ');
+        return '<tr><td class="nowrap">' + esc(g.at.replace('T', ' ')) + (g.to && g.to !== g.at.slice(11, 16) ? '~' + esc(g.to) : '') + '</td><td>' + esc(g.by) + '</td><td class="num">' + g.n.e.toLocaleString() + '</td><td class="num">' + fmt(g.g) + '</td><td class="num">' + g.n.a + '</td><td class="num">' + g.n.r + '</td><td class="num">' + g.n.i + '</td><td class="c-memo" title="' + esc(ex) + '">' + esc(ex) + (Object.keys(g.ids).length > 4 ? ' 외 ' + (Object.keys(g.ids).length - 4) : '') + '</td><td>' + (isAdmin() ? '<button type="button" class="small" data-lost="' + i + '">되살리기</button>' : '') + '</td></tr>';
       }).join('') + '</tbody></table><div class="muted small">되살리기 = 지우기 바로 전 값으로 다시 저장 · 그 뒤 다른 사람이 다시 고친 칸은 건너뜀 · 관리자만</div>';
     box.onclick = async function (ev) {
       var b = ev.target.closest('[data-lost]'); if (!b) return; var g = LOST[+b.dataset.lost]; if (!g) return;
