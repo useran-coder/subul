@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v126">
+<meta name="su-ver" content="v127">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -524,7 +524,11 @@ var SU = (function () {
   /* 개별번호 : 내부보강 B12345 · 레이저 D1234 (비고·규격에 적힌 것) */
   function codesOf(t) { var m = String(t || '').toUpperCase().match(/(?:^|[^A-Z0-9])([BD]\d{3,6})(?![0-9])/g) || []; return m.map(function (x) { return x.replace(/^[^BD]/, ''); }); }
   /* 운반비(택배요금 등)는 제품이 아니라 수불에서 뺌 */
-  function isFreight(r) { return /운반비|택배\s*요금/.test(String(r.n || '') + ' ' + String(r.s || '')) || /^MAINTRAN/i.test(String(r.p || '').trim()); }
+  /* v127 : 출고매칭 «제외품목» (upload kind 'excl', t 가장 큰 기록의 list[{p,n}]) — 품번 norm 같으면 수불에서 뺌 (자료는 지우지 않고 숨김) */
+  var EXCL = new Set(), EXCL_T = -1;
+  function exNorm(p) { return String(p || '').toLowerCase().replace(/[\s\-_\/().,]/g, ''); }
+  function isExcl(r) { return EXCL.size > 0 && !!r && EXCL.has(exNorm(r.p)); }
+  function isFreight(r) { return /운반비|택배\s*요금/.test(String(r.n || '') + ' ' + String(r.s || '')) || /^MAINTRAN/i.test(String(r.p || '').trim()) || isExcl(r); }
   function nk(s) { return String(s || '').replace(/\s+/g, '').toUpperCase(); }
   Store.prototype.setErp = function (res) {
     var E = this.erp, n = 0;
@@ -533,6 +537,9 @@ var SU = (function () {
     if (res.epoch != null) E.epoch = String(res.epoch);
     ['ship', 'order'].forEach(function (kind) { (res[kind] || []).forEach(function (x) { if (!x || !x.k) return; if (x.del) E[kind].delete(x.k); else E[kind].set(x.k, x); n++; }); });
     (res.upload || []).forEach(function (u) { if (u && u.id) E.up.set(u.id, u); });
+    var ex = null; E.up.forEach(function (u) { if (u.kind === 'excl' && (!ex || Number(u.t) > Number(ex.t))) ex = u; });
+    var exT = ex ? Number(ex.t) || 0 : -1;
+    if (exT !== EXCL_T) { EXCL_T = exT; EXCL = new Set(); ((ex && ex.list) || []).forEach(function (x) { var k = exNorm(x && x.p); if (k) EXCL.add(k); }); n++; }
     if (res.counters && !res.reset) E.counters = Object.assign({}, E.counters || {}, res.counters);   /* v104 : 출고매칭 구분별 마지막 번호 (제품번호 자동부여용) */
     if (res.manualP && !res.reset) E.manualP = res.manualP;
     if (res.rev != null) E.rev = Number(res.rev) || 0;
@@ -857,7 +864,7 @@ var SU = (function () {
     return o;
   }
 
-  return { CATS: CATS, CAT_NAME: CAT_NAME, OUT: OUT, DEFAULT_TPL: DEFAULT_TPL, normProc: normProc, isOut: isOut, isFrameName: isFrameName, FRAME_NAMES: FRAME_NAMES, isBuy: isBuy, buyProc: buyProc, num: num, ymd: ymd, addDays: addDays, today: today,
+  return { isExcl: isExcl, exclList: function () { return Array.from(EXCL); }, CATS: CATS, CAT_NAME: CAT_NAME, OUT: OUT, DEFAULT_TPL: DEFAULT_TPL, normProc: normProc, isOut: isOut, isFrameName: isFrameName, FRAME_NAMES: FRAME_NAMES, isBuy: isBuy, buyProc: buyProc, num: num, ymd: ymd, addDays: addDays, today: today,
     monthStart: monthStart, monthEnd: monthEnd, uid: uid, hash: hash, Store: Store, catOfErp: catOfErp, codesOf: codesOf, outProc: outProc, finIndex: finIndex, parseSource: parseSource, verify: verify, cleanForSave: cleanForSave, findLayout: findLayout, colLetter: colLetter };
 })();
 if (typeof module !== 'undefined') module.exports = SU;
@@ -1438,7 +1445,7 @@ function sortedItems() {
 }
 function sortedItems0() {
   store.deriveErp();
-  var arr = Array.from(store.items.values()).filter(function (it) { return !(/운반비/.test(it.n || '') || /^MAINTRAN/i.test(String(it.p || '').trim())); });   /* 운반비는 수불에서 뺌 */
+  var arr = Array.from(store.items.values()).filter(function (it) { return !(/운반비/.test(it.n || '') || /^MAINTRAN/i.test(String(it.p || '').trim()) || SU.isExcl(it)); });   /* 운반비·출고매칭 제외품목(v127)은 수불에서 뺌 */
   arr.sort(function (a, b) { return catOrder(a.cat) - catOrder(b.cat) || String(a.src || 'w').localeCompare(String(b.src || 'w')) || seqNum(a.seq) - seqNum(b.seq) || String(a.od || '').localeCompare(String(b.od || '')); });
   return arr;
 }
@@ -2639,7 +2646,7 @@ function renderMonth() {
 }
 
 /* ── 출고 대조 : ERP 출고현황 줄마다 수불관리에 어떻게 들어갔는지 (빠진 줄·이유) ── */
-var SC_WHY = { freight: '운반비 (수불 제외)', neg: '반품·차감 (재고 제외)', ok: '반영됨', manual: '그날 직접 넣은 출고 사용', early: '반영 시작일 전', d0: '품목 기초재고 날짜 이전', noout: '품목에 출고 공정 없음', dead: '지운 품목', date: '출고일자 못 읽음', q0: '수량 0' };
+var SC_WHY = { freight: '운반비·제외품목 (수불 제외)', neg: '반품·차감 (재고 제외)', ok: '반영됨', manual: '그날 직접 넣은 출고 사용', early: '반영 시작일 전', d0: '품목 기초재고 날짜 이전', noout: '품목에 출고 공정 없음', dead: '지운 품목', date: '출고일자 못 읽음', q0: '수량 0' };
 function shipCheck() {
   var box = $('#shipChkBox'); if (!box) return;
   var sc = S.ui.sc; if (!sc) { box.innerHTML = ''; return; }
