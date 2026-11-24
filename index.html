@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v130">
+<meta name="su-ver" content="v131">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -1621,7 +1621,7 @@ function renderShell() {
   $('#procF').onchange = function () { S.ui.proc = this.value; S.ui.page = 1; render(); };
   /* v130 : «출고 전 제품»·«제품번호 없음» 버튼은 위 막대 구분 탭(유통/OEM) 오른쪽으로 */
   (function () { var ct = $('#catTabs'); if (!ct) return; $$('.top-ns').forEach(function (x) { x.remove(); }); var w = document.createElement('span'); w.className = 'top-ns'; w.appendChild($('#nsBtn')); w.appendChild($('#nmBtn')); ct.after(w); })();
-  $('#tdBtn').onclick = function () { S.ui.td = !S.ui.td; S.ui.page = 1; if (S.ui.td && S.ui.view !== 'day' && S.ui.view !== 'month') { S.ui.view = 'month'; lsSet('subul.view', 'month'); } render(); };
+  $('#tdBtn').onclick = function () { S.ui.td = !S.ui.td; S.ui.tdAll = true; S.ui.mOpen = {}; S.ui.page = 1; if (S.ui.td && S.ui.view !== 'day' && S.ui.view !== 'month') { S.ui.view = 'month'; lsSet('subul.view', 'month'); } render(); };
   $('#nmBtn').onclick = nmToggle;
   $('#nsBtn').onclick = function () { S.ui.ns = !S.ui.ns; S.ui.nm = false; S.ui.page = 1; if (S.ui.ns && S.ui.view !== 'day' && S.ui.view !== 'month') { S.ui.view = 'month'; lsSet('subul.view', 'month'); } render(); };
   /* 입력 + 목록 (선택 상자처럼 아래로 펼침, 쓰는 글자로 목록이 줄어듦) */
@@ -2546,7 +2546,7 @@ function renderMonth() {
   store.items.forEach(function (it) { if (u.cat !== 'all' && it.cat !== u.cat) return; (it.procs || []).forEach(function (p) { pall[p.n] = 1; }); });
   var pnames = store.procList().filter(function (n) { return pall[n] || pset[n]; });
   if (u.mAll == null) u.mAll = lsGet('subul.mAll', '0') === '1'; if (!u.mOpen) u.mOpen = {};
-  var h = nmBanner() + '<div class="mbar">' + (u.proc ? '' : '<button type="button" id="mAllT" class="mall' + (u.mAll ? ' on' : '') + '" title="' + (u.mAll ? '모든 품목을 출고 줄만 보이게 접기' : '모든 품목의 공정 줄 펼치기') + '">' + (u.mAll ? '⊟ 전체 접기' : '⊞ 전체 펼치기') + '</button>') + '<b>' + ms.slice(0, 4) + '년 ' + Number(ms.slice(5, 7)) + '월</b><span class="pfl">공정:</span><div class="pfw' + (u.pfOpen ? ' open' : '') + '" id="pfw"><button data-pf="" class="' + (!u.proc ? 'on' : '') + '">전체</button><span class="vsep"></span>' + pnames.map(function (n, ni) { var c = pset[n] || 0; return (SU.isBuy(n) && ni && !SU.isBuy(pnames[ni - 1]) ? '<span class="vsep"></span>' : '') + '<button data-pf="' + esc(n) + '" class="' + (u.proc === n ? 'on' : '') + '"' + (c || u.proc === n ? '' : ' disabled') + ' title="' + (c ? c.toLocaleString() + '품목' : '지금 표에 이 공정 없음') + '">' + esc(n) + '</button>'; }).join('') +
+  var h = nmBanner() + '<div class="mbar">' + (u.proc ? '' : '<button type="button" id="mAllT" class="mall' + (mAllNow() ? ' on' : '') + '" title="' + (mAllNow() ? '모든 품목을 출고 줄만 보이게 접기' : '모든 품목의 공정 줄 펼치기') + '">' + (mAllNow() ? '⊟ 전체 접기' : '⊞ 전체 펼치기') + '</button>') + '<b>' + ms.slice(0, 4) + '년 ' + Number(ms.slice(5, 7)) + '월</b><span class="pfl">공정:</span><div class="pfw' + (u.pfOpen ? ' open' : '') + '" id="pfw"><button data-pf="" class="' + (!u.proc ? 'on' : '') + '">전체</button><span class="vsep"></span>' + pnames.map(function (n, ni) { var c = pset[n] || 0; return (SU.isBuy(n) && ni && !SU.isBuy(pnames[ni - 1]) ? '<span class="vsep"></span>' : '') + '<button data-pf="' + esc(n) + '" class="' + (u.proc === n ? 'on' : '') + '"' + (c || u.proc === n ? '' : ' disabled') + ' title="' + (c ? c.toLocaleString() + '품목' : '지금 표에 이 공정 없음') + '">' + esc(n) + '</button>'; }).join('') +
     '</div><button type="button" id="pfMore" class="pfmore" hidden>' + (u.pfOpen ? '접기 ▲' : '더보기 ▼') + '</button><span class="mtools">' + pcAutoBtn() + sortResetBtn() + '<button type="button" id="delMode" class="delm' + (DEL.on ? ' on' : '') + '" title="품목 삭제 — 체크해서 개별 · 전체 선택">🗑 삭제</button><button type="button" id="baseZero" class="bz" title="지금 표에 보이는 조건의 기초재고를 모두 0으로 (개별 칸은 기초 칸에서 직접 수정)">기초재고 모두 0</button></span></div>' + delBar(list);
   h += '<div class="tbl-wrap"><table class="grid month"><thead><tr>' + sortTh('cat', 'c-cat', '구분') + sortTh('p', 'c-p', '품번') + sortTh('pc', 'c-pc', '제품번호') + sortTh('n', 'c-n', '품명') + sortTh('s', 'c-s', '규격') + sortTh('memo', 'c-memo', '비고') + sortTh('proc', 'c-proc', '공정') + sortTh('prod', 'num c-prod', u.cat === 'oem' ? '이달<br>입고' : '이달<br>생산') + sortTh('tot', 'num c-st', '재고<small>' + (me_ < td ? dlabel(me_) : '오늘') + '</small>') + sortTh('base', 'num c-base', '기초<br>재고') +
     days.map(function (dd) { var w = new Date(dd + 'T00:00:00').getDay(); return sortTh('d' + dd, 'num day' + (w === 0 ? ' sun' : w === 6 ? ' sat' : '') + (dd === td ? ' today' : ''), Number(dd.slice(8)) + '<span class="dgo" title="그날 입력 화면으로">↗</span>', ' data-d="' + dd + '"'); }).join('') + '</tr></thead><tbody>';
@@ -2555,7 +2555,7 @@ function renderMonth() {
   shown.forEach(function (it) {
     var n = it.procs.length, lastPi = -1, nst = nsTag(it);
     /* v106 : 접힌 품목은 출고 줄만 (출고 공정 없으면 마지막 공정) · 공정 필터 중에는 접지 않음 */
-    var canFold = !u.proc && n > 1, open = !canFold || (it.id in u.mOpen ? u.mOpen[it.id] : (u.mAll || !!u.td)), showPi = -1;
+    var canFold = !u.proc && n > 1, open = !canFold || (it.id in u.mOpen ? u.mOpen[it.id] : mAllNow()), showPi = -1;
     if (!open) { it.procs.forEach(function (pr, pi) { if (SU.isOut(pr.n)) showPi = pi; }); if (showPi < 0) showPi = n - 1; }
     it.procs.forEach(function (pr, pi) { if (rowOn(pr)) lastPi = pi; });
     it.procs.forEach(function (pr, pi) {
@@ -2624,7 +2624,7 @@ function renderMonth() {
     if (f || cc) { var tr = (f || cc).closest('tr'), id = f ? f.dataset.fold : tr.dataset.i, fd = tr.classList.contains('fold');
       if (f || fd || tr.querySelector('.fold-t') || tr.classList.contains('rep')) { mFold(id); return; } }   /* v112 : 펼친 품목도 같은 칸 누르면 접힘 */
     var c = ev.target.closest('td.pgc'); if (c) { pgOpen(c); return; } var o = ev.target.closest('[data-open]'); if (o) openItem(o.dataset.open); };
-  if ($('#mAllT')) $('#mAllT').onclick = function () { S.ui.mAll = !S.ui.mAll; S.ui.mOpen = {}; lsSet('subul.mAll', S.ui.mAll ? '1' : '0'); mKeep(renderMonth); };
+  if ($('#mAllT')) $('#mAllT').onclick = function () { if (S.ui.td) S.ui.tdAll = !mAllNow(); else { S.ui.mAll = !S.ui.mAll; lsSet('subul.mAll', S.ui.mAll ? '1' : '0'); } S.ui.mOpen = {}; mKeep(renderMonth); };
   $('#view').onmouseover = function (ev) { var c = ev.target.closest('td.pgc'); if (c && !c.title) c.title = pgTitle(c.dataset.k); };
   $('#view').onchange = function (ev) { var inp = ev.target; if (inp.classList.contains('dsel')) { if (inp.checked) DEL.sel.add(inp.dataset.dsel); else DEL.sel.delete(inp.dataset.dsel); $$('#view input.dsel[data-dsel="' + inp.dataset.dsel + '"]').forEach(function (c) { c.checked = inp.checked; }); var bar = $('#view .delbar'); if (bar) { bar.outerHTML = delBar(list); delBind(list); } return; } if (inp.classList.contains('bi')) setBase(inp); else if (inp.classList.contains('pg')) return; else if (inp.classList.contains('mi')) setBuyCell(inp); };
   $('#view').onkeydown = function (ev) {
@@ -3763,7 +3763,7 @@ document.addEventListener('click', function (ev) { var t = ev.target.closest && 
 
 /* v106 : 월 현황 품목 접기·펼치기 (스크롤 자리 유지) */
 function mKeep(fn) { var w = $('#view .tbl-wrap'), st = w ? w.scrollTop : 0, sl = w ? w.scrollLeft : 0, y = window.scrollY, x = window.scrollX; fn(); window.scrollTo(x, y); var w2 = $('#view .tbl-wrap'); if (w2) { w2.scrollTop = st; w2.scrollLeft = sl; } }
-function mFold(id) { var u = S.ui, it = store.items.get(id); if (!u.mOpen) u.mOpen = {}; var cur = id in u.mOpen ? u.mOpen[id] : u.mAll; u.mOpen[id] = !cur; mKeep(renderMonth); }
+function mFold(id) { var u = S.ui, it = store.items.get(id); if (!u.mOpen) u.mOpen = {}; var cur = id in u.mOpen ? u.mOpen[id] : mAllNow(); u.mOpen[id] = !cur; mKeep(renderMonth); }
 
 /* v122 : 지워진 입력 찾기·되살리기 — 서버 기록을 처음부터 받아, 마지막 값이 «지움»인 칸을 지운 시각(분)·사람별로 묶음
    · 되살리기 = 지우기 바로 전 값으로 다시 저장 (base = 지운 기록 rev → 그 뒤 다른 사람이 고친 칸은 건너뜀)
@@ -3906,6 +3906,9 @@ function myToday() {
   });
   MYT = { t: now, n: store.recs.size, m: m }; return m;
 }
+
+/* v131 : 전체 펼치기·접기 상태 — «오늘 입력 보기» 중에는 따로 (처음엔 펼침) */
+function mAllNow() { var u = S.ui; return u.td ? u.tdAll !== false : !!u.mAll; }
 
 </script>
 <script id="su-new-version-popup">
