@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v128">
+<meta name="su-ver" content="v129">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -3880,8 +3880,9 @@ function mStick() {
     css += '.grid.month>*>tr>:nth-child(' + k + '){position:sticky;left:' + left + 'px;z-index:2}.grid.month>thead>tr>:nth-child(' + k + '){z-index:7}:where(.grid.month>tbody>tr>:nth-child(' + k + ')){background-color:#fff}';
     left += th.getBoundingClientRect().width; lastI = k;
   });
-  if (lastI > 0) css += '.grid.month>*>tr>:nth-child(' + lastI + '){box-shadow:inset -2px 0 0 #94a3b8}';
+  if (lastI > 0) css += '.tbl-wrap.sx .grid.month>*>tr>:nth-child(' + lastI + '){box-shadow:inset -2px 0 0 #94a3b8}';   /* v129 : 가로로 밀어 기초재고가 가려질 때만 구분선 */
   st.textContent = css;
+  var w = t.closest('.tbl-wrap'); if (w) { var f = function () { w.classList.toggle('sx', w.scrollLeft > 4); }; w.addEventListener('scroll', f, { passive: true }); f(); }
 }
 window.addEventListener('resize', function () { fitWrap(); });
 
