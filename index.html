@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v127">
+<meta name="su-ver" content="v128">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -2595,6 +2595,7 @@ function renderMonth() {
   h += '</tbody></table></div>';
   if (list.length > shown.length) h += '<div class="more"><button id="more">더 보기 (' + shown.length.toLocaleString() + ' / ' + list.length.toLocaleString() + ' 품목)</button></div>';
   $('#view').innerHTML = h;
+  fitWrap(); mStick();
   $$('.mbar [data-pf]').forEach(function (b) { b.onclick = function () { S.ui.proc = b.dataset.pf; S.ui.page = 1; render(); }; });
   $$('.mbar [data-mm]').forEach(function (b) { b.onclick = function () { S.ui.mIn = b.dataset.mm === '1'; try { localStorage.setItem('suMIn', S.ui.mIn ? '1' : '0'); } catch (e) {} renderMonth(); }; });
   if ($('#baseZero')) $('#baseZero').onclick = baseZeroAll;
@@ -3862,6 +3863,27 @@ function oqCheck() {
     '</tbody></table></div>' + (rows.length > 500 ? '<div class="muted small">500품목까지 보임</div>' : '') + '<div class="muted small">줄 누르면 품목 창 · 주문 취소 = ERP 수주·출고 줄이 없어진 품목 · 생산 입력 없는 것은 «ERP에 없는 품목 정리»로 지움, 생산 입력 있는 것은 남김</div>' : '<div class="muted">해당 품목 없음</div>');
   box.onclick = function (ev) { var o = ev.target.closest('[data-open]'); if (o) openItem(o.dataset.open); };
 }
+
+/* v128 : 표 칸 높이를 화면 아래 끝에 맞춤 → 가로 스크롤 막대가 항상 화면 안에 보임 */
+function fitWrap() {
+  $$('#view .tbl-wrap').forEach(function (w) { var top = Math.min(Math.max(w.getBoundingClientRect().top, 0), 320); w.style.maxHeight = Math.max(300, window.innerHeight - top - 12) + 'px'; });
+}
+/* v128 : 월 현황 가로 스크롤 때 품번~재고(오늘) 칸 고정 (구분·기초재고는 함께 밀려감) */
+function mStick() {
+  var t = $('#view table.grid.month'), st = document.getElementById('mStick');
+  if (!st) { st = document.createElement('style'); st.id = 'mStick'; document.head.appendChild(st); }
+  if (!t) { st.textContent = ''; return; }
+  var ths = Array.prototype.slice.call(t.tHead.rows[0].cells), want = ['c-p', 'c-pc', 'c-n', 'c-s', 'c-memo', 'c-proc', 'c-prod', 'c-st'], left = 0, css = '', lastI = -1;
+  ths.forEach(function (th, i) {
+    if (!want.some(function (c) { return th.classList.contains(c); })) return;
+    var k = i + 1;
+    css += '.grid.month>*>tr>:nth-child(' + k + '){position:sticky;left:' + left + 'px;z-index:2}.grid.month>thead>tr>:nth-child(' + k + '){z-index:7}:where(.grid.month>tbody>tr>:nth-child(' + k + ')){background-color:#fff}';
+    left += th.getBoundingClientRect().width; lastI = k;
+  });
+  if (lastI > 0) css += '.grid.month>*>tr>:nth-child(' + lastI + '){box-shadow:inset -2px 0 0 #94a3b8}';
+  st.textContent = css;
+}
+window.addEventListener('resize', function () { fitWrap(); });
 
 </script>
 <script id="su-new-version-popup">
