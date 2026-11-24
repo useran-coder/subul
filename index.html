@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v129">
+<meta name="su-ver" content="v130">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -266,6 +266,7 @@ td.yr{font-weight:400!important}td.num.pa{font-weight:700;color:#0f172a}
 .grid.day td.rs-out{background:linear-gradient(to top,#fffaf0 var(--oh,30px),transparent var(--oh,30px))}
 .grid.month td.pday,.grid.month td.pgc,.grid.month input.mi,.grid.month tr.inrow input.mi,.grid.month input.mi::placeholder,.grid.month tr.outrow td.num,.grid.month tr.outrow td.num b{font-weight:400}.grid.month td.ed-t,.grid.month td.ed-t b,.grid.month td.ed-t input.mi{font-weight:800!important}.grid.month td.ed-t{background:#fff1f2!important}
 .ns-tag.cxl{background:#fee2e2;color:#b91c1c;border-color:#fca5a5}
+.top-ns{display:inline-flex;align-items:center;gap:0;margin-left:10px}.top-ns .ns-btn,.top-ns .nm-btn{height:30px}.td-btn{height:32px;border:1px solid #c4b5fd;background:#f5f3ff;color:#6d28d9;border-radius:7px;padding:0 10px;font-weight:800;margin-left:6px;cursor:pointer}.td-btn small{font-weight:700;opacity:.8;margin-left:2px}.td-btn.on{background:#7c3aed;border-color:#7c3aed;color:#fff}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -1470,8 +1471,9 @@ function filtered() {
     if (!matchQ(it, u.q)) return false;
     if (u.cust && !hasTxt(it.cust || '(고객사 없음)', u.cust)) return false;
     if (u.pname && !hasTxt(pnameOf(it), u.pname)) return false;
-    if (u.scope === 'active' && !isActive(it, d)) return false;
-    if (!scopeOk(it, u.scope, d)) return false;
+    if (u.td) { if (!myToday()[it.id]) return false; }
+    else { if (u.scope === 'active' && !isActive(it, d)) return false;
+    if (!scopeOk(it, u.scope, d)) return false; }
     if (u.ns && !notShipped(it)) return false;
     if (u.nm && !noNum(it)) return false;
     if (u.proc && (u.view === 'day' || u.view === 'month') && !it.procs.some(function (p) { return p.n === u.proc; })) return false;
@@ -1601,7 +1603,8 @@ function renderShell() {
       '<div class="views" id="views">' +
         '<button data-v="dash">📊 현황판</button><button data-v="month">📅 월 현황</button><button data-v="day">📝 일일 입력</button><button data-v="order">➕ 수주 입력</button><button data-v="audit" title="월마다 현장 실사재고 입력 · 데이터 재고와 차이 확인 · 역추적">📋 실사재고</button>' +
       '</div>' +
-      '<span class="vsep"></span><button type="button" id="nsBtn" class="ns-btn" title="출고가 한 번도 없는 제품만 보기 (ERP 출고·직접 입력 출고 모두 없음) · 한 번 더 누르면 해제">출고 전 제품 <small id="nsCnt"></small></button>' +
+      '<button type="button" id="tdBtn" class="td-btn" title="로그인한 사람이 오늘 입력·수정한 품목만 보기 (모든 공정 펼침) · 한 번 더 누르면 해제">✏ 오늘 입력 보기 <small id="tdCnt"></small></button>' +
+      '<button type="button" id="nsBtn" class="ns-btn" title="출고가 한 번도 없는 제품만 보기 (ERP 출고·직접 입력 출고 모두 없음) · 한 번 더 누르면 해제">출고 전 제품 <small id="nsCnt"></small></button>' +
       '<button type="button" id="nmBtn" class="nm-btn" title="제품번호가 없는 제품만 보기 (출고 전 «번호 대기» 포함) · 누르면 먼저 출고매칭 자료를 다시 받아 번호를 다시 매칭함 · 한 번 더 누르면 해제">제품번호 없음 <small id="nmCnt"></small></button>' +
 
       '<span class="spacer"></span>' +
@@ -1616,6 +1619,9 @@ function renderShell() {
     '<div id="view"></div><div id="status" class="status"></div>';
   $$('.views button').forEach(function (b) { b.onclick = function () { if (b.dataset.v === 'dash') { goHome(); return; } S.ui.view = b.dataset.v; S.ui.page = 1; lsSet('subul.view', S.ui.view); render(); }; });
   $('#procF').onchange = function () { S.ui.proc = this.value; S.ui.page = 1; render(); };
+  /* v130 : «출고 전 제품»·«제품번호 없음» 버튼은 위 막대 구분 탭(유통/OEM) 오른쪽으로 */
+  (function () { var ct = $('#catTabs'); if (!ct) return; $$('.top-ns').forEach(function (x) { x.remove(); }); var w = document.createElement('span'); w.className = 'top-ns'; w.appendChild($('#nsBtn')); w.appendChild($('#nmBtn')); ct.after(w); })();
+  $('#tdBtn').onclick = function () { S.ui.td = !S.ui.td; S.ui.page = 1; if (S.ui.td && S.ui.view !== 'day' && S.ui.view !== 'month') { S.ui.view = 'month'; lsSet('subul.view', 'month'); } render(); };
   $('#nmBtn').onclick = nmToggle;
   $('#nsBtn').onclick = function () { S.ui.ns = !S.ui.ns; S.ui.nm = false; S.ui.page = 1; if (S.ui.ns && S.ui.view !== 'day' && S.ui.view !== 'month') { S.ui.view = 'month'; lsSet('subul.view', 'month'); } render(); };
   /* 입력 + 목록 (선택 상자처럼 아래로 펼침, 쓰는 글자로 목록이 줄어듦) */
@@ -1701,7 +1707,8 @@ function render() {
   $('#dateBox').style.display = (lv || u.view === 'dash') ? '' : 'none';
   $('#qBox').style.display = (lv || u.view === 'dash') ? '' : 'none';
   $('#scope').style.display = $('#procF').style.display = $('#custF').style.display = $('#nameF').style.display = lv ? '' : 'none';
-  if (!lv) u.ns = u.nm = false;   /* 현황판·수주 입력·설정으로 오면 «출고 전 제품»·«제품번호 없음» 선택 풀기 */
+  if (!lv) u.ns = u.nm = u.td = false;
+  $('#tdBtn').classList.toggle('on', !!u.td); $('#tdCnt').textContent = (function () { var m = myToday(), n = 0; for (var id in m) if (store.items.has(id)) n++; return n ? n.toLocaleString() : ''; })();   /* 현황판·수주 입력·설정으로 오면 «출고 전 제품»·«제품번호 없음» 선택 풀기 */
   { var keepNs = u.ns, keepNm = u.nm; u.ns = u.nm = false; var base = filtered(); u.ns = keepNs; u.nm = keepNm; $('#nsCnt').textContent = base.filter(notShipped).length.toLocaleString(); var nmN = base.filter(noNum).length; $('#nmCnt').textContent = nmN.toLocaleString(); $('#nmBtn').classList.toggle('zero', !nmN); }
   $('#nsBtn').classList.toggle('on', !!u.ns);
   $('#nmBtn').classList.toggle('on', !!u.nm); $('#nmBtn').classList.toggle('busy', !!S.nmBusy);
@@ -2548,7 +2555,7 @@ function renderMonth() {
   shown.forEach(function (it) {
     var n = it.procs.length, lastPi = -1, nst = nsTag(it);
     /* v106 : 접힌 품목은 출고 줄만 (출고 공정 없으면 마지막 공정) · 공정 필터 중에는 접지 않음 */
-    var canFold = !u.proc && n > 1, open = !canFold || (it.id in u.mOpen ? u.mOpen[it.id] : u.mAll), showPi = -1;
+    var canFold = !u.proc && n > 1, open = !canFold || (it.id in u.mOpen ? u.mOpen[it.id] : (u.mAll || !!u.td)), showPi = -1;
     if (!open) { it.procs.forEach(function (pr, pi) { if (SU.isOut(pr.n)) showPi = pi; }); if (showPi < 0) showPi = n - 1; }
     it.procs.forEach(function (pr, pi) { if (rowOn(pr)) lastPi = pi; });
     it.procs.forEach(function (pr, pi) {
@@ -3885,6 +3892,20 @@ function mStick() {
   var w = t.closest('.tbl-wrap'); if (w) { var f = function () { w.classList.toggle('sx', w.scrollLeft > 4); }; w.addEventListener('scroll', f, { passive: true }); f(); }
 }
 window.addEventListener('resize', function () { fitWrap(); });
+
+/* v130 : 로그인한 사람이 오늘 입력·수정한 품목 id (생산·출고·기초 조정·실사·품목 정보) — 1초 캐시 */
+var MYT = null;
+function myToday() {
+  var now = Date.now(); if (MYT && now - MYT.t < 1000 && MYT.n === store.recs.size) return MYT.m;
+  var who = me(), td = SU.today(), m = {};
+  store.recs.forEach(function (rc, k) {
+    if (!rc.at || rc.by !== who) return; var t = k.charAt(0); if (t !== 'e' && t !== 'a' && t !== 'r' && t !== 'i') return;
+    var x = new Date(rc.at); if (isNaN(x)) return;
+    if (x.getFullYear() + '-' + ('0' + (x.getMonth() + 1)).slice(-2) + '-' + ('0' + x.getDate()).slice(-2) !== td) return;
+    m[t === 'i' ? k.slice(2) : k.slice(2).split('|')[0]] = 1;
+  });
+  MYT = { t: now, n: store.recs.size, m: m }; return m;
+}
 
 </script>
 <script id="su-new-version-popup">
