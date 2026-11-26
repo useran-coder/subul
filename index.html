@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v133">
+<meta name="su-ver" content="v134">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -268,6 +268,7 @@ td.yr{font-weight:400!important}td.num.pa{font-weight:700;color:#0f172a}
 .ns-tag.cxl{background:#fee2e2;color:#b91c1c;border-color:#fca5a5}
 .top-ns{display:inline-flex;align-items:center;gap:0;margin-left:10px}.top-ns .ns-btn,.top-ns .nm-btn{height:30px}.td-btn{height:32px;border:1px solid #c4b5fd;background:#f5f3ff;color:#6d28d9;border-radius:7px;padding:0 10px;font-weight:800;margin-left:6px;cursor:pointer}.td-btn small{font-weight:700;opacity:.8;margin-left:2px}.td-btn.on{background:#7c3aed;border-color:#7c3aed;color:#fff}
 #q.search{width:192px}#custF.selF{width:140px}
+.nm-btn{border-color:#fcd34d!important;background:#fffbeb!important;color:#b45309!important}.nm-btn.on{background:#d97706!important;border-color:#d97706!important;color:#fff!important}.ni-btn{height:32px;border:1px solid #fcd34d;background:#fffbeb;color:#b45309;border-radius:7px;padding:0 10px;font-weight:800;margin-left:6px;cursor:pointer}.ni-btn small{font-weight:700;opacity:.8;margin-left:2px}.ni-btn.on{background:#d97706;border-color:#d97706;color:#fff}.ni-btn.zero:not(.on){opacity:.55}
 
 /* 로그인 (매출분석도구와 같은 계정) */
     /* 로그인 (매출분석도구와 같은 계정) */
@@ -1487,6 +1488,7 @@ function filtered() {
     else { if (u.scope === 'active' && !isActive(it, d)) return false;
     if (!scopeOk(it, u.scope, d)) return false; }
     if (u.ns && !notShipped(it)) return false;
+    if (u.ni && !noInput(it)) return false;
     if (u.nm && !noNum(it)) return false;
     if (u.proc && (u.view === 'day' || u.view === 'month') && !it.procs.some(function (p) { return p.n === u.proc; })) return false;
     return true;
@@ -1616,6 +1618,7 @@ function renderShell() {
         '<button data-v="dash">📊 현황판</button><button data-v="month">📅 월 현황</button><button data-v="day">📝 일일 입력</button><button data-v="order">➕ 수주 입력</button><button data-v="audit" title="월마다 현장 실사재고 입력 · 데이터 재고와 차이 확인 · 역추적">📋 실사재고</button>' +
       '</div>' +
       '<button type="button" id="tdBtn" class="td-btn" title="로그인한 사람이 오늘 입력·수정한 품목만 보기 (모든 공정 펼침) · 한 번 더 누르면 해제">✏ 오늘 입력 보기 <small id="tdCnt"></small></button>' +
+      '<button type="button" id="niBtn" class="ni-btn" title="출고는 있는데 공정(생산)에 입력이 하나도 없는 품목만 보기 · 한 번 더 누르면 해제">입력 없음 <small id="niCnt"></small></button>' +
       '<button type="button" id="nsBtn" class="ns-btn" title="출고가 한 번도 없는 제품만 보기 (ERP 출고·직접 입력 출고 모두 없음) · 한 번 더 누르면 해제">출고 전 제품 <small id="nsCnt"></small></button>' +
       '<button type="button" id="nmBtn" class="nm-btn" title="제품번호가 없는 제품만 보기 (출고 전 «번호 대기» 포함) · 누르면 먼저 출고매칭 자료를 다시 받아 번호를 다시 매칭함 · 한 번 더 누르면 해제">제품번호 없음 <small id="nmCnt"></small></button>' +
 
@@ -1634,6 +1637,7 @@ function renderShell() {
   /* v130 : «출고 전 제품»·«제품번호 없음» 버튼은 위 막대 구분 탭(유통/OEM) 오른쪽으로 */
   (function () { var ct = $('#catTabs'); if (!ct) return; $$('.top-ns').forEach(function (x) { x.remove(); }); var w = document.createElement('span'); w.className = 'top-ns'; w.appendChild($('#nsBtn')); w.appendChild($('#nmBtn')); ct.after(w); })();
   $('#tdBtn').onclick = function () { S.ui.td = !S.ui.td; S.ui.tdAll = true; S.ui.mOpen = {}; S.ui.page = 1; if (S.ui.td && S.ui.view !== 'day' && S.ui.view !== 'month') { S.ui.view = 'month'; lsSet('subul.view', 'month'); } render(); };
+  $('#niBtn').onclick = function () { S.ui.ni = !S.ui.ni; S.ui.page = 1; if (S.ui.ni && S.ui.view !== 'day' && S.ui.view !== 'month') { S.ui.view = 'month'; lsSet('subul.view', 'month'); } render(); };
   $('#nmBtn').onclick = nmToggle;
   $('#nsBtn').onclick = function () { S.ui.ns = !S.ui.ns; S.ui.nm = false; S.ui.page = 1; if (S.ui.ns && S.ui.view !== 'day' && S.ui.view !== 'month') { S.ui.view = 'month'; lsSet('subul.view', 'month'); } render(); };
   /* 입력 + 목록 (선택 상자처럼 아래로 펼침, 쓰는 글자로 목록이 줄어듦) */
@@ -1719,7 +1723,8 @@ function render() {
   $('#dateBox').style.display = (lv || u.view === 'dash') ? '' : 'none';
   $('#qBox').style.display = (lv || u.view === 'dash') ? '' : 'none';
   $('#scope').style.display = $('#procF').style.display = $('#custF').style.display = $('#nameF').style.display = lv ? '' : 'none';
-  if (!lv) u.ns = u.nm = u.td = false;
+  if (!lv) u.ns = u.nm = u.td = u.ni = false;
+  { var keepNi = u.ni; u.ni = false; var niN = filtered().filter(noInput).length; u.ni = keepNi; $('#niCnt').textContent = niN.toLocaleString(); $('#niBtn').classList.toggle('on', !!u.ni); $('#niBtn').classList.toggle('zero', !niN); }
   $('#tdBtn').classList.toggle('on', !!u.td); $('#tdCnt').textContent = (function () { var m = myToday(), n = 0; for (var id in m) if (store.items.has(id)) n++; return n ? n.toLocaleString() : ''; })();   /* 현황판·수주 입력·설정으로 오면 «출고 전 제품»·«제품번호 없음» 선택 풀기 */
   { var keepNs = u.ns, keepNm = u.nm; u.ns = u.nm = false; var base = filtered(); u.ns = keepNs; u.nm = keepNm; $('#nsCnt').textContent = base.filter(notShipped).length.toLocaleString(); var nmN = base.filter(noNum).length; $('#nmCnt').textContent = nmN.toLocaleString(); $('#nmBtn').classList.toggle('zero', !nmN); }
   $('#nsBtn').classList.toggle('on', !!u.ns);
@@ -3921,6 +3926,20 @@ function myToday() {
 
 /* v131 : 전체 펼치기·접기 상태 — «오늘 입력 보기» 중에는 따로 (처음엔 펼침) */
 function mAllNow() { var u = S.ui; return u.td ? u.tdAll !== false : !!u.mAll; }
+
+/* v134 : 입력 없음 = 출고(ERP·직접)는 있는데 출고·매입 아닌 공정에 생산 입력이 하나도 없음 */
+var NI = null;
+function noInput(it) {
+  var now = Date.now();
+  if (!NI || now - NI.t > 1000 || NI.n !== store.ent.size) {
+    var has = {}; store.ent.forEach(function (v, k) { if (SU.num(v.g) || SU.num(v.b)) { var a = k.split('|'); has[a[0] + '|' + a[1]] = 1; } });
+    NI = { t: now, n: store.ent.size, has: has };
+  }
+  var pr = SU.outProc(it); if (!pr || notShipped(it)) return false;
+  var ps = (it.procs || []).filter(function (p) { return !SU.isOut(p.n) && !(SU.isBuy && SU.isBuy(p.n)); });
+  if (!ps.length) return false;
+  return !ps.some(function (p) { return NI.has[it.id + '|' + p.id]; });
+}
 
 </script>
 <script id="su-new-version-popup">
