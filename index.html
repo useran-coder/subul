@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v134">
+<meta name="su-ver" content="v135">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -1618,7 +1618,7 @@ function renderShell() {
         '<button data-v="dash">📊 현황판</button><button data-v="month">📅 월 현황</button><button data-v="day">📝 일일 입력</button><button data-v="order">➕ 수주 입력</button><button data-v="audit" title="월마다 현장 실사재고 입력 · 데이터 재고와 차이 확인 · 역추적">📋 실사재고</button>' +
       '</div>' +
       '<button type="button" id="tdBtn" class="td-btn" title="로그인한 사람이 오늘 입력·수정한 품목만 보기 (모든 공정 펼침) · 한 번 더 누르면 해제">✏ 오늘 입력 보기 <small id="tdCnt"></small></button>' +
-      '<button type="button" id="niBtn" class="ni-btn" title="출고는 있는데 공정(생산)에 입력이 하나도 없는 품목만 보기 · 한 번 더 누르면 해제">입력 없음 <small id="niCnt"></small></button>' +
+      '<button type="button" id="niBtn" class="ni-btn" title="생산 공정(출고·매입 제외)에 생산·불량 입력이 한 번도 없는 품목만 보기 (출고 전 포함) · 한 번 더 누르면 해제">입력 없음 <small id="niCnt"></small></button>' +
       '<button type="button" id="nsBtn" class="ns-btn" title="출고가 한 번도 없는 제품만 보기 (ERP 출고·직접 입력 출고 모두 없음) · 한 번 더 누르면 해제">출고 전 제품 <small id="nsCnt"></small></button>' +
       '<button type="button" id="nmBtn" class="nm-btn" title="제품번호가 없는 제품만 보기 (출고 전 «번호 대기» 포함) · 누르면 먼저 출고매칭 자료를 다시 받아 번호를 다시 매칭함 · 한 번 더 누르면 해제">제품번호 없음 <small id="nmCnt"></small></button>' +
 
@@ -3927,7 +3927,7 @@ function myToday() {
 /* v131 : 전체 펼치기·접기 상태 — «오늘 입력 보기» 중에는 따로 (처음엔 펼침) */
 function mAllNow() { var u = S.ui; return u.td ? u.tdAll !== false : !!u.mAll; }
 
-/* v134 : 입력 없음 = 출고(ERP·직접)는 있는데 출고·매입 아닌 공정에 생산 입력이 하나도 없음 */
+/* v134→v135 : 입력 없음 = 출고·매입 아닌 공정에 생산 입력이 하나도 없음 */
 var NI = null;
 function noInput(it) {
   var now = Date.now();
@@ -3935,7 +3935,7 @@ function noInput(it) {
     var has = {}; store.ent.forEach(function (v, k) { if (SU.num(v.g) || SU.num(v.b)) { var a = k.split('|'); has[a[0] + '|' + a[1]] = 1; } });
     NI = { t: now, n: store.ent.size, has: has };
   }
-  var pr = SU.outProc(it); if (!pr || notShipped(it)) return false;
+  /* v135 : 출고 여부와 상관없이 — 생산 공정(출고·매입 아닌 공정)이 있는데 어느 날짜에도 생산·불량 입력이 없음 */
   var ps = (it.procs || []).filter(function (p) { return !SU.isOut(p.n) && !(SU.isBuy && SU.isBuy(p.n)); });
   if (!ps.length) return false;
   return !ps.some(function (p) { return NI.has[it.id + '|' + p.id]; });
