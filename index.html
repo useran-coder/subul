@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v132">
+<meta name="su-ver" content="v133">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -566,7 +566,17 @@ var SU = (function () {
     this.virt.forEach(function (id) { var it = self.items.get(id); if (it && it._v) self.items.delete(id); });
     this.virt = new Set(); this.erpOut = new Map(); this.erpOrd = new Map(); this.erpShip = new Map(); this.erpOq = new Map(); this.erpBuy = new Map(); this.erpBuyL = new Map(); this.erpNeg = new Map();
     var from = this.erpFrom();
-    var info = { from: from, order: 0, orderIn: 0, orderNew: 0, ship: 0, shipIn: 0, shipNoOrder: [], newItems: 0, noOut: 0, amb: 0, at: new Date().toISOString() };
+    /* v133 : 반영 시작일(from)은 «시트 출고와 겹치지 않게» 하려는 출고 기준 → 수주·ERP 품목은 그 달 1일부터 반영
+       (예전엔 시트를 가져오면 from = 시트 마지막 출고 다음 날(11/20 등)이 되어 11/1~19 수주가 통째로 빠짐 → 시트에 없던 품목이 수불관리에 안 보임) */
+    var ordFrom = monthStart(from), ordD0 = addDays(ordFrom, -1);
+    function shipCut(it) { return it && (it._v || it.src === 'erp') ? ordFrom : from; }   // 시트·직접 입력 품목만 from, ERP 품목은 그 달 1일부터 출고 반영
+    this.shipCut = shipCut;
+    this.items.forEach(function (it) {   // 예전에 저장된 ERP 품목(d0 = 옛 from 전날) → 그 달 1일 전날로 (기초재고 넣은 품목은 그대로)
+      if (it._v || it.src !== 'erp' || !it.d0 || it.d0 <= ordD0) return;
+      if ((it.procs || []).some(function (p) { return num(p.o0); })) return;
+      it.d0 = ordD0;
+    });
+    var info = { from: from, ordFrom: ordFrom, order: 0, orderIn: 0, orderNew: 0, ship: 0, shipIn: 0, shipNoOrder: [], newItems: 0, noOut: 0, amb: 0, at: new Date().toISOString() };
     this.erpInfo = info;
     if (!E.ship.size && !E.order.size) { this.deriveBuy(from); return info; }
     /* 지금 있는 품목 찾기표 */
@@ -611,7 +621,7 @@ var SU = (function () {
       var it = vmap.get(id);
       if (!it) {
         var cs = codesOf((r.r || '') + ' ' + (r.s || ''));
-        it = { id: id, _v: true, cat: cat, src: 'erp', seq: '', cust: r.c || '', ord: r.o || '', p: r.p || '', n: r.n || '', s: r.s || '', memo: r.r || '', code: cs[0] || '', od: d, d0: addDays(from, -1), cby: 'ERP 연동',
+        it = { id: id, _v: true, cat: cat, src: 'erp', seq: '', cust: r.c || '', ord: r.o || '', p: r.p || '', n: r.n || '', s: r.s || '', memo: r.r || '', code: cs[0] || '', od: d, d0: ordD0, cby: 'ERP 연동',
           procs: self.tpl(cat).map(function (n, i) { return { id: 'p' + (i + 1), n: normProc(n) }; }) };
         if (!outProc(it)) it.procs.push({ id: 'p' + (it.procs.length + 1), n: OUT });
         vmap.set(id, it); self.items.set(id, it); self.virt.add(id); info.newItems++;
@@ -628,7 +638,7 @@ var SU = (function () {
     var orders = Array.from(E.order.values()).sort(function (a, b) { return String(a.od || '').localeCompare(String(b.od || '')) || String(a.o || '').localeCompare(String(b.o || '')); });
     orders.forEach(function (o) {
       if (isFreight(o)) return;
-      var od = ymd(o.od); if (!od || od < from) return;
+      var od = ymd(o.od); if (!od || od < ordFrom) return;
       info.order++;
       var cat = catOfErp(o), it = find(o, cat);
       if (it) info.orderIn++; else { it = virtual(o, cat, od); if (it) info.orderNew++; }
@@ -660,7 +670,7 @@ var SU = (function () {
     E.ship.forEach(function (s) {
       s._r = ''; s._i = '';   /* 줄마다 결과 : 화면 «출고 대조»에서 씀 */
       if (isFreight(s)) { s._r = 'freight'; return; }
-      var d = ymd(s.d); if (!d) { info.badDate++; s._r = 'date'; return; } if (d < from) { info.early++; s._r = 'early'; return; }
+      var d = ymd(s.d); if (!d) { info.badDate++; s._r = 'date'; return; } if (d < ordFrom) { info.early++; s._r = 'early'; return; }
       var q = num(s.q); if (!q) { s._r = 'q0'; return; }
       info.ship++;
       var cat = catOfErp(s), id = (s._lmk && lineItem.get(s._lmk)) || (s.mk && lineItem.get(s.mk));
@@ -668,6 +678,7 @@ var SU = (function () {
       var it = id && self.items.get(id);
       if (!it && s._lc && byCode.has(s._lc)) it = pick(byCode.get(s._lc), s, cat);
       if (!it) it = find(s, cat);
+      if (it && d < shipCut(it)) { info.early++; s._r = 'early'; s._i = it.id; return; }   // 시트 품목 : 시트 출고와 겹치는 기간
       if (it) info.shipIn++;
       else { it = virtual(s, cat, d); if (it) info.shipNoOrder.push(s); }
       if (!it) { s._r = 'dead'; return; }
@@ -718,7 +729,7 @@ var SU = (function () {
     var pr = outProc(it); if (!pr) return null;
     var own = num(it.oq) && !it._v, oq = own ? num(it.oq) : (this.erpOq.get(it.id) || 0);
     if (!oq) return null;
-    var a = own ? (it.d0 || '0000-00-00') : (function (f, d0) { f = addDays(f, -1); return d0 && d0 > f ? d0 : f; })(this.erpInfo ? this.erpInfo.from : '0000-00-00', it.d0);
+    var a = own ? (it.d0 || '0000-00-00') : (function (f, d0) { f = addDays(f, -1); return d0 && d0 > f ? d0 : f; })(this.shipCut ? this.shipCut(it) : (this.erpInfo ? this.erpInfo.from : '0000-00-00'), it.d0);
     var out = this.sum(it.id, pr.id, a, d || today()).g;
     return { oq: oq, out: out, rem: Math.round((oq - out) * 1000) / 1000 };
   };
@@ -1849,7 +1860,7 @@ function renderDash() {
     '<div class="al bad"><div class="al-h"><b class="al-go" data-negpage="1" title="눌러서 마이너스 재고 페이지로">⛔ 마이너스 재고 ' + T.neg.length + ' ›</b><button type="button" class="card-more" data-negpage="1" title="마이너스 재고 페이지에서 모두 보기">더보기 ›</button></div><div class="muted small">입력 빠짐·공정 연결 잘못·기초재고 확인</div>' + alist(T.neg, function (x) { return '<div class="link" data-negitem="' + x.it.id + '|' + x.it.procs.indexOf(x.pr) + '" title="마이너스 재고 페이지에서 계산 풀이 보기">' + esc(x.it.p || x.it.n) + ' · ' + esc(x.pr.n) + ' <b class="neg">' + fmt(x.st) + '</b></div>'; }) + '</div>' +
     '<div class="al warn"><b>⏰ 30일 넘은 수주 잔량 ' + T.old.length + '</b><div class="muted small">수주일 30일 지남 · 아직 출고 남음</div>' + alist(T.old, function (x) { return '<div class="link" data-open="' + x.it.id + '">' + esc(x.it.p || x.it.n) + ' · ' + esc(x.it.od || '') + ' 잔량 <b>' + fmt(x.bal.rem) + '</b></div>'; }) + '</div>' +
     '<div class="al"><b>💤 30일 움직임 없는 재고 ' + T.idle.length + '</b><div class="muted small">생산·출고 없이 재고만 있음 (장기 재고)</div>' + alist(T.idle, function (x) { return '<div class="link" data-open="' + x.it.id + '">' + esc(x.it.p || x.it.n) + ' · 완제품 ' + fmt(x.st, false) + '</div>'; }) + '</div>' +
-    '<div class="al"><b>🔗 ERP 연동 ' + (info.ship || 0).toLocaleString() + '출고 · ' + (info.order || 0).toLocaleString() + '수주</b><div class="muted small">' + esc(info.from || '-') + '부터 반영</div>' +
+    '<div class="al"><b>🔗 ERP 연동 ' + (info.ship || 0).toLocaleString() + '출고 · ' + (info.order || 0).toLocaleString() + '수주</b><div class="muted small">' + '수주 ' + esc(info.ordFrom || info.from || '-') + ' · 시트 품목 출고 ' + esc(info.from || '-') + '부터 반영</div>' +
       '<div>수주 → 있던 품목 ' + (info.orderIn || 0) + ' · 새 품목 ' + (info.orderNew || 0) + '</div><div>출고 → 품목 찾음 ' + (info.shipIn || 0) + ' · <span class="' + ((info.shipNoOrder || []).length ? 'neg' : '') + '">수주 없이 출고 ' + (info.shipNoOrder || []).length + '</span></div>' + (S.erp.err ? '<div class="neg small">' + esc(S.erp.err) + '</div>' : '') + '</div>' +
     '</div></div>';
   $('#view').innerHTML = h;
@@ -2918,7 +2929,7 @@ function renderOrder() {
   var cat = S.ui.cat !== 'all' ? S.ui.cat : ORD.cat; ORD.cat = cat;
   if (!ORD.procs || ORD.procsCat !== cat) { ORD.procs = store.tpl(cat); ORD.procsCat = cat; }
   var inf = store.erpInfo || {};
-  var h = '<div class="ord"><div class="note">📥 <b>ERP 수주현황·출고현황은 자동</b>임 — 출고매칭 프로그램에 파일을 올리면 1분 안에 반영 (' + esc(inf.from || '-') + '부터 · 수주 ' + (inf.order || 0).toLocaleString() + '줄 → 새 품목 ' + (inf.orderNew || 0) + ' · 출고 ' + (inf.ship || 0).toLocaleString() + '줄). 유통/OEM 은 따로 입력할 필요 없음. 아래는 ERP 에 없는 건(시작품·사내 지시 등)을 직접 넣을 때 사용</div>' +
+  var h = '<div class="ord"><div class="note">📥 <b>ERP 수주현황·출고현황은 자동</b>임 — 출고매칭 프로그램에 파일을 올리면 1분 안에 반영 (수주 ' + esc(inf.ordFrom || inf.from || '-') + '부터 · 수주 ' + (inf.order || 0).toLocaleString() + '줄 → 새 품목 ' + (inf.orderNew || 0) + ' · 출고 ' + (inf.ship || 0).toLocaleString() + '줄). 유통/OEM 은 따로 입력할 필요 없음. 아래는 ERP 에 없는 건(시작품·사내 지시 등)을 직접 넣을 때 사용</div>' +
     '<form id="ordForm" class="card" autocomplete="off"><h3>한 건 등록</h3>' +
     '<div class="fg"><label>구분<select name="cat">' + SU.CATS.map(function (c) { return '<option value="' + c.id + '"' + (c.id === cat ? ' selected' : '') + '>' + c.name + '</option>'; }).join('') + '</select></label>' +
     '<label>수주일자<input type="date" name="od" value="' + SU.today() + '"></label><label>납기<input type="date" name="due"></label>' +
@@ -3138,9 +3149,9 @@ function renderSettings() {
   var inf = store.erpInfo || {}, E = store.erp;
   h += '<div class="card"><h3>ERP 수주·출고 자동 연동 <small class="muted">출고현황 제품번호 매칭 프로그램에 올린 수주현황·출고현황 (같은 서버)</small></h3>' +
     '<div class="kv">받은 자료: 수주 ' + E.order.size.toLocaleString() + '줄 · 출고 ' + E.ship.size.toLocaleString() + '줄 · 마지막 받음 ' + (S.erp.last ? hhmm(S.erp.last) : '-') + ' (1분마다 자동)' + (S.erp.err ? ' · <span class="neg">' + esc(S.erp.err) + '</span>' : '') + '</div>' +
-    '<div class="kv">반영 시작일 <input type="date" id="erpFrom" value="' + esc(inf.from || '') + '"' + (adm ? '' : ' disabled') + '> ' + (adm ? '<button type="button" id="erpFromSave" class="small">저장</button>' : '') + ' <span class="muted small">이 날짜부터의 수주·출고만 반영. 시트를 가져오면 «시트 마지막 출고 다음 날»로 자동 설정 (시트 출고와 겹치지 않게)</span></div>' +
+    '<div class="kv">반영 시작일 <input type="date" id="erpFrom" value="' + esc(inf.from || '') + '"' + (adm ? '' : ' disabled') + '> ' + (adm ? '<button type="button" id="erpFromSave" class="small">저장</button>' : '') + ' <span class="muted small">시트에서 가져온 품목만 이 날짜부터 ERP 출고 반영 (시트 출고와 겹치지 않게, 시트 가져오면 «시트 마지막 출고 다음 날»로 자동). 수주·ERP 품목 출고는 그 달 1일(' + esc(inf.ordFrom || '-') + ')부터 반영</span></div>' +
     '<div class="kv">출고일자별 반영 줄: ' + (Object.keys(inf.days || {}).sort().map(function (d) { return d.slice(5).replace('-', '/') + ' ' + inf.days[d]; }).join(' · ') || '없음') +
-      ((inf.early || inf.beforeD0 || inf.badDate) ? ' <span class="muted small">— 뺀 줄: 반영 시작일 전 ' + (inf.early || 0) + ' · 품목 기초재고 날짜 이전 ' + (inf.beforeD0 || 0) + ' · 출고일자 못 읽음 ' + (inf.badDate || 0) + '</span>' : '') + '</div>' +
+      ((inf.early || inf.beforeD0 || inf.badDate) ? ' <span class="muted small">— 뺀 줄: 시트 품목 반영 시작일 전 ' + (inf.early || 0) + ' · 품목 기초재고 날짜 이전 ' + (inf.beforeD0 || 0) + ' · 출고일자 못 읽음 ' + (inf.badDate || 0) + '</span>' : '') + '</div>' +
     '<div class="kv">결과: 수주 ' + (inf.order || 0).toLocaleString() + '줄 (있던 품목 ' + (inf.orderIn || 0) + ' · 새 ERP 품목 ' + (inf.orderNew || 0) + ') · 출고 ' + (inf.ship || 0).toLocaleString() + '줄 (품목 찾음 ' + (inf.shipIn || 0) + ' · 수주 없이 출고 ' + (inf.shipNoOrder || []).length + ')' + (inf.noOut ? ' · <span class="neg">출고 공정 없는 품목에 온 출고 ' + inf.noOut + '</span>' : '') + (inf.amb ? ' · 같은 번호 품목 여럿(출고 공정 있는 것 우선) ' + inf.amb : '') + '</div>' +
     '<div class="note">품목 찾는 순서: ① 비고·규격의 제품번호 (내부보강 B·레이저 D) ② 품번 (부자재·유통/OEM) ③ 품번+규격 (번호 없는 내부보강·레이저). 못 찾으면 «ERP 품목»을 자동으로 만듦 (구분 기본 공정). 그날 출고 칸에 사람이 직접 넣으면 그 값이 ERP 보다 우선.</div>' +
     ((inf.shipNoOrder || []).length ? '<div class="lbl">수주 없이 출고된 줄 (수주현황을 아직 안 올렸거나 반영 시작일 전 수주)</div><table class="grid small"><thead><tr><th>출고일</th><th>주문번호</th><th>고객</th><th>품번</th><th>품명</th><th>규격</th><th>비고</th><th class="num">수량</th></tr></thead><tbody>' + inf.shipNoOrder.slice(0, 30).map(function (r) { return '<tr><td>' + esc(r.d) + '</td><td>' + esc(r.o) + '</td><td>' + esc(r.c) + '</td><td>' + esc(r.p) + '</td><td>' + esc(r.n) + '</td><td>' + esc(r.s) + '</td><td>' + esc(r.r) + '</td><td class="num">' + fmt(SU.num(r.q)) + '</td></tr>'; }).join('') + '</tbody></table>' : '') +
