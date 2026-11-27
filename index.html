@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta name="su-ver" content="v136">
+<meta name="su-ver" content="v137">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>수불관리</title>
@@ -1482,9 +1482,11 @@ function isActive0(it, d) {
 }
 function filtered() {
   var u = S.ui, d = u.date;
+  if (u.only && u.onlyQ !== u.q) u.only = null;   /* 검색어를 바꾸면 풀림 */
+  if (u.only && u.only.length) return u.only.map(function (id) { return store.items.get(id); }).filter(Boolean);   /* v137 : 검색으로 찾은 품목만 (모든 조건 무시) */
   var list = sortedItems().filter(function (it) {
     if (u.cat !== 'all' && it.cat !== u.cat) return false;
-    if (!matchQ(it, u.q)) return false;
+    if (!matchQ(it, u.q) && !erpHit(u.q)[it.id]) return false;   /* v137 : 품목 칸엔 없어도 이어진 출고매칭 수주·출고 줄에 검색어가 있으면 찾음 */
     if (u.cust && !hasTxt(it.cust || '(고객사 없음)', u.cust)) return false;
     if (u.pname && !hasTxt(pnameOf(it), u.pname)) return false;
     if (u.td) { if (!myToday()[it.id]) return false; }
@@ -1603,7 +1605,7 @@ function notShipped(it) {
 }
 /* 제품번호 없음 : 제품번호 칸이 비어 있음 (아직 출고 안 된 부자재·유통/OEM «출고 전»은 뺌 — 출고되면 번호가 붙음) */
 function noNum(it) { return !prodCode(it); }   // v100 : 출고 전 «번호 대기»도 포함 (표의 «번호 대기»·«번호 없음» 개수와 같게)
-function nmBanner() { if (!S.ui.nm) return ''; return '<div class="nm-ban">🔢 제품번호 없는 품목만 보는 중 · 번호 칸(<b>✎</b>)을 누르면 바로 입력 · <a href="' + CM_URL + '#subul-missing" target="_blank" rel="noopener">출고매칭 «수불현황 · 제품번호 없음»</a>에서 자동 부여하면 여기에도 바로 반영 <button type="button" id="nmOff">해제</button></div>'; }
+function nmBanner() { if (S.ui.only && S.ui.only.length) return '<div class="nm-ban">🔎 출고매칭 줄로 찾은 품목 ' + S.ui.only.length + '개만 보는 중 (모든 조건 무시) · <a href="#" onclick="S.ui.only=null;S.ui.page=1;render();return false">해제</a></div>'; if (!S.ui.nm) return ''; return '<div class="nm-ban">🔢 제품번호 없는 품목만 보는 중 · 번호 칸(<b>✎</b>)을 누르면 바로 입력 · <a href="' + CM_URL + '#subul-missing" target="_blank" rel="noopener">출고매칭 «수불현황 · 제품번호 없음»</a>에서 자동 부여하면 여기에도 바로 반영 <button type="button" id="nmOff">해제</button></div>'; }
 function nsTag(it) { return isCxl(it) ? '<span class="ns-tag cxl" title="ERP 수주·출고 줄이 없어짐 (주문 취소) · 생산 입력 없으면 설정 «ERP에 없는 품목 정리»로 지움">주문 취소</span>' : notShipped(it) ? '<span class="ns-tag" title="아직 출고 없음">출고 전</span>' : ''; }
 function scopeOk(it, sc, d) {
   if (sc === 'chk') return !!(it.chk && it.chk.length) || ((it.cat === 'inner' || it.cat === 'laser') && !prodCode(it));
@@ -1692,7 +1694,7 @@ function renderTabs(list) {
   var u = S.ui, cnt = { all: 0 };
   SU.CATS.forEach(function (c) { cnt[c.id] = 0; });
   var listView = u.view === 'day' || u.view === 'month';   // 수주 입력·설정 화면에서는 검색·진행 중 조건 없이 전체 수
-  sortedItems().forEach(function (it) { if (listView) { if (!matchQ(it, u.q)) return; if (u.scope === 'active' && !isActive(it, u.date)) return; if (!scopeOk(it, u.scope, u.date)) return; } cnt.all++; cnt[it.cat] = (cnt[it.cat] || 0) + 1; });
+  sortedItems().forEach(function (it) { if (listView) { if (!matchQ(it, u.q) && !erpHit(u.q)[it.id]) return; if (u.scope === 'active' && !isActive(it, u.date)) return; if (!scopeOk(it, u.scope, u.date)) return; } cnt.all++; cnt[it.cat] = (cnt[it.cat] || 0) + 1; });
   var h = '<button data-c="all" class="' + (u.cat === 'all' ? 'on' : '') + '">전체<small>' + cnt.all.toLocaleString() + '</small></button><span class="vsep tsep"></span>';
   SU.CATS.forEach(function (c) { h += '<button data-c="' + c.id + '" class="cat-' + c.id + (u.cat === c.id ? ' on' : '') + '">' + c.name + '<small>' + (cnt[c.id] || 0).toLocaleString() + '</small></button>'; });
   $('#catTabs').innerHTML = h;
@@ -3962,19 +3964,51 @@ function whyNone() {
     if (w === 'dead' && r._dead) dead[r._dead] = 1;
     if (id && store.items.has(id)) hid[id] = 1;
     var why = WHY[w] != null ? WHY[w] : w;
-    if (!why && id) why = store.items.has(id) ? '품목 있음 → 지금 조건(구분·진행 중·공정·버튼)에 가려짐' : '품목 없음';
+    if (!why && id) why = store.items.has(id) ? '품목 있음 → ' + hideWhy(store.items.get(id)) : '품목 없음';
     return '<li><b>' + x.k + '</b> ' + esc([SU.ymd(r.od || r.d), r.o, r.p, r.n, r.s].filter(Boolean).join(' · ')) + ' · 수량 ' + fmt(SU.num(r.q)) + ' → <span class="wn-r">' + esc(why || '확인 필요') + '</span></li>';
   }).join('');
   var nd = Object.keys(dead).length, nh = Object.keys(hid).length;
   return '<div class="why-none"><div>출고매칭 자료에는 «' + esc(S.ui.q) + '» 줄 ' + rows.length + '개 있음</div><ul>' + lines + '</ul>' +
     (nd ? '<button type="button" class="wn-btn" onclick="wnRevive(' + esc(JSON.stringify(Object.keys(dead))) + ')">지운 품목 ' + nd + '개 되살리기</button>' : '') +
-    (nh ? '<button type="button" class="wn-btn" onclick="wnShow()">조건 풀고 보기</button>' : '') + '</div>';
+    (nh ? '<button type="button" class="wn-btn" onclick="wnOnly(' + esc(JSON.stringify(Object.keys(hid))) + ')">이 품목 바로 보기</button><button type="button" class="wn-btn" onclick="wnShow()">조건 풀고 보기</button>' : '') + '</div>';
 }
-function wnShow() { var u = S.ui; u.cat = 'all'; u.scope = 'all'; u.proc = ''; u.ns = u.nm = u.ni = u.td = false; u.cust = u.pname = ''; u.page = 1; var s1 = $('#scope'); if (s1) s1.value = 'all'; ['#custF', '#nameF'].forEach(function (k) { var e = $(k); if (e) e.value = ''; }); render(); }
+/* v137 : 품목이 목록에서 빠지는 첫 조건 */
+function hideWhy(it) {
+  var u = S.ui, d = u.date;
+  if (/운반비/.test(it.n || '') || /^MAINTRAN/i.test(String(it.p || '').trim())) return '운반비라 수불에서 뺌';
+  if (SU.isExcl(it)) return '출고매칭 «제외품목»이라 숨김';
+  if (u.cat !== 'all' && it.cat !== u.cat) return '구분 탭 «' + (SU.CAT_NAME[u.cat] || u.cat) + '» 아님 (품목 구분 ' + (SU.CAT_NAME[it.cat] || it.cat || '없음') + ')';
+  if (!matchQ(it, u.q) && !erpHit(u.q)[it.id]) return '품목 정보(품번·비고·제품번호)에 검색어 없음';
+  if (u.cust && !hasTxt(it.cust || '(고객사 없음)', u.cust)) return '고객사 조건';
+  if (u.pname && !hasTxt(pnameOf(it), u.pname)) return '품명 조건';
+  if (u.td && !myToday()[it.id]) return '«오늘 입력 보기» 켜짐';
+  if (!u.td && u.scope === 'active' && !isActive(it, d)) return '«진행 중 품목» 아님';
+  if (!u.td && !scopeOk(it, u.scope, d)) return '보기 조건(' + u.scope + ')';
+  if (u.ns && !notShipped(it)) return '«출고 전 제품» 켜짐';
+  if (u.nm && !noNum(it)) return '«제품번호 없음» 켜짐';
+  if (u.ni && !noInput(it)) return '«입력 없음» 켜짐';
+  if (u.proc && !it.procs.some(function (p) { return p.n === u.proc; })) return '공정 «' + u.proc + '» 없음';
+  return '조건에 가려짐';
+}
+function wnShow() { var u = S.ui; u.only = null; u.cat = 'all'; u.scope = 'all'; u.proc = ''; u.ns = u.nm = u.ni = u.td = false; u.cust = u.pname = ''; u.page = 1; var s1 = $('#scope'); if (s1) s1.value = 'all'; ['#custF', '#nameF'].forEach(function (k) { var e = $(k); if (e) e.value = ''; }); render(); }
 function wnRevive(ids) {
   if (!confirm('예전에 수불관리에서 지운 ERP 품목 ' + ids.length + '개를 되살릴까요?\n(출고매칭 수주·출고로 다시 만들어짐 · 지울 때 함께 지운 생산 입력은 설정 «지워진 입력 찾기»로 되살림)')) return;
   ids.forEach(function (id) { setRec('i:' + id, { del: 1, soft: 1 }); });
   store.erpDirty = true; schedulePush(); wnShow(); toast('지운 품목 ' + ids.length + '개 되살림');
+}
+
+function wnOnly(ids) { S.ui.only = ids; S.ui.onlyQ = S.ui.q; S.ui.page = 1; S.ui.mOpen = {}; if (S.ui.view !== 'day' && S.ui.view !== 'month') S.ui.view = 'month'; render(); }
+
+/* v137 : 검색어가 들어간 출고매칭 수주·출고 줄 → 이어진 품목 id (같은 검색어·자료면 다시 셈하지 않음) */
+var EH = null;
+function erpHit(q) {
+  q = String(q || '').trim().toLowerCase(); if (!q) return {};
+  store.deriveErp(); var E = store.erp, key = q + '|' + E.order.size + '|' + E.ship.size + '|' + (E.rev || 0) + '|' + store.items.size;
+  if (EH && EH.key === key) return EH.m;
+  var ws = q.split(/\s+/).filter(Boolean), m = {};
+  function chk(r) { if (!r._i) return; var x = [r.o, r.p, r.n, r.s, r.r, r.c, r.code, r.ac].join(' ').toLowerCase(); if (ws.every(function (w) { return x.indexOf(w) >= 0; })) m[r._i] = 1; }
+  E.order.forEach(chk); E.ship.forEach(chk);
+  EH = { key: key, m: m }; return m;
 }
 
 </script>
